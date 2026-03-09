@@ -5,6 +5,11 @@ import { LoginGuardian } from '../app/core/guard/login-guard';
 
 export const routes: Routes = [
     {path: '', component: Login},
-    {path: 'prueba', component: PruebaLogin, canActivate:[LoginGuardian]}
+    {path: 'prueba', component: PruebaLogin, canActivate:[LoginGuardian]},
+    {
+        path: 'transacciones',
+        loadChildren: () => import('./transactions/transactions.routes').then(m => m.routes),
+        canActivate: [LoginGuardian]
+    }
     //{path: '**'}
 ];

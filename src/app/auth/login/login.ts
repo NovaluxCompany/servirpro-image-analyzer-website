@@ -69,7 +69,7 @@ export class Login {
     this._authService.loginDB(email!, password!).subscribe({
       next: () => {
         this.isLoading = false;
-        this._router.navigate(['/prueba']);
+        this._router.navigate(['/transacciones']);
       },
       error: () => {
         this.isLoading = false;

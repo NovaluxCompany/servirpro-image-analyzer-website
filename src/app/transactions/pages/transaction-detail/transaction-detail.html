@@ -1,0 +1,245 @@
+<div class="min-h-screen p-6 bg-gray-50">
+  @if (isLoading()) {
+    <div class="flex flex-col items-center justify-center min-h-[60vh]">
+      <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <p class="mt-4 text-lg font-medium text-gray-700">Cargando transacción...</p>
+    </div>
+  } @else if (errorMessage()) {
+    <div class="max-w-4xl mx-auto">
+      <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100" role="alert">
+        <span class="font-medium">Error:</span> {{ errorMessage() }}
+      </div>
+      <button 
+        type="button"
+        (click)="goBack()"
+        class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5"
+      >
+        Volver al listado
+      </button>
+    </div>
+  } @else if (transaction()) {
+    <div class="max-w-7xl mx-auto">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Detalle de Transacción</h1>
+          <p class="mt-1 text-sm text-gray-500">{{ transaction()!.reference }}</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button 
+            type="button"
+            (click)="refreshTransaction()"
+            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Actualizar
+          </button>
+          <button 
+            type="button"
+            (click)="goBack()"
+            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5"
+          >
+            Volver al listado
+          </button>
+        </div>
+      </div>
+
+      <!-- Status pendiente -->
+      @if (transaction()!.status === 'pending') {
+        <div class="p-6 mb-6 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 border-4 border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
+            <div>
+              <p class="font-semibold text-yellow-800">Procesando comprobantes con IA...</p>
+              <p class="text-sm text-yellow-600">Los resultados se actualizarán automáticamente cuando estén disponibles.</p>
+            </div>
+          </div>
+        </div>
+      }
+
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <!-- Información general -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- Datos principales -->
+          <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <h2 class="mb-4 text-xl font-semibold text-gray-900">Información General</h2>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <p class="text-sm text-gray-500">Referencia</p>
+                <p class="font-medium text-gray-900">{{ transaction()!.reference }}</p>
+              </div>
+              
+              <div>
+                <p class="text-sm text-gray-500">Estado</p>
+                <app-transaction-status-badge [status]="transaction()!.status" />
+              </div>
+              
+              <div>
+                <p class="text-sm text-gray-500">Fecha de creación</p>
+                <p class="font-medium text-gray-900">{{ formatDate(transaction()!.createdAt) }}</p>
+              </div>
+              
+              <div>
+                <p class="text-sm text-gray-500">Última actualización</p>
+                <p class="font-medium text-gray-900">{{ formatDate(transaction()!.updatedAt) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Montos -->
+          <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <h2 class="mb-4 text-xl font-semibold text-gray-900">Análisis de Montos</h2>
+            
+            <div class="space-y-4">
+              <div class="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                <span class="text-gray-700">Monto pagado</span>
+                <span class="text-xl font-bold text-blue-900">{{ formatCurrency(transaction()!.amountPaid) }}</span>
+              </div>
+              
+              @if (transaction()!.amountGeneratedAI !== undefined) {
+                <div class="flex items-center justify-between p-4 bg-purple-50 rounded-lg">
+                  <span class="text-gray-700">Monto generado por IA</span>
+                  <span class="text-xl font-bold text-purple-900">{{ formatCurrency(transaction()!.amountGeneratedAI!) }}</span>
+                </div>
+
+                <div class="p-4 rounded-lg" [class.bg-green-50]="transaction()!.amountsMatch" [class.bg-red-50]="!transaction()!.amountsMatch">
+                  <div class="flex items-center gap-2">
+                    @if (transaction()!.amountsMatch) {
+                      <span class="text-2xl">✓</span>
+                      <div>
+                        <p class="font-semibold text-green-800">Los montos coinciden</p>
+                        <p class="text-sm text-green-600">El monto pagado corresponde con los comprobantes detectados</p>
+                      </div>
+                    } @else {
+                      <span class="text-2xl">✗</span>
+                      <div>
+                        <p class="font-semibold text-red-800">Los montos NO coinciden</p>
+                        <p class="text-sm text-red-600">Hay una discrepancia entre el monto pagado y los comprobantes</p>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Afiliados -->
+          <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <h2 class="mb-4 text-xl font-semibold text-gray-900">
+              Afiliados ({{ transaction()!.affiliates.length }})
+            </h2>
+            
+            <div class="space-y-4">
+              @for (affiliate of transaction()!.affiliates; track $index) {
+                <div class="p-4 border border-gray-200 rounded-lg">
+                  <div class="flex items-start justify-between mb-2">
+                    <h3 class="font-semibold text-gray-900">{{ affiliate.fullName }}</h3>
+                    <span class="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded">
+                      {{ affiliate.type }} {{ affiliate.idNumber }}
+                    </span>
+                  </div>
+                  
+                  <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p class="text-gray-500">Plan</p>
+                      <p class="font-medium text-gray-900">{{ affiliate.plan }}</p>
+                    </div>
+                    <div>
+                      <p class="text-gray-500">Precio</p>
+                      <p class="font-medium text-gray-900">{{ formatCurrency(affiliate.price) }}</p>
+                    </div>
+                    <div>
+                      <p class="text-gray-500">EPS</p>
+                      <p class="font-medium text-gray-900">{{ affiliate.eps }}</p>
+                    </div>
+                    <div>
+                      <p class="text-gray-500">Referencia</p>
+                      <p class="font-medium text-gray-900">{{ affiliate.reference }}</p>
+                    </div>
+                  </div>
+                </div>
+              }
+              
+              <div class="p-3 bg-gray-50 rounded-lg">
+                <div class="flex items-center justify-between">
+                  <span class="font-semibold text-gray-700">Total de precios de afiliados:</span>
+                  <span class="text-lg font-bold text-gray-900">{{ formatCurrency(getTotalPrice()) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Comprobantes procesados -->
+          @if (transaction()!.status === 'processed' && transaction()!.receipts.length > 0) {
+            <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <h2 class="mb-4 text-xl font-semibold text-gray-900">
+                Resultados del Análisis de IA
+              </h2>
+              <app-receipts-table [receipts]="transaction()!.receipts" />
+            </div>
+          }
+        </div>
+
+        <!-- Galería de imágenes -->
+        <div class="lg:col-span-1">
+          <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm sticky top-6">
+            <h2 class="mb-4 text-xl font-semibold text-gray-900">
+              Comprobantes ({{ transaction()!.images.length }})
+            </h2>
+            
+            <div class="grid grid-cols-2 gap-3">
+              @for (image of transaction()!.images; track $index) {
+                <button
+                  type="button"
+                  (click)="openImageModal(image)"
+                  class="relative overflow-hidden border-2 border-gray-200 rounded-lg group hover:border-blue-500 transition-colors"
+                >
+                  <img 
+                    [src]="'data:image/jpeg;base64,' + image"
+                    [alt]="'Comprobante ' + ($index + 1)"
+                    class="object-cover w-full h-32 group-hover:scale-110 transition-transform"
+                  >
+                  <div class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors">
+                    <svg class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </div>
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Image Modal -->
+@if (showImageModal() && selectedImageUrl()) {
+  <div 
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
+    (click)="closeImageModal()"
+  >
+    <div class="relative max-w-6xl max-h-[90vh]">
+      <button
+        type="button"
+        (click)="closeImageModal()"
+        class="absolute top-4 right-4 p-2 text-white bg-black/50 rounded-full hover:bg-black/70 focus:ring-4 focus:ring-white/50"
+      >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      <img 
+        [src]="selectedImageUrl()!"
+        alt="Comprobante ampliado"
+        class="max-w-full max-h-[90vh] rounded-lg"
+        (click)="$event.stopPropagation()"
+      >
+    </div>
+  </div>
+}

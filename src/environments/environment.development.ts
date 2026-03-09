@@ -1,3 +1,3 @@
 export const environment = {
-    urlBD: 'https://ritmovivo-dashboard-api.onrender.com/api'
+    urlBD: 'http://localhost:3000/api'
 };

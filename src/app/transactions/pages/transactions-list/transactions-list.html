@@ -1,0 +1,40 @@
+<div class="min-h-screen p-6 bg-gray-50">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Transacciones</h1>
+        <p class="mt-1 text-sm text-gray-500">
+          Gestión de comprobantes de pago procesados por IA
+        </p>
+      </div>
+      <button 
+        type="button"
+        (click)="onCreateTransaction()"
+        class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Nueva transacción
+      </button>
+    </div>
+
+    <!-- Filters -->
+    <app-transaction-filters (filterApplied)="onFilterApplied($event)" />
+
+    <!-- Error Alert -->
+    @if (errorMessage()) {
+      <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100" role="alert">
+        <span class="font-medium">Error:</span> {{ errorMessage() }}
+      </div>
+    }
+
+    <!-- Table -->
+    <app-transaction-table 
+      [transactions]="transactions()"
+      [isLoading]="isLoading()"
+      (viewDetail)="onViewDetail($event)"
+    />
+  </div>
+</div>
