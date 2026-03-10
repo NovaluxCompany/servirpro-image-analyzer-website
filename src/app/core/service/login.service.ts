@@ -10,6 +10,7 @@ export class LoginService {
   isAuthenticated(){
     const valorToken = this._tokenService.getToken()
 
-    return valorToken != null && valorToken != ''
+    // Verificar que el token exista y no esté expirado
+    return valorToken != null && valorToken != '' && !this._tokenService.isTokenExpired()
   }
 }
