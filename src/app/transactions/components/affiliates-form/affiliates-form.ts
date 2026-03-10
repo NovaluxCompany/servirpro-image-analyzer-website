@@ -39,24 +39,11 @@ export class AffiliatesFormComponent {
 
     this._affiliatesService.searchAffiliates(reference || undefined, fullName || undefined).subscribe({
       next: (data) => {
-        console.log('=== DEBUG AFFILIATES ===');
-        console.log('Datos recibidos del backend:', data);
-        console.log('Es array?:', Array.isArray(data));
-        console.log('Tipo:', typeof data);
-        console.log('Número de elementos:', data?.length);
-        
-        // Asegurar que sea array
-        const affiliatesArray = Array.isArray(data) ? data : [data];
-        
-        this.affiliates.set(affiliatesArray);
+        this.affiliates.set(data);
         this.applyTableFilter();
         this.isLoading.set(false);
         
-        console.log('Affiliates signal después de set:', this.affiliates());
-        console.log('Filtered affiliates signal después de filter:', this.filteredAffiliates());
-        console.log('Es array filteredAffiliates?:', Array.isArray(this.filteredAffiliates()));
-        
-        if (affiliatesArray.length === 0) {
+        if (data.length === 0) {
           this.errorMessage.set('No se encontraron afiliados con los criterios de búsqueda');
         }
       },
