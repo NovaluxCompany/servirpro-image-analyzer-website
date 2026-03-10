@@ -2,14 +2,21 @@ import { Routes } from '@angular/router';
 import { Login } from './auth/login/login';
 import { PruebaLogin } from './prueba-login/prueba-login';
 import { LoginGuardian } from '../app/core/guard/login-guard';
+import { LayoutComponent } from './core/components/layout/layout';
 
 export const routes: Routes = [
     {path: '', component: Login},
-    {path: 'prueba', component: PruebaLogin, canActivate:[LoginGuardian]},
     {
-        path: 'transacciones',
-        loadChildren: () => import('./transactions/transactions.routes').then(m => m.routes),
-        canActivate: [LoginGuardian]
+        path: '',
+        component: LayoutComponent,
+        canActivate: [LoginGuardian],
+        children: [
+            {path: 'prueba', component: PruebaLogin},
+            {
+                path: 'transacciones',
+                loadChildren: () => import('./transactions/transactions.routes').then(m => m.routes)
+            }
+        ]
     }
     //{path: '**'}
 ];
