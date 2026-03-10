@@ -42,7 +42,7 @@ export class AffiliatesFormComponent {
         this.affiliates.set(data);
         this.applyTableFilter();
         this.isLoading.set(false);
-        
+
         if (data.length === 0) {
           this.errorMessage.set('No se encontraron afiliados con los criterios de búsqueda');
         }
@@ -65,13 +65,13 @@ export class AffiliatesFormComponent {
 
   applyTableFilter(): void {
     const filter = this.tableFilter().toLowerCase();
-    
+
     if (!filter) {
       this.filteredAffiliates.set(this.affiliates());
       return;
     }
 
-    const filtered = this.affiliates().filter(affiliate => 
+    const filtered = this.affiliates().filter(affiliate =>
       affiliate.fullName.toLowerCase().includes(filter) ||
       affiliate.idNumber.includes(filter) ||
       affiliate.reference.toLowerCase().includes(filter) ||
@@ -92,13 +92,13 @@ export class AffiliatesFormComponent {
 
   toggleAffiliate(idNumber: string): void {
     const selected = new Set(this.selectedAffiliates());
-    
+
     if (selected.has(idNumber)) {
       selected.delete(idNumber);
     } else {
       selected.add(idNumber);
     }
-    
+
     this.selectedAffiliates.set(selected);
   }
 
@@ -122,6 +122,10 @@ export class AffiliatesFormComponent {
 
   getSelectedCount(): number {
     return this.selectedAffiliates().size;
+  }
+
+  getReference(): string {
+    return this.searchForm.value.reference || '';
   }
 
   isValid(): boolean {

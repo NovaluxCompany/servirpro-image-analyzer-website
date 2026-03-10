@@ -10,60 +10,36 @@
 
     <!-- Error Alert -->
     @if (errorMessage()) {
-      <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100" role="alert">
-        <span class="font-medium">Error:</span> {{ errorMessage() }}
-      </div>
+    <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100" role="alert">
+      <span class="font-medium">Error:</span> {{ errorMessage() }}
+    </div>
     }
 
     <!-- Form -->
     <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
+      <!-- Afiliados -->
+      <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <app-affiliates-form />
+      </div>
+
       <!-- Información general -->
       <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
         <h2 class="mb-4 text-xl font-semibold text-gray-900">Información General</h2>
-        
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <!-- Referencia -->
-          <div>
-            <label for="reference" class="block mb-2 text-sm font-medium text-gray-900">
-              Referencia *
-            </label>
-            <input 
-              type="text"
-              id="reference"
-              formControlName="reference"
-              placeholder="TRX-2024-001"
-              [class.border-red-500]="isFieldInvalid('reference')"
-              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-            >
-            @if (isFieldInvalid('reference')) {
-              <p class="mt-1 text-xs text-red-600">{{ getFieldError('reference') }}</p>
-            }
-          </div>
 
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <!-- Monto pagado -->
           <div>
             <label for="amountPaid" class="block mb-2 text-sm font-medium text-gray-900">
               Monto pagado *
             </label>
-            <input 
-              type="number"
-              id="amountPaid"
-              formControlName="amountPaid"
-              placeholder="150000"
-              min="1"
+            <input type="number" id="amountPaid" formControlName="amountPaid" placeholder="150000" min="1"
               [class.border-red-500]="isFieldInvalid('amountPaid')"
-              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-            >
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
             @if (isFieldInvalid('amountPaid')) {
-              <p class="mt-1 text-xs text-red-600">{{ getFieldError('amountPaid') }}</p>
+            <p class="mt-1 text-xs text-red-600">{{ getFieldError('amountPaid') }}</p>
             }
           </div>
         </div>
-      </div>
-
-      <!-- Afiliados -->
-      <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
-        <app-affiliates-form />
       </div>
 
       <!-- Comprobantes -->
@@ -74,29 +50,24 @@
 
       <!-- Actions -->
       <div class="flex items-center gap-4">
-        <button 
-          type="submit"
-          [disabled]="isLoading()"
-          class="flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <button type="submit" [disabled]="isLoading()"
+          class="flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50 disabled:cursor-not-allowed">
           @if (isLoading()) {
-            <span class="inline-flex items-center gap-2">
-              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Creando transacción...
-            </span>
+          <span class="inline-flex items-center gap-2">
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+              </path>
+            </svg>
+            Creando transacción...
+          </span>
           } @else {
-            Crear Transacción
+          Crear Transacción
           }
         </button>
-        <button 
-          type="button"
-          (click)="onCancel()"
-          [disabled]="isLoading()"
-          class="flex-1 text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <button type="button" (click)="onCancel()" [disabled]="isLoading()"
+          class="flex-1 text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50 disabled:cursor-not-allowed">
           Cancelar
         </button>
       </div>
@@ -108,10 +79,10 @@
 
 <!-- Loading Overlay -->
 @if (isLoading()) {
-  <div class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
-    <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-    <p class="mt-4 text-lg font-medium text-gray-700 animate-pulse">
-      Creando transacción y enviando a IA...
-    </p>
-  </div>
+<div class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+  <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+  <p class="mt-4 text-lg font-medium text-gray-700 animate-pulse">
+    Creando transacción y enviando a IA...
+  </p>
+</div>
 }
