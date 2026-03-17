@@ -21,7 +21,9 @@ export class TransactionsListComponent {
 
   transactions = signal<Transaction[]>([]);
   isLoading = signal(false);
+  isDownloadingExcel = signal(false);
   errorMessage = signal<string | null>(null);
+  currentFilters?: TransactionFilters;
 
   ngOnInit(): void {
     this.loadTransactions();
@@ -51,7 +53,38 @@ export class TransactionsListComponent {
   }
 
   onFilterApplied(filters: TransactionFilters): void {
+    this.currentFilters = filters;
     this.loadTransactions(filters);
+  }
+
+  downloadExcel(): void {
+    this.isDownloadingExcel.set(true);
+    this.errorMessage.set(null);
+
+    this._transactionsService.exportToExcel(this.currentFilters).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        const timestamp = new Date().toISOString().split('T')[0];
+        link.download = `transacciones_${timestamp}.xlsx`;
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        this.isDownloadingExcel.set(false);
+        this._toastService.showSuccess('Excel descargado exitosamente');
+      },
+      error: (error) => {
+        this.errorMessage.set(error.message);
+        this.isDownloadingExcel.set(false);
+        this._toastService.showError('Error al descargar el Excel');
+      }
+    });
   }
 
   onViewDetail(id: string): void {

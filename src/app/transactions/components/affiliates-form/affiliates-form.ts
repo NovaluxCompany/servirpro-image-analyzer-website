@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { AffiliatesService } from '../../services/affiliates.service';
@@ -26,18 +26,25 @@ export class AffiliatesFormComponent {
   errorMessage = signal<string | null>(null);
   tableFilter = signal('');
 
+  affiliatesChanged = output<Affiliate[]>();
+
   onSearch(): void {
     const { reference, fullName } = this.searchForm.value;
+    const searchValue = reference || fullName;
 
-    if (!reference && !fullName) {
-      this.errorMessage.set('Ingresa al menos un criterio de búsqueda');
+    if (!searchValue) {
+      this.errorMessage.set('Ingresa una referencia o cédula para buscar');
       return;
     }
+
+    // Limpiar selecciones anteriores al hacer una nueva búsqueda
+    this.selectedAffiliates.set(new Set());
+    this.affiliatesChanged.emit([]);
 
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this._affiliatesService.searchAffiliates(reference || undefined, fullName || undefined).subscribe({
+    this._affiliatesService.searchAffiliates(searchValue).subscribe({
       next: (data) => {
         this.affiliates.set(data);
         this.applyTableFilter();
@@ -88,6 +95,7 @@ export class AffiliatesFormComponent {
     this.selectedAffiliates.set(new Set());
     this.tableFilter.set('');
     this.errorMessage.set(null);
+    this.affiliatesChanged.emit([]);
   }
 
   toggleAffiliate(idNumber: string): void {
@@ -100,6 +108,7 @@ export class AffiliatesFormComponent {
     }
 
     this.selectedAffiliates.set(selected);
+    this.affiliatesChanged.emit(this.getSelectedAffiliates());
   }
 
   isSelected(idNumber: string): boolean {
@@ -109,10 +118,12 @@ export class AffiliatesFormComponent {
   selectAll(): void {
     const allIds = new Set(this.filteredAffiliates().map(a => a.idNumber));
     this.selectedAffiliates.set(allIds);
+    this.affiliatesChanged.emit(this.getSelectedAffiliates());
   }
 
   deselectAll(): void {
     this.selectedAffiliates.set(new Set());
+    this.affiliatesChanged.emit([]);
   }
 
   getSelectedAffiliates(): Affiliate[] {

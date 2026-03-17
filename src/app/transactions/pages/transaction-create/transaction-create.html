@@ -19,7 +19,7 @@
     <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
       <!-- Afiliados -->
       <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
-        <app-affiliates-form />
+        <app-affiliates-form (affiliatesChanged)="onAffiliatesChanged($event)" />
       </div>
 
       <!-- Información general -->
@@ -30,11 +30,12 @@
           <!-- Monto pagado -->
           <div>
             <label for="amountPaid" class="block mb-2 text-sm font-medium text-gray-900">
-              Monto pagado *
+              Monto Total (Auto-calculado) *
             </label>
-            <input type="number" id="amountPaid" formControlName="amountPaid" placeholder="150000" min="1"
+            <input type="number" id="amountPaid" formControlName="amountPaid" placeholder="0" min="1"
               [class.border-red-500]="isFieldInvalid('amountPaid')"
-              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+              class="bg-gray-100 border border-gray-300 text-gray-700 text-sm rounded-lg block w-full p-2.5 cursor-not-allowed">
+            <p class="mt-1 text-xs text-gray-500">Este monto se calcula automáticamente según los afiliados seleccionados</p>
             @if (isFieldInvalid('amountPaid')) {
             <p class="mt-1 text-xs text-red-600">{{ getFieldError('amountPaid') }}</p>
             }

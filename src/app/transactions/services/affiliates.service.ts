@@ -20,22 +20,11 @@ export class AffiliatesService {
     });
   }
 
-  searchAffiliates(reference?: string, fullName?: string): Observable<Affiliate[]> {
-    // Si hay referencia, usar el endpoint específico
-    if (reference) {
-      return this._http
-        .get<Affiliate[]>(`${this.baseUrl}/reference/${reference}`, {
-          headers: this.getHeaders()
-        })
-        .pipe(catchError(this.handleError));
-    }
-    
-    // Si solo hay nombre, usar query params
-    let params = new HttpParams();
-    if (fullName) params = params.set('fullName', fullName);
+  searchAffiliates(search: string): Observable<Affiliate[]> {
+    const params = new HttpParams().set('search', search);
 
     return this._http
-      .get<Affiliate[]>(this.baseUrl, {
+      .get<Affiliate[]>(`${environment.urlBD}/affiliates/search`, {
         headers: this.getHeaders(),
         params,
       })

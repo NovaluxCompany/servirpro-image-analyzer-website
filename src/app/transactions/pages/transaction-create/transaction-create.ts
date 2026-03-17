@@ -5,6 +5,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TransactionsService } from '../../services/transactions.service';
 import { AffiliatesFormComponent } from '../../components/affiliates-form/affiliates-form';
 import { ImageUploaderComponent } from '../../components/image-uploader/image-uploader';
+import { Affiliate } from '../../interfaces/affiliate.interface';
 
 @Component({
   selector: 'app-transaction-create',
@@ -24,8 +25,13 @@ export class TransactionCreateComponent {
   uploadedImages = signal<File[]>([]);
 
   form = this._fb.group({
-    amountPaid: [0, [Validators.required, Validators.min(1)]]
+    amountPaid: [{ value: 0, disabled: true }, [Validators.required, Validators.min(1)]]
   });
+
+  onAffiliatesChanged(affiliates: Affiliate[]): void {
+    const totalPrice = affiliates.reduce((sum, affiliate) => sum + affiliate.price, 0);
+    this.form.get('amountPaid')?.setValue(totalPrice);
+  }
 
   onImagesChanged(files: File[]): void {
     this.uploadedImages.set(files);
@@ -62,7 +68,7 @@ export class TransactionCreateComponent {
 
     // Construir FormData
     const formData = new FormData();
-    const { amountPaid } = this.form.value;
+    const { amountPaid } = this.form.getRawValue();
 
     formData.append('reference', reference);
     formData.append('amountPaid', amountPaid!.toString());
