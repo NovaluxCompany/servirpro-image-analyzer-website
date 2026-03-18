@@ -1,4 +1,5 @@
 import { Component, ChangeDetectorRef, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../core/service/auth.service';
 import { Router } from '@angular/router';
@@ -7,7 +8,7 @@ import { TokenService } from '../../core/service/token.service';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './login.html'
 })
 
@@ -15,6 +16,7 @@ export class Login {
   showError: boolean = false;
   messageError: string = '';
   isLoading: boolean = false;
+  showPassword: boolean = false;
 
   private _tokenService = inject(TokenService);
   private _authService = inject(AuthService);
@@ -78,5 +80,14 @@ export class Login {
         this._cdr.detectChanges();
       }
     });
+  }
+
+  togglePasswordVisibility() {
+    this.showPassword = !this.showPassword;
+  }
+
+  isFieldInvalid(fieldName: string): boolean {
+    const field = this.form.get(fieldName);
+    return !!(field && field.invalid && (field.dirty || field.touched));
   }
 }

@@ -5,6 +5,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TransactionsService } from '../../services/transactions.service';
 import { AffiliatesFormComponent } from '../../components/affiliates-form/affiliates-form';
 import { ImageUploaderComponent } from '../../components/image-uploader/image-uploader';
+import { Affiliate } from '../../interfaces/affiliate.interface';
 
 @Component({
   selector: 'app-transaction-create',
@@ -24,9 +25,13 @@ export class TransactionCreateComponent {
   uploadedImages = signal<File[]>([]);
 
   form = this._fb.group({
-    reference: ['', Validators.required],
-    amountPaid: [0, [Validators.required, Validators.min(1)]]
+    amountPaid: [{ value: 0, disabled: true }, [Validators.required, Validators.min(1)]]
   });
+
+  onAffiliatesChanged(affiliates: Affiliate[]): void {
+    const totalPrice = affiliates.reduce((sum, affiliate) => sum + affiliate.price, 0);
+    this.form.get('amountPaid')?.setValue(totalPrice);
+  }
 
   onImagesChanged(files: File[]): void {
     this.uploadedImages.set(files);
@@ -34,6 +39,13 @@ export class TransactionCreateComponent {
 
   onSubmit(): void {
     this.errorMessage.set(null);
+
+    // Obtener referencia del formulario de afiliados
+    const reference = this.affiliatesForm.getReference();
+    if (!reference) {
+      this.errorMessage.set('Debes ingresar una referencia de transacción');
+      return;
+    }
 
     // Validar formulario principal
     if (this.form.invalid) {
@@ -56,9 +68,9 @@ export class TransactionCreateComponent {
 
     // Construir FormData
     const formData = new FormData();
-    const { reference, amountPaid } = this.form.value;
+    const { amountPaid } = this.form.getRawValue();
 
-    formData.append('reference', reference!);
+    formData.append('reference', reference);
     formData.append('amountPaid', amountPaid!.toString());
 
     // Obtener afiliados seleccionados
@@ -77,8 +89,8 @@ export class TransactionCreateComponent {
       next: (transaction) => {
         this.isLoading.set(false);
         this._router.navigate(['/transacciones'], {
-          state: { 
-            successMessage: `Transacción ${transaction.reference} creada exitosamente. Procesando con IA...` 
+          state: {
+            successMessage: `Transacción ${transaction.reference} creada exitosamente. Procesando con IA...`
           }
         });
       },

@@ -4,4 +4,5 @@ export interface Receipt {
   currency?: string;
   vendor?: string;
   reliabilityAlert?: 'confiable' | 'no_confiable';
+  date: string;
 }

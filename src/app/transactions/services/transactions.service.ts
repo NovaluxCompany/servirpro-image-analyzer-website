@@ -61,6 +61,26 @@ export class TransactionsService {
       .pipe(catchError(this.handleError));
   }
 
+  exportToExcel(filters?: TransactionFilters): Observable<Blob> {
+    let params = new HttpParams();
+
+    if (filters) {
+      if (filters.dateFrom) params = params.set('dateFrom', filters.dateFrom);
+      if (filters.dateTo) params = params.set('dateTo', filters.dateTo);
+      if (filters.affiliate) params = params.set('affiliate', filters.affiliate);
+      if (filters.idNumber) params = params.set('idNumber', filters.idNumber);
+      if (filters.reference) params = params.set('reference', filters.reference);
+    }
+
+    return this._http
+      .get(`${this.baseUrl}/export/excel`, {
+        headers: this.getHeaders(),
+        params,
+        responseType: 'blob'
+      })
+      .pipe(catchError(this.handleError));
+  }
+
   private handleError(error: any): Observable<never> {
     let errorMessage = 'Ha ocurrido un error inesperado';
 

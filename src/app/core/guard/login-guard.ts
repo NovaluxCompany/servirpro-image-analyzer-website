@@ -13,7 +13,7 @@ export class LoginGuardian implements CanActivate{
     if(this._loginService.isAuthenticated()){
       return true
     } else {
-      this._router.navigate(['login'])
+      this._router.navigate(['/'])
       return false
     }
   }
