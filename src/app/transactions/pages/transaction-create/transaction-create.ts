@@ -25,7 +25,8 @@ export class TransactionCreateComponent {
   uploadedImages = signal<File[]>([]);
 
   form = this._fb.group({
-    amountPaid: [{ value: 0, disabled: true }, [Validators.required, Validators.min(1)]]
+    amountPaid: [{ value: 0, disabled: true }, [Validators.required, Validators.min(1)]],
+    observation: ['', [Validators.maxLength(2000)]]
   });
 
   onAffiliatesChanged(affiliates: Affiliate[]): void {
@@ -68,10 +69,15 @@ export class TransactionCreateComponent {
 
     // Construir FormData
     const formData = new FormData();
-    const { amountPaid } = this.form.getRawValue();
+    const { amountPaid, observation } = this.form.getRawValue();
 
     formData.append('reference', reference);
     formData.append('amountPaid', amountPaid!.toString());
+
+    // Agregar observación si existe
+    if (observation && observation.trim()) {
+      formData.append('observation', observation.trim());
+    }
 
     // Obtener afiliados seleccionados
     const selectedAffiliates = this.affiliatesForm.getSelectedAffiliates();
@@ -119,6 +125,10 @@ export class TransactionCreateComponent {
     }
     if (field?.hasError('min')) {
       return 'El valor debe ser mayor a 0';
+    }
+    if (field?.hasError('maxlength')) {
+      const maxLength = field.getError('maxlength').requiredLength;
+      return `El texto no puede exceder ${maxLength} caracteres`;
     }
     return '';
   }

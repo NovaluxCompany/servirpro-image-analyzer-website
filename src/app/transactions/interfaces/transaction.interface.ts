@@ -11,6 +11,7 @@ export interface Transaction {
   affiliates: Affiliate[];
   images: string[];
   receipts: Receipt[];
+  observation?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -41,6 +41,28 @@
             }
           </div>
         </div>
+
+        <!-- Observación -->
+        <div class="mt-4">
+          <label for="observation" class="block mb-2 text-sm font-medium text-gray-900">
+            Observación (Opcional)
+          </label>
+          <textarea 
+            id="observation" 
+            formControlName="observation" 
+            rows="4" 
+            maxlength="2000"
+            placeholder="Ingrese cualquier observación adicional sobre esta transacción..."
+            [class.border-red-500]="isFieldInvalid('observation')"
+            class="border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500">
+          </textarea>
+          <p class="mt-1 text-xs text-gray-500">
+            Máximo 2000 caracteres. Caracteres restantes: {{ 2000 - (form.get('observation')?.value?.length || 0) }}
+          </p>
+          @if (isFieldInvalid('observation')) {
+          <p class="mt-1 text-xs text-red-600">{{ getFieldError('observation') }}</p>
+          }
+        </div>
       </div>
 
       <!-- Comprobantes -->
