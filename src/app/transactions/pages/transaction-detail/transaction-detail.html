@@ -87,6 +87,14 @@
                 <p class="font-medium text-gray-900">{{ formatDate(transaction()!.updatedAt) }}</p>
               </div>
             </div>
+
+            <!-- Observación -->
+            @if (transaction()!.observation) {
+              <div class="mt-4 pt-4 border-t border-gray-200">
+                <p class="text-sm text-gray-500 mb-2">Observación</p>
+                <p class="text-gray-900 whitespace-pre-wrap">{{ transaction()!.observation }}</p>
+              </div>
+            }
           </div>
 
           <!-- Montos -->
