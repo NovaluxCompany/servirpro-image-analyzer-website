@@ -125,7 +125,7 @@ export class TransactionDetailComponent implements OnDestroy {
   }
 
   openImageModal(imageBase64: string): void {
-    this.selectedImageUrl.set(`data:image/jpeg;base64,${imageBase64}`);
+    this.selectedImageUrl.set(`${imageBase64}`);
     this.showImageModal.set(true);
   }
 
