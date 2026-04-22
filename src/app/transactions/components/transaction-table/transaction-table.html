@@ -2,35 +2,39 @@
   <table class="w-full text-sm text-left text-gray-500">
     <thead class="text-xs text-gray-700 uppercase bg-gray-50">
       <tr>
+        <th scope="col" class="px-6 py-3">Acción</th>
         <th scope="col" class="px-6 py-3">Fecha</th>
         <th scope="col" class="px-6 py-3">Referencia</th>
         <th scope="col" class="px-6 py-3">Afiliados</th>
-        <th scope="col" class="px-6 py-3">Monto Pagado</th>
+        <th scope="col" class="px-6 py-3">Valor Total</th>
+        <th scope="col" class="px-6 py-3">Valor Pagado</th>
+        <th scope="col" class="px-6 py-3">Valor Descuento</th>
         <th scope="col" class="px-6 py-3">Monto IA</th>
         <th scope="col" class="px-6 py-3">Coincidencia</th>
         <th scope="col" class="px-6 py-3">Estado</th>
         <th scope="col" class="px-6 py-3">% Veracidad</th>
-        <th scope="col" class="px-6 py-3">Acción</th>
       </tr>
     </thead>
     <tbody>
       @if (isLoading()) {
         @for (item of [1,2,3,4,5]; track $index) {
           <tr class="bg-white border-b animate-pulse">
+            <td class="px-6 py-4"><div class="h-8 bg-gray-200 rounded w-20"></div></td>
             <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
             <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
             <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-8"></div></td>
             <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
             <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
+            <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
+            <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
             <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-8"></div></td>
             <td class="px-6 py-4"><div class="h-6 bg-gray-200 rounded-full w-20"></div></td>
             <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-12"></div></td>
-            <td class="px-6 py-4"><div class="h-8 bg-gray-200 rounded w-20"></div></td>
           </tr>
         }
       } @else if (transactions().length === 0) {
         <tr>
-          <td colspan="9" class="px-6 py-12 text-center">
+          <td colspan="11" class="px-6 py-12 text-center">
             <div class="flex flex-col items-center justify-center gap-2">
               <svg class="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -42,6 +46,15 @@
       } @else {
         @for (transaction of transactions(); track transaction._id) {
           <tr class="bg-white border-b hover:bg-gray-50">
+            <td class="px-6 py-4">
+              <button
+                type="button"
+                (click)="onViewDetail(transaction._id)"
+                class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-xs px-4 py-2 text-center"
+              >
+                Ver detalle
+              </button>
+            </td>
             <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
               {{ formatDate(transaction.createdAt) }}
             </td>
@@ -52,7 +65,17 @@
               {{ getAffiliatesCount(transaction) }}
             </td>
             <td class="px-6 py-4 font-medium text-gray-900">
+              {{ formatCurrency(transaction.totalValue) }}
+            </td>
+            <td class="px-6 py-4 font-medium text-gray-900">
               {{ formatCurrency(transaction.amountPaid) }}
+            </td>
+            <td class="px-6 py-4 font-medium text-gray-900">
+              @if (transaction.discountedValue !== undefined && transaction.discountedValue > 0) {
+                <span class="text-orange-600">{{ formatCurrency(transaction.discountedValue) }}</span>
+              } @else {
+                <span class="text-gray-400">-</span>
+              }
             </td>
             <td class="px-6 py-4">
               @if (transaction.amountGeneratedAI !== undefined) {
@@ -79,15 +102,6 @@
               } @else {
                 <span class="text-gray-400">-</span>
               }
-            </td>
-            <td class="px-6 py-4">
-              <button 
-                type="button"
-                (click)="onViewDetail(transaction._id)"
-                class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-xs px-4 py-2 text-center"
-              >
-                Ver detalle
-              </button>
             </td>
           </tr>
         }

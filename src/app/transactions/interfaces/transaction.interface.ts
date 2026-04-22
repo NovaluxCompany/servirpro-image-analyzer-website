@@ -4,7 +4,9 @@ import { Receipt } from './receipt.interface';
 export interface Transaction {
   _id: string;
   reference: string;
+  totalValue: number;
   amountPaid: number;
+  discountedValue?: number;
   amountGeneratedAI?: number;
   amountsMatch?: boolean;
   status: 'pending' | 'processed';

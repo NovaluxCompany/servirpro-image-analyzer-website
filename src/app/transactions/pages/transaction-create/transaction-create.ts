@@ -25,17 +25,43 @@ export class TransactionCreateComponent {
   uploadedImages = signal<File[]>([]);
 
   form = this._fb.group({
+    totalValue: [{ value: 0, disabled: true }, [Validators.required, Validators.min(1)]],
     amountPaid: [{ value: 0, disabled: true }, [Validators.required, Validators.min(1)]],
+    discountedValue: [{ value: 0, disabled: false }, [Validators.min(0)]],
     observation: ['', [Validators.maxLength(2000)]]
   });
 
   onAffiliatesChanged(affiliates: Affiliate[]): void {
     const totalPrice = affiliates.reduce((sum, affiliate) => sum + affiliate.price, 0);
-    this.form.get('amountPaid')?.setValue(totalPrice);
+    this.form.get('totalValue')?.setValue(totalPrice);
+    this.updateValuePaid();
   }
 
   onImagesChanged(files: File[]): void {
     this.uploadedImages.set(files);
+  }
+
+  onDiscountedValueChanged(): void {
+    this.updateValuePaid();
+  }
+
+  private updateValuePaid(): void {
+    const totalValue = this.form.get('totalValue')?.value || 0;
+    const discountedValue = this.form.get('discountedValue')?.value || 0;
+    
+    // Validar que el descuento no sea mayor al total
+    if (discountedValue > totalValue) {
+      this.form.get('discountedValue')?.setErrors({ 'maxDiscount': true });
+    } else {
+      const currentErrors = this.form.get('discountedValue')?.errors;
+      if (currentErrors && currentErrors['maxDiscount']) {
+        const { maxDiscount, ...remainingErrors } = currentErrors;
+        this.form.get('discountedValue')?.setErrors(Object.keys(remainingErrors).length > 0 ? remainingErrors : null);
+      }
+    }
+    
+    const amountPaid = totalValue - discountedValue;
+    this.form.get('amountPaid')?.setValue(amountPaid);
   }
 
   onSubmit(): void {
@@ -69,10 +95,14 @@ export class TransactionCreateComponent {
 
     // Construir FormData
     const formData = new FormData();
-    const { amountPaid, observation } = this.form.getRawValue();
+    const { totalValue, amountPaid, discountedValue, observation } = this.form.getRawValue();
 
     formData.append('reference', reference);
+    formData.append('totalValue', totalValue!.toString());
     formData.append('amountPaid', amountPaid!.toString());
+    if (discountedValue && discountedValue > 0) {
+      formData.append('discountedValue', discountedValue!.toString());
+    }
 
     // Agregar observación si existe
     if (observation && observation.trim()) {
@@ -125,6 +155,9 @@ export class TransactionCreateComponent {
     }
     if (field?.hasError('min')) {
       return 'El valor debe ser mayor a 0';
+    }
+    if (field?.hasError('maxDiscount')) {
+      return 'El descuento no puede ser mayor al valor total';
     }
     if (field?.hasError('maxlength')) {
       const maxLength = field.getError('maxlength').requiredLength;

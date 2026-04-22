@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import { TokenService } from '../../core/service/token.service';
 import { Transaction } from '../interfaces/transaction.interface';
 import { TransactionFilters } from '../interfaces/transaction-filters.interface';
+import { PaginatedResponse } from '../interfaces/paginated-response.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -37,6 +38,24 @@ export class TransactionsService {
         headers: this.getHeaders(),
         params,
       })
+      .pipe(catchError(this.handleError));
+  }
+
+  getPaginatedTransactions(filters?: TransactionFilters, page: number = 1, limit: number = 10): Observable<PaginatedResponse<Transaction>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('limit', limit.toString());
+
+    if (filters) {
+      if (filters.dateFrom) params = params.set('dateFrom', filters.dateFrom);
+      if (filters.dateTo) params = params.set('dateTo', filters.dateTo);
+      if (filters.affiliate) params = params.set('affiliate', filters.affiliate);
+      if (filters.idNumber) params = params.set('idNumber', filters.idNumber);
+      if (filters.reference) params = params.set('reference', filters.reference);
+    }
+
+    return this._http
+      .get<PaginatedResponse<Transaction>>(`${this.baseUrl}/paginated`, { headers: this.getHeaders(), params })
       .pipe(catchError(this.handleError));
   }
 

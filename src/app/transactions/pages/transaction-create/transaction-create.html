@@ -27,19 +27,48 @@
         <h2 class="mb-4 text-xl font-semibold text-gray-900">Información General</h2>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <!-- Monto pagado -->
+          <!-- Valor Total -->
+          <div>
+            <label for="totalValue" class="block mb-2 text-sm font-medium text-gray-900">
+              Valor Total (Auto-calculado) *
+            </label>
+            <input type="number" id="totalValue" formControlName="totalValue" placeholder="0" min="1"
+              [class.border-red-500]="isFieldInvalid('totalValue')"
+              class="bg-gray-100 border border-gray-300 text-gray-700 text-sm rounded-lg block w-full p-2.5 cursor-not-allowed">
+            <p class="mt-1 text-xs text-gray-500">Este monto se calcula automáticamente según los afiliados seleccionados</p>
+            @if (isFieldInvalid('totalValue')) {
+            <p class="mt-1 text-xs text-red-600">{{ getFieldError('totalValue') }}</p>
+            }
+          </div>
+
+          <!-- Valor Pagado -->
           <div>
             <label for="amountPaid" class="block mb-2 text-sm font-medium text-gray-900">
-              Monto Total (Auto-calculado) *
+              Valor Pagado (Auto-calculado) *
             </label>
             <input type="number" id="amountPaid" formControlName="amountPaid" placeholder="0" min="1"
               [class.border-red-500]="isFieldInvalid('amountPaid')"
               class="bg-gray-100 border border-gray-300 text-gray-700 text-sm rounded-lg block w-full p-2.5 cursor-not-allowed">
-            <p class="mt-1 text-xs text-gray-500">Este monto se calcula automáticamente según los afiliados seleccionados</p>
+            <p class="mt-1 text-xs text-gray-500">Se calcula como: Valor Total - Valor Descuento</p>
             @if (isFieldInvalid('amountPaid')) {
             <p class="mt-1 text-xs text-red-600">{{ getFieldError('amountPaid') }}</p>
             }
           </div>
+        </div>
+
+        <!-- Valor Descuento -->
+        <div>
+          <label for="discountedValue" class="block mb-2 text-sm font-medium text-gray-900">
+            Valor Descuento (Opcional)
+          </label>
+          <input type="number" id="discountedValue" formControlName="discountedValue" placeholder="0" min="0"
+            (change)="onDiscountedValueChanged()"
+            [class.border-red-500]="isFieldInvalid('discountedValue')"
+            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500">
+          <p class="mt-1 text-xs text-gray-500">Ingrese el valor del descuento. No puede ser mayor al valor total</p>
+          @if (isFieldInvalid('discountedValue')) {
+          <p class="mt-1 text-xs text-red-600">{{ getFieldError('discountedValue') }}</p>
+          }
         </div>
 
         <!-- Observación -->
