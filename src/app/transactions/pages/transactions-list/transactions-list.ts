@@ -19,15 +19,21 @@ export class TransactionsListComponent {
   private _router = inject(Router);
   private _toastService = inject(ToastService);
 
+  readonly pageSize = 10;
+
   transactions = signal<Transaction[]>([]);
   isLoading = signal(false);
   isDownloadingExcel = signal(false);
   errorMessage = signal<string | null>(null);
   currentFilters?: TransactionFilters;
 
+  currentPage = signal(1);
+  totalPages = signal(0);
+  totalItems = signal(0);
+
   ngOnInit(): void {
     this.loadTransactions();
-    
+
     // Mostrar mensaje de éxito si viene de creación
     const navigation = this._router.getCurrentNavigation();
     const state = navigation?.extras?.state || history.state;
@@ -36,13 +42,16 @@ export class TransactionsListComponent {
     }
   }
 
-  loadTransactions(filters?: TransactionFilters): void {
+  loadTransactions(filters?: TransactionFilters, page: number = this.currentPage()): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this._transactionsService.getTransactions(filters).subscribe({
-      next: (data) => {
-        this.transactions.set(data);
+    this._transactionsService.getPaginatedTransactions(filters, page, this.pageSize).subscribe({
+      next: (response) => {
+        this.transactions.set(response.data);
+        this.currentPage.set(response.page);
+        this.totalPages.set(response.totalPages);
+        this.totalItems.set(response.total);
         this.isLoading.set(false);
       },
       error: (error) => {
@@ -54,7 +63,33 @@ export class TransactionsListComponent {
 
   onFilterApplied(filters: TransactionFilters): void {
     this.currentFilters = filters;
-    this.loadTransactions(filters);
+    this.currentPage.set(1);
+    this.loadTransactions(filters, 1);
+  }
+
+  goToPage(page: number): void {
+    if (page < 1 || page > this.totalPages()) return;
+    this.currentPage.set(page);
+    this.loadTransactions(this.currentFilters, page);
+  }
+
+  nextPage(): void {
+    this.goToPage(this.currentPage() + 1);
+  }
+
+  previousPage(): void {
+    this.goToPage(this.currentPage() - 1);
+  }
+
+  get pageNumbers(): number[] {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const delta = 2;
+    const range: number[] = [];
+    const start = Math.max(1, current - delta);
+    const end = Math.min(total, current + delta);
+    for (let i = start; i <= end; i++) range.push(i);
+    return range;
   }
 
   downloadExcel(): void {
