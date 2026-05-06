@@ -54,6 +54,7 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Profesión</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha Creación</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -77,11 +78,12 @@
                   <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
                   <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
                   <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
+                  <td class="px-4 py-3"><div class="h-4 w-28 bg-gray-200 rounded"></div></td>
                 </tr>
               }
             } @else if (affiliates().length === 0) {
               <tr>
-                <td colspan="14" class="px-4 py-16 text-center">
+                <td colspan="15" class="px-4 py-16 text-center">
                   <div class="flex flex-col items-center gap-3">
                     <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                       <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,6 +223,11 @@
                   <!-- Profesión -->
                   <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
                     {{ affiliate.profession || '—' }}
+                  </td>
+
+                  <!-- Fecha Creación -->
+                  <td class="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
+                    {{ formatDate(affiliate.createdAt) }}
                   </td>
 
                 </tr>

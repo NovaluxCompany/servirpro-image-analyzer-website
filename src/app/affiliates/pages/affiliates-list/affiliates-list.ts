@@ -50,7 +50,14 @@ export class AffiliatesListComponent implements OnInit {
     this.errorMessage.set(null);
     this._service.getAffiliates().subscribe({
       next: (data) => {
-        this.fullAffiliates.set(data);
+        const sorted = [...data].sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          if (dateB !== dateA) return dateB - dateA;
+          // Desempate por id descendente (mayor id = más reciente)
+          return Number(b.id ?? 0) - Number(a.id ?? 0);
+        });
+        this.fullAffiliates.set(sorted);
         this.isLoading.set(false);
       },
       error: (err) => {
