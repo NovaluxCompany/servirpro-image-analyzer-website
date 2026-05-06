@@ -1,0 +1,278 @@
+<div class="min-h-screen p-6 bg-gray-50">
+  <div class="max-w-7xl mx-auto">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Afiliados</h1>
+        <p class="mt-1 text-sm text-gray-500">Gestión y registro de afiliados al sistema</p>
+      </div>
+      <button type="button" id="btn-nuevo-afiliado" (click)="openCreate()"
+        class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 shadow-md hover:shadow-lg transition-all duration-200">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Nuevo Afiliado
+      </button>
+    </div>
+
+    <!-- Error -->
+    @if (errorMessage()) {
+      <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100 border border-red-200" role="alert">
+        <span class="font-medium">Error:</span> {{ errorMessage() }}
+      </div>
+    }
+
+    <!-- Tabla -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+
+      <!-- Table header info -->
+      <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+        <p class="text-sm text-gray-500">
+          @if (!isLoading()) {
+            Total: <span class="font-semibold text-gray-800">{{ totalItems() }}</span> afiliados
+          }
+        </p>
+        <p class="text-xs text-gray-400">Ordenados por fecha de creación (más reciente primero)</p>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-600">
+          <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Acciones</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Cédula</th>
+               <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">ARL</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Pensión</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">EPS</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha Ingreso</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Profesión</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+
+            @if (isLoading()) {
+              @for (i of [1,2,3,4,5]; track i) {
+                <tr class="animate-pulse">
+                  <td class="px-4 py-3">
+                    <div class="flex gap-2">
+                      <div class="h-7 w-16 bg-gray-200 rounded-lg"></div>
+                      <div class="h-7 w-16 bg-gray-200 rounded-lg"></div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3"><div class="h-5 w-16 bg-gray-200 rounded-full"></div></td>
+                  <td class="px-4 py-3"><div class="h-4 w-32 bg-gray-200 rounded"></div></td>
+                  <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
+                  <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
+                  <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
+                  <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
+                  <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
+                  <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
+                  <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
+                  <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
+                </tr>
+              }
+            } @else if (affiliates().length === 0) {
+              <tr>
+                <td colspan="14" class="px-4 py-16 text-center">
+                  <div class="flex flex-col items-center gap-3">
+                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                      <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <p class="text-gray-500 font-medium">No hay afiliados registrados</p>
+                    <p class="text-gray-400 text-xs">Haz clic en "Nuevo Afiliado" para registrar el primero</p>
+                  </div>
+                </td>
+              </tr>
+            } @else {
+              @for (affiliate of affiliates(); track affiliate.id ?? affiliate.documentNumber) {
+                <tr class="hover:bg-gray-50 transition-colors duration-150">
+
+                  <!-- Acciones -->
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                      @if (!affiliate.isActive) {
+                        <!-- Editar: solo cuando está inactivo -->
+                        <button type="button"
+                          (click)="openEdit(affiliate)"
+                          title="Editar afiliado"
+                          class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-lg hover:bg-blue-200 transition-colors">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Editar
+                        </button>
+                        <!-- Activar: solo cuando está inactivo -->
+                        <button type="button"
+                          (click)="openStatusToggle(affiliate)"
+                          title="Activar afiliado"
+                          class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-100 border border-emerald-200 rounded-lg hover:bg-emerald-200 transition-colors">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Activar
+                        </button>
+                      } @else {
+                        <!-- Desactivar: solo cuando está activo -->
+                        <button type="button"
+                          (click)="openStatusToggle(affiliate)"
+                          title="Desactivar afiliado"
+                          class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-100 border border-red-200 rounded-lg hover:bg-red-200 transition-colors">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                          </svg>
+                          Desactivar
+                        </button>
+                      }
+                    </div>
+                  </td>
+
+                  <!-- Estado -->
+                  <td class="px-4 py-3">
+                    @if (affiliate.isActive) {
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 bg-emerald-100 rounded-full">
+                        <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                        Activo
+                      </span>
+                    } @else {
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold text-gray-600 bg-gray-100 rounded-full">
+                        <span class="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                        Inactivo
+                      </span>
+                    }
+                  </td>
+
+                  <!-- Nombre -->
+                  <td class="px-4 py-3">
+                    <p class="font-medium text-gray-900 whitespace-nowrap">{{ affiliate.fullName }}</p>
+                  </td>
+
+                  <!-- Cédula -->
+                  <td class="px-4 py-3">
+                    <span class="px-2 py-0.5 text-xs font-medium text-gray-700 bg-gray-100 rounded whitespace-nowrap">
+                      {{ affiliate.documentType }} {{ affiliate.documentNumber }}
+                    </span>
+                  </td>
+
+                  <!-- Referencia -->
+                   <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {{ affiliate.reference || '—' }}
+                  </td>
+
+                  <!-- ARL -->
+                  <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {{ affiliate.arl || '—' }}
+                  </td>
+
+                  <!-- Pensión -->
+                  <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {{ affiliate.pension || '—' }}
+                  </td>
+
+                  <!-- EPS -->
+                  <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {{ affiliate.epsName || '—' }}
+                  </td>
+
+                  <!-- Plan -->
+                  <td class="px-4 py-3">
+                    @if (affiliate.planName) {
+                      <span class="px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-100 rounded whitespace-nowrap">
+                        {{ affiliate.planName }}
+                      </span>
+                    } @else {
+                      <span class="text-gray-400">—</span>
+                    }
+                  </td>
+
+                  <!-- Fecha Ingreso -->
+                  <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {{ formatDate(affiliate.entryDate) }}
+                  </td>
+
+                  <!-- Asesor -->
+                  <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {{ affiliate.advisorName || '—' }}
+                  </td>
+
+                  <!-- Empresa -->
+                  <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {{ affiliate.companyName || '—' }}
+                  </td>
+
+                  <!-- Agrupadora -->
+                  <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {{ affiliate.grouperName || '—' }}
+                  </td>
+
+                  <!-- Profesión -->
+                  <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {{ affiliate.profession || '—' }}
+                  </td>
+
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paginación -->
+      @if (totalPages() > 1) {
+        <div class="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50">
+          <p class="text-sm text-gray-600">
+            {{ totalItems() }} registros — Página {{ currentPage() }} de {{ totalPages() }}
+          </p>
+          <nav class="inline-flex items-center gap-1" aria-label="Paginación">
+            <button type="button" (click)="previousPage()" [disabled]="currentPage() === 1"
+              class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+              Anterior
+            </button>
+            @for (page of pageNumbers; track page) {
+              <button type="button" (click)="goToPage(page)"
+                [class]="page === currentPage()
+                  ? 'px-3 py-1.5 text-sm font-semibold text-white bg-blue-700 border border-blue-700 rounded-lg'
+                  : 'px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'">
+                {{ page }}
+              </button>
+            }
+            <button type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()"
+              class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+              Siguiente
+            </button>
+          </nav>
+        </div>
+      }
+    </div>
+
+  </div>
+</div>
+
+<!-- Modales -->
+<app-affiliate-form-modal
+  [isVisible]="showFormModal()"
+  [mode]="formMode()"
+  [affiliate]="selectedAffiliate()"
+  (saved)="onFormSaved()"
+  (closed)="onFormClosed()"
+/>
+
+<app-affiliate-status-modal
+  [isVisible]="showStatusModal()"
+  [affiliate]="selectedAffiliate()"
+  (confirmed)="onStatusConfirmed()"
+  (cancelled)="onStatusCancelled()"
+/>

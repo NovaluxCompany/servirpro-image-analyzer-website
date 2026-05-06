@@ -1,0 +1,109 @@
+<div class="min-h-screen p-6 bg-gray-50">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Transacciones</h1>
+        <p class="mt-1 text-sm text-gray-500">
+          Gestión de comprobantes de pago procesados por IA
+        </p>
+      </div>
+      <button
+        type="button"
+        (click)="onCreateTransaction()"
+        class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Nueva transacción
+      </button>
+    </div>
+
+    <!-- Filters -->
+    <app-transaction-filters (filterApplied)="onFilterApplied($event)" />
+
+    <!-- Excel Download Button -->
+    <div class="mb-4">
+      <button
+        type="button"
+        (click)="downloadExcel()"
+        [disabled]="isDownloadingExcel() || isLoading()"
+        class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        @if (isDownloadingExcel()) {
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Descargando...
+        } @else {
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Descargar Excel
+        }
+      </button>
+    </div>
+
+    <!-- Error Alert -->
+    @if (errorMessage()) {
+      <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100" role="alert">
+        <span class="font-medium">Error:</span> {{ errorMessage() }}
+      </div>
+    }
+
+    <!-- Table -->
+    <app-transaction-table
+      [transactions]="transactions()"
+      [isLoading]="isLoading()"
+      (viewDetail)="onViewDetail($event)"
+    />
+
+    <!-- Pagination -->
+    @if (totalPages() > 1) {
+      <div class="flex items-center justify-between mt-4 px-1">
+        <!-- Total de registros -->
+        <p class="text-sm text-gray-600">
+          {{ totalItems() }} registros &mdash; Página {{ currentPage() }} de {{ totalPages() }}
+        </p>
+
+        <!-- Controles -->
+        <nav class="inline-flex items-center gap-1" aria-label="Paginación">
+          <!-- Anterior -->
+          <button
+            type="button"
+            (click)="previousPage()"
+            [disabled]="currentPage() === 1"
+            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Anterior
+          </button>
+
+          <!-- Números de página -->
+          @for (page of pageNumbers; track page) {
+            <button
+              type="button"
+              (click)="goToPage(page)"
+              [class]="page === currentPage()
+                ? 'px-3 py-1.5 text-sm font-semibold text-white bg-blue-700 border border-blue-700 rounded-lg'
+                : 'px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'"
+            >
+              {{ page }}
+            </button>
+          }
+
+          <!-- Siguiente -->
+          <button
+            type="button"
+            (click)="nextPage()"
+            [disabled]="currentPage() === totalPages()"
+            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Siguiente
+          </button>
+        </nav>
+      </div>
+    }
+  </div>
+</div>
