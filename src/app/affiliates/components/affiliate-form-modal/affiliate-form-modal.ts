@@ -21,6 +21,7 @@ export class AffiliateFormModalComponent implements OnInit {
   isVisible = input<boolean>(false);
   mode = input<'create' | 'edit'>('create');
   affiliate = input<AffiliateMember | null>(null);
+  existingAffiliates = input<AffiliateMember[]>([]);
 
   saved = output<void>();
   closed = output<void>();
@@ -29,6 +30,7 @@ export class AffiliateFormModalComponent implements OnInit {
   isSearchingAdres = signal(false);
   adresFound = signal(false);
   adresNotFound = signal(false);
+  duplicateDocument = signal(false);
   errorMessage = signal<string | null>(null);
   catalogsLoading = signal(true);
 
@@ -85,6 +87,7 @@ export class AffiliateFormModalComponent implements OnInit {
           this.form.patchValue({ documentType: 'CC', isActive: true, entryDate: this.todayDate() });
           this.adresFound.set(false);
           this.adresNotFound.set(false);
+          this.duplicateDocument.set(false);
           this.errorMessage.set(null);
         }
       }
@@ -173,7 +176,18 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   onDocumentNumberBlur(): void {
+    this.checkDuplicate();
     this.triggerAdresSearch();
+  }
+
+  private checkDuplicate(): void {
+    if (this.mode() !== 'create') return;
+    const docNumber = this.form.value.documentNumber?.trim();
+    if (!docNumber) { this.duplicateDocument.set(false); return; }
+    const exists = this.existingAffiliates().some(
+      (a) => a.documentNumber?.trim() === docNumber
+    );
+    this.duplicateDocument.set(exists);
   }
 
   private triggerAdresSearch(): void {
@@ -269,6 +283,11 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   onSubmit(): void {
+    this.checkDuplicate();
+    if (this.duplicateDocument()) {
+      this.errorMessage.set('Ya existe un afiliado con ese número de documento.');
+      return;
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;

@@ -94,8 +94,8 @@
                   placeholder="Ej: 1000334535"
                   (blur)="onDocumentNumberBlur()"
                   class="w-full px-3 py-2 pr-8 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  [class.border-red-400]="isFieldInvalid('documentNumber')"
-                  [class.border-gray-300]="!isFieldInvalid('documentNumber')">
+                  [class.border-red-400]="isFieldInvalid('documentNumber') || duplicateDocument()"
+                  [class.border-gray-300]="!isFieldInvalid('documentNumber') && !duplicateDocument()">
                 @if (isSearchingAdres()) {
                   <div class="absolute right-2.5 top-8">
                     <svg class="w-4 h-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
@@ -106,6 +106,9 @@
                 }
                 @if (isFieldInvalid('documentNumber')) {
                   <p class="mt-1 text-xs text-red-500">Campo requerido (máx. 20 caracteres)</p>
+                }
+                @if (duplicateDocument()) {
+                  <p class="mt-1 text-xs text-red-500 font-semibold">Ya existe un afiliado con este número de documento.</p>
                 }
                 <p class="mt-1 text-xs text-gray-400">Salir del campo activa búsqueda automática en ADRES</p>
               </div>
