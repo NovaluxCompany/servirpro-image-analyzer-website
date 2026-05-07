@@ -1,7 +1,7 @@
 import { Component, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AffiliateMembersService } from '../../services/affiliate-members.service';
-import { ToastService } from '../../../core/service/toast.service';
+import { ToastService } from '../../../../core/service/toast.service';
 import { AffiliateMember } from '../../interfaces/affiliate-member.interface';
 
 @Component({

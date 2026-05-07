@@ -14,11 +14,11 @@ export const routes: Routes = [
             {path: 'prueba', component: PruebaLogin},
             {
                 path: 'transacciones',
-                loadChildren: () => import('./transactions/transactions.routes').then(m => m.routes)
+                loadChildren: () => import('./modules/transactions/transactions.routes').then(m => m.routes)
             },
             {
                 path: 'afiliados',
-                loadChildren: () => import('./affiliates/affiliates.routes').then(m => m.affiliatesRoutes)
+                loadChildren: () => import('./modules/affiliates/affiliates.routes').then(m => m.affiliatesRoutes)
             }
         ]
     }

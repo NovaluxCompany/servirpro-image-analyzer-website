@@ -2,10 +2,10 @@ import { Component, inject, input, output, OnInit, signal, effect } from '@angul
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AffiliateMembersService } from '../../services/affiliate-members.service';
-import { ToastService } from '../../../core/service/toast.service';
+import { ToastService } from '../../../../core/service/toast.service';
 import { AffiliateMember, CreateAffiliateMemberDto } from '../../interfaces/affiliate-member.interface';
 import { Plan, Company, Grouper, Advisor, EpsItem } from '../../interfaces/catalog.interface';
-import { SearchableSelectComponent, SelectOption } from '../../../shared/components/searchable-select/searchable-select';
+import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 import { forkJoin } from 'rxjs';
 
 @Component({

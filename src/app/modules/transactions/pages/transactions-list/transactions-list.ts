@@ -6,7 +6,7 @@ import { Transaction } from '../../interfaces/transaction.interface';
 import { TransactionFilters } from '../../interfaces/transaction-filters.interface';
 import { TransactionFiltersComponent } from '../../components/transaction-filters/transaction-filters';
 import { TransactionTableComponent } from '../../components/transaction-table/transaction-table';
-import { ToastService } from '../../../core/service/toast.service';
+import { ToastService } from '../../../../core/service/toast.service';
 
 @Component({
   selector: 'app-transactions-list',
@@ -101,16 +101,16 @@ export class TransactionsListComponent {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        
+
         const timestamp = new Date().toISOString().split('T')[0];
         link.download = `transacciones_${timestamp}.xlsx`;
-        
+
         document.body.appendChild(link);
         link.click();
-        
+
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        
+
         this.isDownloadingExcel.set(false);
         this._toastService.showSuccess('Excel descargado exitosamente');
       },

@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { LoginGuardian } from '../core/guard/login-guard';
+import { LoginGuardian } from '../../core/guard/login-guard';
 import { TransactionsListComponent } from './pages/transactions-list/transactions-list';
 import { TransactionCreateComponent } from './pages/transaction-create/transaction-create';
 import { TransactionDetailComponent } from './pages/transaction-detail/transaction-detail';

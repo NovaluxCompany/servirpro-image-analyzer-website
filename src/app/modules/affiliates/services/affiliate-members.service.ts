@@ -1,8 +1,8 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, catchError, of, throwError } from 'rxjs';
-import { environment } from '../../../environments/environment';
-import { TokenService } from '../../core/service/token.service';
+import { environment } from '../../../../environments/environment';
+import { TokenService } from '../../../core/service/token.service';
 import {
   AffiliateMember,
   CreateAffiliateMemberDto,

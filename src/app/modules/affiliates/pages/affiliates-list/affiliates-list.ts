@@ -5,8 +5,8 @@ import { AffiliateMembersService, AffiliateFilters } from '../../services/affili
 import { AffiliateMember } from '../../interfaces/affiliate-member.interface';
 import { AffiliateFormModalComponent } from '../../components/affiliate-form-modal/affiliate-form-modal';
 import { AffiliateStatusModalComponent } from '../../components/affiliate-status-modal/affiliate-status-modal';
-import { ToastService } from '../../../core/service/toast.service';
-import { SearchableSelectComponent, SelectOption } from '../../../shared/components/searchable-select/searchable-select';
+import { ToastService } from '../../../../core/service/toast.service';
+import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 import { debounceTime, Subject } from 'rxjs';
 
 @Component({
