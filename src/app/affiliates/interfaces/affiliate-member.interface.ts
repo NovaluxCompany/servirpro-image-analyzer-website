@@ -53,7 +53,8 @@ export interface CreateAffiliateMemberDto {
   email?: string;
   address?: string;
   municipality?: string;
-  reference?: string;
+  reference: string;        // required
+  profession?: string;
   whatsappEntryDate?: string;
   companyEntryDate?: string;
   planId: string;
@@ -63,14 +64,9 @@ export interface CreateAffiliateMemberDto {
   epsId?: string;
   isActive?: boolean;
   entryDate?: string;
-  eps?: string;
   arl?: number;
   pension?: string;
   compensationFund?: string;
-  deposit?: string;
-  charge?: string;
-  price?: number;
-  
 }
 
 export interface UpdateAffiliateMemberDto extends Partial<CreateAffiliateMemberDto> {}

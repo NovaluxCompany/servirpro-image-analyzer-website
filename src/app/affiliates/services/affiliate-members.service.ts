@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, catchError, of, throwError, map } from 'rxjs';
+import { Observable, catchError, of, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { TokenService } from '../../core/service/token.service';
 import {
@@ -17,6 +17,15 @@ import {
 } from '../interfaces/catalog.interface';
 import { PaginatedAffiliatesResponse } from '../interfaces/paginated-affiliates.interface';
 
+export interface AffiliateFilters {
+  page?: number;
+  limit?: number;
+  name?: string;
+  cedula?: string;
+  reference?: string;
+  advisor?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AffiliateMembersService {
   private _http = inject(HttpClient);
@@ -28,13 +37,29 @@ export class AffiliateMembersService {
     return new HttpHeaders({ Authorization: `Bearer ${token}` });
   }
 
-  // ── Listado paginado ───────────────────────────────────────────────
-  getAffiliates(): Observable<AffiliateMember[]> {
+  // ── Listado paginado con filtros ───────────────────────────────────
+  getAffiliates(filters: AffiliateFilters = {}): Observable<PaginatedAffiliatesResponse> {
+    let params = new HttpParams()
+      .set('page', String(filters.page ?? 1))
+      .set('limit', String(filters.limit ?? 10));
+    if (filters.name) params = params.set('name', filters.name);
+    if (filters.cedula) params = params.set('cedula', filters.cedula);
+    if (filters.reference) params = params.set('reference', filters.reference);
+    if (filters.advisor) params = params.set('advisor', filters.advisor);
+
     return this._http
-      .get<AffiliateMember[]>(`${this.baseUrl}`, {
+      .get<PaginatedAffiliatesResponse>(`${this.baseUrl}`, {
         headers: this.getHeaders(),
+        params,
       })
       .pipe(catchError(this.handleError));
+  }
+
+  // ── Referencias disponibles ───────────────────────────────────────
+  getReferences(): Observable<string[]> {
+    return this._http
+      .get<string[]>(`${this.baseUrl}/references`, { headers: this.getHeaders() })
+      .pipe(catchError(() => of([])));
   }
 
   // ── Crear afiliado ────────────────────────────────────────────────
@@ -67,7 +92,7 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
-  // ── Catálogos (retornan vacío si el endpoint aún no existe) ───────
+  // ── Catálogos ─────────────────────────────────────────────────────
   getPlans(): Observable<Plan[]> {
     return this._http
       .get<Plan[]>(`${environment.urlBD}/plans/dropdown`, { headers: this.getHeaders() })
@@ -104,28 +129,6 @@ export class AffiliateMembersService {
         headers: this.getHeaders(),
       })
       .pipe(catchError(() => of([])));
-  }
-
-  // ── Búsqueda ADRES por tipo + número de documento ─────────────────
-  searchAdres(documentType: string, documentNumber: string): Observable<any> {
-    const params = new HttpParams()
-      .set('documentType', documentType)
-      .set('documentNumber', documentNumber);
-    return this._http
-      .get<any>(`${this.baseUrl}/adres`, {
-        headers: this.getHeaders(),
-        params,
-      })
-      .pipe(catchError(() => of({ found: false })));
-  }
-
-  // ── Búsqueda por documento (ADRES / Local) ────────────────────────
-  searchByDocument(doc: string): Observable<Partial<AffiliateMember>> {
-    return this._http
-      .get<any>(`${this.baseUrl}/search/${doc}`, {
-        headers: this.getHeaders(),
-      })
-      .pipe(catchError(this.handleError));
   }
 
   // ── Manejo de errores ─────────────────────────────────────────────

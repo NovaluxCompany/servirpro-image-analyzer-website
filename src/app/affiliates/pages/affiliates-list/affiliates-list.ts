@@ -1,63 +1,80 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AffiliateMembersService } from '../../services/affiliate-members.service';
+import { FormsModule } from '@angular/forms';
+import { AffiliateMembersService, AffiliateFilters } from '../../services/affiliate-members.service';
 import { AffiliateMember } from '../../interfaces/affiliate-member.interface';
 import { AffiliateFormModalComponent } from '../../components/affiliate-form-modal/affiliate-form-modal';
 import { AffiliateStatusModalComponent } from '../../components/affiliate-status-modal/affiliate-status-modal';
 import { ToastService } from '../../../core/service/toast.service';
+import { SearchableSelectComponent, SelectOption } from '../../../shared/components/searchable-select/searchable-select';
+import { debounceTime, Subject } from 'rxjs';
 
 @Component({
   selector: 'app-affiliates-list',
   standalone: true,
-  imports: [CommonModule, AffiliateFormModalComponent, AffiliateStatusModalComponent],
+  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, SearchableSelectComponent],
   templateUrl: './affiliates-list.html',
 })
 export class AffiliatesListComponent implements OnInit {
   private _service = inject(AffiliateMembersService);
   private _toast = inject(ToastService);
 
-  readonly pageSize = 10;
-
-  fullAffiliates = signal<AffiliateMember[]>([]);
+  // ── Datos ─────────────────────────────────────────────────────────
+  affiliates = signal<AffiliateMember[]>([]);
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
 
+  // ── Paginación backend ────────────────────────────────────────────
   currentPage = signal(1);
-  pageSizeSignal = signal(10);
+  pageSize = signal(10);
+  totalItems = signal(0);
+  totalPages = signal(0);
 
-  // Paginación local calculada
-  affiliates = computed(() => {
-    const start = (this.currentPage() - 1) * this.pageSizeSignal();
-    const end = start + this.pageSizeSignal();
-    return this.fullAffiliates().slice(start, end);
-  });
+  // ── Filtros ───────────────────────────────────────────────────────
+  filterName = '';
+  filterCedula = '';
+  filterReference = '';
+  filterAdvisor = '';
+  advisorOptions = signal<SelectOption[]>([]);
+  referenceOptions = signal<SelectOption[]>([]);
 
-  totalPages = computed(() => Math.ceil(this.fullAffiliates().length / this.pageSizeSignal()));
-  totalItems = computed(() => this.fullAffiliates().length);
+  private filterSubject = new Subject<void>();
 
-  // Modales
+  // ── Modales ───────────────────────────────────────────────────────
   showFormModal = signal(false);
   showStatusModal = signal(false);
   formMode = signal<'create' | 'edit'>('create');
   selectedAffiliate = signal<AffiliateMember | null>(null);
 
   ngOnInit(): void {
+    // debounce text filter changes
+    this.filterSubject.pipe(debounceTime(400)).subscribe(() => {
+      this.currentPage.set(1);
+      this.loadAffiliates();
+    });
     this.loadAffiliates();
+    this.loadFilterOptions();
+  }
+
+  private buildFilters(): AffiliateFilters {
+    return {
+      page: this.currentPage(),
+      limit: this.pageSize(),
+      name: this.filterName || undefined,
+      cedula: this.filterCedula || undefined,
+      reference: this.filterReference || undefined,
+      advisor: this.filterAdvisor || undefined,
+    };
   }
 
   loadAffiliates(): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
-    this._service.getAffiliates().subscribe({
-      next: (data) => {
-        const sorted = [...data].sort((a, b) => {
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          if (dateB !== dateA) return dateB - dateA;
-          // Desempate por id descendente (mayor id = más reciente)
-          return Number(b.id ?? 0) - Number(a.id ?? 0);
-        });
-        this.fullAffiliates.set(sorted);
+    this._service.getAffiliates(this.buildFilters()).subscribe({
+      next: (res) => {
+        this.affiliates.set(res.data);
+        this.totalItems.set(res.total);
+        this.totalPages.set(res.totalPages);
         this.isLoading.set(false);
       },
       error: (err) => {
@@ -67,10 +84,44 @@ export class AffiliatesListComponent implements OnInit {
     });
   }
 
+  private loadFilterOptions(): void {
+    this._service.getAdvisors().subscribe((list) => {
+      this.advisorOptions.set(list.map((a) => ({ value: a.name, label: a.name })));
+    });
+    this._service.getReferences().subscribe((list) => {
+      this.referenceOptions.set(list.map((r) => ({ value: r, label: r })));
+    });
+  }
+
+  // Triggered by text filter inputs (debounced)
+  onTextFilterChange(): void {
+    this.filterSubject.next();
+  }
+
+  // Triggered by dropdown filter changes (immediate)
+  onDropdownFilterChange(): void {
+    this.currentPage.set(1);
+    this.loadAffiliates();
+  }
+
+  clearFilters(): void {
+    this.filterName = '';
+    this.filterCedula = '';
+    this.filterReference = '';
+    this.filterAdvisor = '';
+    this.currentPage.set(1);
+    this.loadAffiliates();
+  }
+
+  get hasActiveFilters(): boolean {
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor);
+  }
+
   // ── Paginación ────────────────────────────────────────────────────
   goToPage(page: number): void {
     if (page < 1 || page > this.totalPages()) return;
     this.currentPage.set(page);
+    this.loadAffiliates();
   }
   nextPage(): void { this.goToPage(this.currentPage() + 1); }
   previousPage(): void { this.goToPage(this.currentPage() - 1); }
@@ -127,17 +178,14 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   // ── Utilidades ────────────────────────────────────────────────────
-  formatDate(date?: string): string {
+  formatDate(date?: string | Date): string {
     if (!date) return '—';
     return new Date(date).toLocaleDateString('es-CO', {
       day: '2-digit', month: '2-digit', year: 'numeric',
     });
   }
 
-  formatCurrency(value?: number): string {
-    if (value == null) return '—';
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency', currency: 'COP', minimumFractionDigits: 0,
-    }).format(value);
+  get allAffiliatesForModal(): AffiliateMember[] {
+    return this.affiliates();
   }
 }

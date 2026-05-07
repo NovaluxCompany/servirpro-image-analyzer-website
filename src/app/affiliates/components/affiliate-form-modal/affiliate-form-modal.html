@@ -28,7 +28,6 @@
       <!-- Body -->
       <div class="flex-1 overflow-y-auto p-6 space-y-6">
 
-        <!-- Error global -->
         @if (errorMessage()) {
           <div class="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
             <svg class="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -41,29 +40,13 @@
 
         <form [formGroup]="form">
 
-          <!-- ── SECCIÓN 1: DATOS PERSONALES ── -->
+          <!-- SECCION 1: DATOS PERSONALES -->
           <div class="border border-gray-200 rounded-xl overflow-hidden">
             <div class="flex items-center gap-3 px-4 py-3 bg-blue-50 border-b border-blue-100">
               <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
                 <span class="text-xs font-bold text-white">1</span>
               </div>
               <h3 class="font-semibold text-blue-800 text-sm">Datos Personales</h3>
-              @if (adresFound()) {
-                <span class="ml-auto text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                  </svg>
-                  Datos ADRES cargados
-                </span>
-              }
-              @if (adresNotFound()) {
-                <span class="ml-auto text-xs font-medium text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                  </svg>
-                  No encontrado en ADRES
-                </span>
-              }
             </div>
             <div class="p-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
@@ -85,32 +68,23 @@
                 }
               </div>
 
-              <!-- Número de documento -->
-              <div class="relative">
+              <!-- Numero de documento -->
+              <div>
                 <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                  Número de documento <span class="text-red-500">*</span>
+                  Numero de documento <span class="text-red-500">*</span>
                 </label>
                 <input type="text" formControlName="documentNumber" maxlength="20"
                   placeholder="Ej: 1000334535"
                   (blur)="onDocumentNumberBlur()"
-                  class="w-full px-3 py-2 pr-8 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   [class.border-red-400]="isFieldInvalid('documentNumber') || duplicateDocument()"
                   [class.border-gray-300]="!isFieldInvalid('documentNumber') && !duplicateDocument()">
-                @if (isSearchingAdres()) {
-                  <div class="absolute right-2.5 top-8">
-                    <svg class="w-4 h-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                    </svg>
-                  </div>
-                }
                 @if (isFieldInvalid('documentNumber')) {
-                  <p class="mt-1 text-xs text-red-500">Campo requerido (máx. 20 caracteres)</p>
+                  <p class="mt-1 text-xs text-red-500">Campo requerido (max. 20 caracteres)</p>
                 }
                 @if (duplicateDocument()) {
-                  <p class="mt-1 text-xs text-red-500 font-semibold">Ya existe un afiliado con este número de documento.</p>
+                  <p class="mt-1 text-xs text-red-500 font-semibold">Ya existe un afiliado con este numero de documento.</p>
                 }
-                <p class="mt-1 text-xs text-gray-400">Salir del campo activa búsqueda automática en ADRES</p>
               </div>
 
               <!-- Nombre completo -->
@@ -119,11 +93,35 @@
                   Nombre completo <span class="text-red-500">*</span>
                 </label>
                 <input type="text" formControlName="fullName" maxlength="255"
-                  placeholder="Ej: Juan Pérez García"
+                  placeholder="Ej: Juan Perez Garcia"
                   class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   [class.border-red-400]="isFieldInvalid('fullName')"
                   [class.border-gray-300]="!isFieldInvalid('fullName')">
                 @if (isFieldInvalid('fullName')) {
+                  <p class="mt-1 text-xs text-red-500">Campo requerido</p>
+                }
+              </div>
+
+              <!-- Profesion -->
+              <div>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Profesion</label>
+                <input type="text" formControlName="profession" maxlength="255"
+                  placeholder="Ej: Ingeniero, Contador..."
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              </div>
+
+              <!-- Referencia (obligatorio, desplegable buscable) -->
+              <div>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                  Referencia <span class="text-red-500">*</span>
+                </label>
+                <app-searchable-select
+                  formControlName="reference"
+                  [options]="referenceOptions"
+                  placeholder="Seleccionar referencia..."
+                  [isInvalid]="isFieldInvalid('reference')">
+                </app-searchable-select>
+                @if (isFieldInvalid('reference')) {
                   <p class="mt-1 text-xs text-red-500">Campo requerido</p>
                 }
               </div>
@@ -135,16 +133,16 @@
                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               </div>
 
-              <!-- Fecha vencimiento documento -->
+              <!-- Vencimiento documento -->
               <div>
                 <label class="block mb-1.5 text-xs font-semibold text-gray-700">Vencimiento del documento</label>
                 <input type="date" formControlName="documentExpDate"
                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               </div>
 
-              <!-- Teléfono -->
+              <!-- Telefono -->
               <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Teléfono / Celular</label>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Telefono / Celular</label>
                 <input type="text" formControlName="phone" maxlength="50"
                   placeholder="Ej: 3001234567"
                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -152,14 +150,14 @@
 
               <!-- Correo -->
               <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Correo electrónico</label>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Correo electronico</label>
                 <input type="email" formControlName="email"
                   placeholder="Ej: usuario@correo.com"
                   class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   [class.border-red-400]="isFieldInvalid('email')"
                   [class.border-gray-300]="!isFieldInvalid('email')">
                 @if (isFieldInvalid('email')) {
-                  <p class="mt-1 text-xs text-red-500">Correo no válido</p>
+                  <p class="mt-1 text-xs text-red-500">Correo no valido</p>
                 }
               </div>
 
@@ -167,21 +165,13 @@
               <div>
                 <label class="block mb-1.5 text-xs font-semibold text-gray-700">Municipio</label>
                 <input type="text" formControlName="municipality" maxlength="255"
-                  placeholder="Ej: Medellín"
+                  placeholder="Ej: Medellin"
                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               </div>
 
-              <!-- Referencia -->
-              <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Referencia</label>
-                <input type="text" formControlName="reference" maxlength="255"
-                  placeholder="Ej: 573147358381"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
-
-              <!-- Dirección -->
+              <!-- Direccion -->
               <div class="sm:col-span-2 lg:col-span-3">
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Dirección de residencia</label>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Direccion de residencia</label>
                 <input type="text" formControlName="address" maxlength="500"
                   placeholder="Ej: Calle 10 # 43-50, Apto 301"
                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -204,13 +194,13 @@
             </div>
           </div>
 
-          <!-- ── SECCIÓN 2: DATOS DE AFILIACIÓN ── -->
-          <div class="border border-gray-200 rounded-xl overflow-hidden">
+          <!-- SECCION 2: DATOS DE AFILIACION -->
+          <div class="border border-gray-200 rounded-xl overflow-hidden mt-6">
             <div class="flex items-center gap-3 px-4 py-3 bg-blue-50 border-b border-blue-100">
               <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
                 <span class="text-xs font-bold text-white">2</span>
               </div>
-              <h3 class="font-semibold text-blue-800 text-sm">Datos de Afiliación</h3>
+              <h3 class="font-semibold text-blue-800 text-sm">Datos de Afiliacion</h3>
             </div>
             <div class="p-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
@@ -220,7 +210,7 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                   </svg>
-                  Cargando catálogos...
+                  Cargando catalogos...
                 </div>
               } @else {
 
@@ -229,20 +219,14 @@
                   <label class="block mb-1.5 text-xs font-semibold text-gray-700">
                     Plan <span class="text-red-500">*</span>
                   </label>
-                  <select formControlName="planId"
-                    class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    [class.border-red-400]="isFieldInvalid('planId')"
-                    [class.border-gray-300]="!isFieldInvalid('planId')">
-                    <option value="">Seleccionar plan...</option>
-                    @for (p of plans(); track p.id) {
-                      <option [value]="p.id">{{ p.name }}</option>
-                    }
-                  </select>
+                  <app-searchable-select
+                    formControlName="planId"
+                    [options]="planOptions"
+                    placeholder="Seleccionar plan..."
+                    [isInvalid]="isFieldInvalid('planId')">
+                  </app-searchable-select>
                   @if (isFieldInvalid('planId')) {
                     <p class="mt-1 text-xs text-red-500">Campo requerido</p>
-                  }
-                  @if (!catalogsLoading() && plans().length === 0) {
-                    <p class="mt-1 text-xs text-amber-500">No hay planes disponibles aún</p>
                   }
                 </div>
 
@@ -251,20 +235,14 @@
                   <label class="block mb-1.5 text-xs font-semibold text-gray-700">
                     Empresa <span class="text-red-500">*</span>
                   </label>
-                  <select formControlName="companyId"
-                    class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    [class.border-red-400]="isFieldInvalid('companyId')"
-                    [class.border-gray-300]="!isFieldInvalid('companyId')">
-                    <option value="">Seleccionar empresa...</option>
-                    @for (c of companies(); track c.id) {
-                      <option [value]="c.id">{{ c.name }}</option>
-                    }
-                  </select>
+                  <app-searchable-select
+                    formControlName="companyId"
+                    [options]="companyOptions"
+                    placeholder="Seleccionar empresa..."
+                    [isInvalid]="isFieldInvalid('companyId')">
+                  </app-searchable-select>
                   @if (isFieldInvalid('companyId')) {
                     <p class="mt-1 text-xs text-red-500">Campo requerido</p>
-                  }
-                  @if (!catalogsLoading() && companies().length === 0) {
-                    <p class="mt-1 text-xs text-amber-500">No hay empresas disponibles aún</p>
                   }
                 </div>
 
@@ -273,20 +251,14 @@
                   <label class="block mb-1.5 text-xs font-semibold text-gray-700">
                     Agrupadora <span class="text-red-500">*</span>
                   </label>
-                  <select formControlName="grouperId"
-                    class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    [class.border-red-400]="isFieldInvalid('grouperId')"
-                    [class.border-gray-300]="!isFieldInvalid('grouperId')">
-                    <option value="">Seleccionar agrupadora...</option>
-                    @for (g of groupers(); track g.id) {
-                      <option [value]="g.id">{{ g.name }}</option>
-                    }
-                  </select>
+                  <app-searchable-select
+                    formControlName="grouperId"
+                    [options]="grouperOptions"
+                    placeholder="Seleccionar agrupadora..."
+                    [isInvalid]="isFieldInvalid('grouperId')">
+                  </app-searchable-select>
                   @if (isFieldInvalid('grouperId')) {
                     <p class="mt-1 text-xs text-red-500">Campo requerido</p>
-                  }
-                  @if (!catalogsLoading() && groupers().length === 0) {
-                    <p class="mt-1 text-xs text-amber-500">No hay agrupadoras disponibles aún</p>
                   }
                 </div>
 
@@ -295,127 +267,62 @@
                   <label class="block mb-1.5 text-xs font-semibold text-gray-700">
                     Asesor <span class="text-red-500">*</span>
                   </label>
-                  <select formControlName="advisorId"
-                    class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    [class.border-red-400]="isFieldInvalid('advisorId')"
-                    [class.border-gray-300]="!isFieldInvalid('advisorId')">
-                    <option value="">Seleccionar asesor...</option>
-                    @for (a of advisors(); track a.id) {
-                      <option [value]="a.id">{{ a.name }}</option>
-                    }
-                  </select>
+                  <app-searchable-select
+                    formControlName="advisorId"
+                    [options]="advisorOptions"
+                    placeholder="Seleccionar asesor..."
+                    [isInvalid]="isFieldInvalid('advisorId')">
+                  </app-searchable-select>
                   @if (isFieldInvalid('advisorId')) {
                     <p class="mt-1 text-xs text-red-500">Campo requerido</p>
-                  }
-                  @if (!catalogsLoading() && advisors().length === 0) {
-                    <p class="mt-1 text-xs text-amber-500">No hay asesores disponibles aún</p>
                   }
                 </div>
 
                 <!-- EPS -->
                 <div>
                   <label class="block mb-1.5 text-xs font-semibold text-gray-700">EPS asignada</label>
-                  <select formControlName="epsId"
-                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
-                    <option value="">Seleccionar EPS...</option>
-                    @for (e of epsList(); track e.id) {
-                      <option [value]="e.id">{{ e.name }}</option>
-                    }
-                  </select>
+                  <app-searchable-select
+                    formControlName="epsId"
+                    [options]="epsOptions"
+                    placeholder="Seleccionar EPS...">
+                  </app-searchable-select>
                 </div>
 
-                <!-- Fecha ingreso (auto) -->
+                <!-- Fecha de ingreso (automatica) -->
                 <div>
                   <label class="block mb-1.5 text-xs font-semibold text-gray-700">
                     Fecha de ingreso
-                    <span class="text-xs font-normal text-gray-400">(automática)</span>
+                    <span class="text-xs font-normal text-gray-400">(automatica)</span>
                   </label>
-                  <input type="date" formControlName="entryDate"
-                    class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed">
+                  <input type="date" formControlName="entryDate" readonly
+                    class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-600">
+                </div>
+
+                <!-- ARL -->
+                <div>
+                  <label class="block mb-1.5 text-xs font-semibold text-gray-700">Nivel ARL (1-5)</label>
+                  <input type="number" formControlName="arl" min="1" max="5"
+                    placeholder="Ej: 1"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Pension -->
+                <div>
+                  <label class="block mb-1.5 text-xs font-semibold text-gray-700">AFP / Fondo de pensiones</label>
+                  <input type="text" formControlName="pension"
+                    placeholder="Ej: Porvenir"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Caja compensacion -->
+                <div>
+                  <label class="block mb-1.5 text-xs font-semibold text-gray-700">Caja de compensacion</label>
+                  <input type="text" formControlName="compensationFund"
+                    placeholder="Ej: COMFAMA"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
 
               }
-            </div>
-          </div>
-
-          <!-- ── SECCIÓN 3: DATOS ADRES ── -->
-          <div class="border border-gray-200 rounded-xl overflow-hidden">
-            <div class="flex items-center gap-3 px-4 py-3 bg-blue-50 border-b border-blue-100">
-              <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                <span class="text-xs font-bold text-white">3</span>
-              </div>
-              <h3 class="font-semibold text-blue-800 text-sm">Datos ADRES / Seguridad Social</h3>
-            </div>
-            <div class="p-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-
-              <!-- EPS ADRES -->
-              <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">EPS (ADRES)</label>
-                <select formControlName="eps"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
-                  <option value="">Seleccionar EPS...</option>
-                  @for (e of epsList(); track e.id) {
-                    <option [value]="e.name">{{ e.name }}</option>
-                  }
-                </select>
-              </div>
-
-              <!-- ARL -->
-              <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Nivel ARL (1–5)</label>
-                <input type="number" formControlName="arl" min="1" max="5"
-                  placeholder="Ej: 1"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
-
-              <!-- Pensión -->
-              <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">AFP / Fondo de pensiones</label>
-                <input type="text" formControlName="pension"
-                  placeholder="Ej: Porvenir"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
-
-              <!-- Caja compensación -->
-              <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Caja de compensación</label>
-                <input type="text" formControlName="compensationFund"
-                  placeholder="Ej: COMFAMA"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
-
-              <!-- Modalidad de aporte -->
-              <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Modalidad de aporte</label>
-                <select formControlName="deposit"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
-                  <option value="">Seleccionar...</option>
-                  @for (d of depositOptions; track d) {
-                    <option [value]="d">{{ d }}</option>
-                  }
-                </select>
-              </div>
-
-              <!-- Tipo de cotizante -->
-              <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Tipo de cotizante</label>
-                <select formControlName="charge"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
-                  <option value="">Seleccionar...</option>
-                  @for (c of chargeOptions; track c) {
-                    <option [value]="c">{{ c }}</option>
-                  }
-                </select>
-              </div>
-
-              <!-- Valor del plan -->
-              <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Valor del plan</label>
-                <input type="number" formControlName="price" min="0" step="1"
-                  placeholder="Ej: 150000"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
-
             </div>
           </div>
 
