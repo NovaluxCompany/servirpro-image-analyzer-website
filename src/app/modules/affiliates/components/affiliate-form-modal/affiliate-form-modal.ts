@@ -121,7 +121,8 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   private todayDate(): string {
-    return new Date().toISOString().split('T')[0];
+    // Get current date in Colombia timezone (UTC-5) to avoid UTC day mismatch
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
   }
 
   private toLocalDateStr(value: string | Date | null | undefined): string {

@@ -182,6 +182,7 @@ export class AffiliatesListComponent implements OnInit {
     if (!date) return '—';
     return new Date(date).toLocaleDateString('es-CO', {
       day: '2-digit', month: '2-digit', year: 'numeric',
+      timeZone: 'America/Bogota',
     });
   }
 
