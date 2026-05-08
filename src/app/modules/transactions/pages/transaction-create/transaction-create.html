@@ -1,0 +1,140 @@
+<div class="min-h-screen p-6 bg-gray-50">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold text-gray-900">Nueva Transacción</h1>
+      <p class="mt-1 text-sm text-gray-500">
+        Crea una nueva transacción con afiliados y comprobantes de pago
+      </p>
+    </div>
+
+    <!-- Error Alert -->
+    @if (errorMessage()) {
+    <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100" role="alert">
+      <span class="font-medium">Error:</span> {{ errorMessage() }}
+    </div>
+    }
+
+    <!-- Form -->
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
+      <!-- Afiliados -->
+      <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <app-affiliates-form (affiliatesChanged)="onAffiliatesChanged($event)" />
+      </div>
+
+      <!-- Información general -->
+      <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <h2 class="mb-4 text-xl font-semibold text-gray-900">Información General</h2>
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <!-- Valor Total -->
+          <div>
+            <label for="totalValue" class="block mb-2 text-sm font-medium text-gray-900">
+              Valor Total (Auto-calculado) *
+            </label>
+            <input type="number" id="totalValue" formControlName="totalValue" placeholder="0" min="1"
+              [class.border-red-500]="isFieldInvalid('totalValue')"
+              class="bg-gray-100 border border-gray-300 text-gray-700 text-sm rounded-lg block w-full p-2.5 cursor-not-allowed">
+            <p class="mt-1 text-xs text-gray-500">Este monto se calcula automáticamente según los afiliados seleccionados</p>
+            @if (isFieldInvalid('totalValue')) {
+            <p class="mt-1 text-xs text-red-600">{{ getFieldError('totalValue') }}</p>
+            }
+          </div>
+
+          <!-- Valor Pagado -->
+          <div>
+            <label for="amountPaid" class="block mb-2 text-sm font-medium text-gray-900">
+              Valor Pagado (Auto-calculado) *
+            </label>
+            <input type="number" id="amountPaid" formControlName="amountPaid" placeholder="0" min="1"
+              [class.border-red-500]="isFieldInvalid('amountPaid')"
+              class="bg-gray-100 border border-gray-300 text-gray-700 text-sm rounded-lg block w-full p-2.5 cursor-not-allowed">
+            <p class="mt-1 text-xs text-gray-500">Se calcula como: Valor Total - Valor Descuento</p>
+            @if (isFieldInvalid('amountPaid')) {
+            <p class="mt-1 text-xs text-red-600">{{ getFieldError('amountPaid') }}</p>
+            }
+          </div>
+        </div>
+
+        <!-- Valor Descuento -->
+        <div>
+          <label for="discountedValue" class="block mb-2 text-sm font-medium text-gray-900">
+            Valor Descuento (Opcional)
+          </label>
+          <input type="number" id="discountedValue" formControlName="discountedValue" placeholder="0" min="0"
+            (change)="onDiscountedValueChanged()"
+            [class.border-red-500]="isFieldInvalid('discountedValue')"
+            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500">
+          <p class="mt-1 text-xs text-gray-500">Ingrese el valor del descuento. No puede ser mayor al valor total</p>
+          @if (isFieldInvalid('discountedValue')) {
+          <p class="mt-1 text-xs text-red-600">{{ getFieldError('discountedValue') }}</p>
+          }
+        </div>
+
+        <!-- Observación -->
+        <div class="mt-4">
+          <label for="observation" class="block mb-2 text-sm font-medium text-gray-900">
+            Observación (Opcional)
+          </label>
+          <textarea 
+            id="observation" 
+            formControlName="observation" 
+            rows="4" 
+            maxlength="2000"
+            placeholder="Ingrese cualquier observación adicional sobre esta transacción..."
+            [class.border-red-500]="isFieldInvalid('observation')"
+            class="border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500">
+          </textarea>
+          <p class="mt-1 text-xs text-gray-500">
+            Máximo 2000 caracteres. Caracteres restantes: {{ 2000 - (form.get('observation')?.value?.length || 0) }}
+          </p>
+          @if (isFieldInvalid('observation')) {
+          <p class="mt-1 text-xs text-red-600">{{ getFieldError('observation') }}</p>
+          }
+        </div>
+      </div>
+
+      <!-- Comprobantes -->
+      <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <h2 class="mb-4 text-xl font-semibold text-gray-900">Comprobantes de Pago</h2>
+        <app-image-uploader (imagesChanged)="onImagesChanged($event)" />
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-4">
+        <button type="submit" [disabled]="isLoading()"
+          class="flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50 disabled:cursor-not-allowed">
+          @if (isLoading()) {
+          <span class="inline-flex items-center gap-2">
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+              </path>
+            </svg>
+            Creando transacción...
+          </span>
+          } @else {
+          Crear Transacción
+          }
+        </button>
+        <button type="button" (click)="onCancel()" [disabled]="isLoading()"
+          class="flex-1 text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50 disabled:cursor-not-allowed">
+          Cancelar
+        </button>
+      </div>
+
+      <p class="text-xs text-gray-500">* Campos requeridos</p>
+    </form>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+@if (isLoading()) {
+<div class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+  <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+  <p class="mt-4 text-lg font-medium text-gray-700 animate-pulse">
+    Creando transacción y enviando a IA...
+  </p>
+</div>
+}
