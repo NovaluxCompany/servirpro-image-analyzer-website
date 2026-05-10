@@ -70,7 +70,8 @@
     <div class="ss-dropdown-panel fixed z-9999 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
       [style.top.px]="dropdownTop()"
       [style.left.px]="dropdownLeft()"
-      [style.width.px]="dropdownWidth()">
+      [style.width.px]="dropdownWidth()"
+      [style.transform]="dropdownOpenUpward() ? 'translateY(-100%)' : 'none'">
 
       @if (!allowFreeText) {
         <!-- Search box only in select mode -->
