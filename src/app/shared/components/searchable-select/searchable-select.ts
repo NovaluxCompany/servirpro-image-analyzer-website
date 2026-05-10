@@ -176,6 +176,12 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
 
   openDropdown(): void {
     if (this.isDisabled()) return;
+    if (this.isOpen()) {
+      this.isOpen.set(false);
+      this._bodyPanelEl = null;
+      this.searchText = '';
+      return;
+    }
     this.updateDropdownPosition();
     this.isOpen.set(true);
     this.searchText = '';

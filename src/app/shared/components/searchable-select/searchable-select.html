@@ -42,6 +42,10 @@
     <div
       #triggerRef
       (click)="openDropdown()"
+      (keydown.enter)="openDropdown()"
+      (keydown.space)="$event.preventDefault(); openDropdown()"
+      tabindex="0"
+      role="combobox"
       [class]="'flex items-center justify-between w-full px-3 py-2 text-sm border rounded-lg cursor-pointer bg-white select-none ' +
         (isInvalid ? 'border-red-400' : 'border-gray-300') +
         (isDisabled() ? ' opacity-50 cursor-not-allowed' : ' hover:border-blue-400')">
