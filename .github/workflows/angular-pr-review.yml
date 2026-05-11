@@ -1,0 +1,72 @@
+name: 🅰️ Angular PR Review Agent
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**/*.ts'
+      - '**/*.html'
+      - '**/*.scss'
+      - '**/*.css'
+      - 'angular.json'
+      - 'tsconfig*.json'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  angular-review:
+    name: Angular Code Review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install @octokit/rest node-fetch
+
+      - name: Get PR diff
+        id: pr_diff
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          REPO="${{ github.repository }}"
+          
+          curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3.diff" \
+            "https://api.github.com/repos/$REPO/pulls/$PR_NUMBER" \
+            > pr_diff.txt
+          
+          # Limitar el diff a 15000 caracteres para no exceder tokens
+          head -c 15000 pr_diff.txt > pr_diff_trimmed.txt
+          echo "diff_file=pr_diff_trimmed.txt" >> $GITHUB_OUTPUT
+
+      - name: Run Angular Review Agent
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}    # Google AI Studio key
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          REPO: ${{ github.repository }}
+        run: node .github/scripts/angular-review.js
+
+      - name: Upload review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: angular-review-${{ github.event.pull_request.number }}
+          path: |
+            pr_diff_trimmed.txt
+            review_output.json
+          retention-days: 7

@@ -1,0 +1,83 @@
+<div class="overflow-x-auto">
+  <table class="w-full text-sm text-left text-gray-500">
+    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+      <tr>
+        <th scope="col" class="px-6 py-3">Valor</th>
+        <th scope="col" class="px-6 py-3">Moneda</th>
+        <th scope="col" class="px-6 py-3">Vendedor</th>
+        <th scope="col" class="px-6 py-3">Fecha</th>
+        <th scope="col" class="px-6 py-3">% Veracidad</th>
+        <th scope="col" class="px-6 py-3">Confiabilidad</th>
+      </tr>
+    </thead>
+    <tbody>
+      @if (receipts().length === 0) {
+      <tr>
+        <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+          No hay comprobantes procesados
+        </td>
+      </tr>
+      } @else {
+      @for (receipt of receipts(); track $index) {
+      <tr class="bg-white border-b hover:bg-gray-50">
+        <td class="px-6 py-4 font-medium text-gray-900">
+          {{ formatCurrency(receipt.amount) }}
+        </td>
+        <td class="px-6 py-4">
+          {{ receipt.currency || 'N/A' }}
+        </td>
+        <td class="px-6 py-4">
+          {{ receipt.vendor || 'N/A' }}
+        </td>
+        <td class="px-6 py-4">
+          {{ receipt.date || 'N/A' }}
+        </td>
+        <td class="px-6 py-4">
+          @if (receipt.veracityPercentage !== undefined) {
+          <div class="flex items-center gap-2">
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+              <div class="h-2.5 rounded-full" [class.bg-green-600]="receipt.veracityPercentage >= 70"
+                [class.bg-yellow-400]="receipt.veracityPercentage >= 40 && receipt.veracityPercentage < 70"
+                [class.bg-red-600]="receipt.veracityPercentage < 40" [style.width.%]="receipt.veracityPercentage"></div>
+            </div>
+            <span class="text-xs font-medium">{{ receipt.veracityPercentage }}%</span>
+          </div>
+          } @else {
+          <span>N/A</span>
+          }
+        </td>
+        <td class="px-6 py-4">
+          @if (receipt.reliabilityAlert === 'confiable') {
+          <span
+            class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
+            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+            Confiable
+          </span>
+          } @else if (receipt.reliabilityAlert === 'no_confiable') {
+          <span
+            class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-800 bg-red-100 rounded-full">
+            <span class="w-2 h-2 bg-red-500 rounded-full"></span>
+            No confiable
+          </span>
+          } @else {
+          <span class="text-gray-500">N/A</span>
+          }
+        </td>
+      </tr>
+      }
+      }
+    </tbody>
+    @if (receipts().length > 0 && averageVeracity() > 0) {
+    <tfoot class="bg-gray-50">
+      <tr>
+        <td colspan="3" class="px-6 py-4 font-semibold text-gray-900">
+          Promedio de veracidad:
+        </td>
+        <td colspan="2" class="px-6 py-4 font-semibold text-gray-900">
+          {{ averageVeracity() }}%
+        </td>
+      </tr>
+    </tfoot>
+    }
+  </table>
+</div>
