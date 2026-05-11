@@ -17,7 +17,12 @@ export const routes: Routes = [
             {
                 path: 'afiliados',
                 loadChildren: () => import('./modules/affiliates/affiliates.routes').then(m => m.affiliatesRoutes)
+            },
+            {
+              path: 'menu',
+                loadChildren: () => import('./modules/menu/services/menu.routes').then(m => m.menuRoutes)
             }
+
         ]
     }
 ];
