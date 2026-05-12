@@ -4,10 +4,11 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Menu</h1>
-        <p class="mt-1 text-sm text-gray-500">Gestion y registro de permisos en el sistema</p>
+        <h1 class="text-3xl font-bold text-gray-900">Configuración de Menú</h1>
+        <p class="mt-1 text-sm text-gray-500">Gestión y registro de permisos y accesos en el sistema</p>
       </div>
       <button type="button"
+        (click)="showFormModal.set(true)"
         class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 shadow-md hover:shadow-lg transition-all duration-200">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -19,8 +20,47 @@
 
     <!-- Tabla -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-
+      <table class="w-full text-sm text-left text-gray-500">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th scope="col" class="px-6 py-4 font-semibold">Nombre del Menu</th>
+            <th scope="col" class="px-6 py-4 font-semibold">Ruta Menu</th>
+            <th scope="col" class="px-6 py-4 font-semibold text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-4">
+              <span class="font-medium text-gray-900">Ver Transacciones</span>
+            </td>
+            <td class="px-6 py-4">
+              <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">VIEW_TRANSACTIONS</span>
+            </td>
+            <td class="px-6 py-4 text-right">
+              <button class="text-blue-600 hover:text-blue-900 font-medium mr-3">Editar</button>
+              <button class="text-red-600 hover:text-red-900 font-medium">Eliminar</button>
+            </td>
+          </tr>
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-4">
+              <span class="font-medium text-gray-900">Gestionar Afiliados</span>
+            </td>
+            <td class="px-6 py-4">
+              <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">MANAGE_AFFILIATES</span>
+            </td>
+            <td class="px-6 py-4 text-right">
+              <button class="text-blue-600 hover:text-blue-900 font-medium mr-3">Editar</button>
+              <button class="text-red-600 hover:text-red-900 font-medium">Eliminar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
   </div>
 </div>
+
+<app-menu-for-modal
+  [isVisible]="showFormModal()"
+  (close)="showFormModal.set(false)">
+</app-menu-for-modal>
