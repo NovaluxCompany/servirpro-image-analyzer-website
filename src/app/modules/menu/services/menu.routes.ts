@@ -1,11 +1,11 @@
 import { Routes } from "@angular/router";
-import { Menu } from "../pages/menu-list";
+import { MenuComponent } from "../pages/menu-list";
 import { LoginGuardian } from "../../../core/guard/login-guard";
 
 export const menuRoutes: Routes = [
     {
         path: '',
-        component: Menu,
+        component: MenuComponent,
         canActivate: [LoginGuardian]
     }
 ];

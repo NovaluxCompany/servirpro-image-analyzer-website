@@ -10,7 +10,7 @@ import { environment } from '../../../environments/environment';
   providedIn: 'root',
 })
 
-export class AuthService{ 
+export class AuthService{
   private _http = inject(HttpClient)
   private _tokenService = inject(TokenService)
   private _router = inject(Router)
@@ -19,7 +19,7 @@ export class AuthService{
   private url = this._env.urlBD + "/auth/login"
 
   loginDB(email: string, password: string) {
-    
+
       return this._http.post<ResponseLogin>(this.url,
         {
           email,
@@ -27,13 +27,15 @@ export class AuthService{
         })
         .pipe(
           tap(Response => {
-            this._tokenService.saveToken(Response.access_token)
+            this._tokenService.saveToken(Response.access_token);
+            this._tokenService.saveUser(Response.user);
           })
         )
   }
 
   logout(): void {
     this._tokenService.removeToken();
+    this._tokenService.clearUser();
     this._router.navigate(['/login']);
   }
 

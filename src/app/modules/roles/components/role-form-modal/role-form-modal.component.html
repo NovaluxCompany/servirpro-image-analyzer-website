@@ -1,10 +1,10 @@
 <div *ngIf="isVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md animate-fade-in">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all animate-scale-up">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all animate-scale-up">
 
     <!-- Header -->
     <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
       <h3 class="text-xl font-bold text-gray-900">
-        {{ menuData ? 'Editar Menú' : 'Crear Nuevo Menú' }}
+        {{ roleData ? 'Editar Rol' : 'Crear Nuevo Rol' }}
       </h3>
       <button (click)="onClose()" class="text-gray-400 hover:text-gray-600 transition-colors">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -14,7 +14,7 @@
     </div>
 
     <!-- Body -->
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="p-6 space-y-4">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
 
       <!-- Error Alert -->
       <div *ngIf="errorMessage" class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-start gap-2">
@@ -27,28 +27,10 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Nombre -->
         <div class="space-y-1">
-          <label class="text-xs font-semibold text-gray-700 uppercase tracking-wider">Nombre del menú</label>
-          <input type="text" formControlName="name" placeholder="Ej: Afiliados"
+          <label class="text-xs font-semibold text-gray-700 uppercase tracking-wider">Nombre del rol</label>
+          <input type="text" formControlName="name" placeholder="Ej: Asesor"
             class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none"
             [ngClass]="{'border-red-500': form.get('name')?.touched && form.get('name')?.invalid}">
-        </div>
-
-        <!-- Ícono -->
-        <div class="space-y-1">
-          <label class="text-xs font-semibold text-gray-700 uppercase tracking-wider">Ícono (nombre)</label>
-          <div class="relative">
-            <input type="text" formControlName="icon" placeholder="Ej: users"
-              class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none">
-            <i [className]="'absolute right-3 top-2.5 text-gray-400 ' + form.get('icon')?.value"></i>
-          </div>
-        </div>
-
-        <!-- Ruta -->
-        <div class="space-y-1">
-          <label class="text-xs font-semibold text-gray-700 uppercase tracking-wider">Ruta</label>
-          <input type="text" formControlName="path" placeholder="Ej: /afiliados"
-            class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none"
-            [ngClass]="{'border-red-500': form.get('path')?.touched && form.get('path')?.invalid}">
         </div>
 
         <!-- Estado -->
@@ -62,38 +44,48 @@
         </div>
       </div>
 
-      <!-- Permisos -->
-      <div class="space-y-2">
-        <label class="text-xs font-semibold text-gray-700 uppercase tracking-wider block">Permisos disponibles para este menú</label>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <label *ngFor="let perm of availablePermissions"
-                 class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors group">
-            <input type="checkbox" [checked]="isPermissionChecked(perm.id)"
-                   (change)="onPermissionChange(perm.id, $any($event.target).checked)"
-                   class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
-            <div class="flex flex-col">
-              <span class="text-sm font-medium text-gray-700 group-hover:text-blue-600">{{ perm.description }}</span>
+      <!-- Menus y Permisos -->
+      <div class="space-y-3">
+        <label class="text-xs font-semibold text-gray-700 uppercase tracking-wider block border-b pb-2">Menús y permisos asociados</label>
+
+        <div class="space-y-4">
+          <div *ngFor="let menu of availableMenus()" class="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
+            <div class="flex items-center gap-3 mb-3">
+              <input type="checkbox" [checked]="isMenuSelected(menu.id!)" (change)="toggleMenu(menu, $any($event.target).checked)"
+                class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+              <i [className]="'text-lg ' + menu.icon + ' ' + (isMenuSelected(menu.id!) ? 'text-blue-600' : 'text-gray-400')"></i>
+              <span class="font-bold text-gray-800">{{ menu.name }}</span>
             </div>
-          </label>
+
+            <!-- Permisos del Menu -->
+            <div *ngIf="isMenuSelected(menu.id!)" class="ml-8 grid grid-cols-2 sm:grid-cols-3 gap-3 animate-fade-in">
+              <label *ngFor="let mp of menu.menuPermissions" class="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" [checked]="isMenuPermissionChecked(mp.id!)"
+                  (change)="toggleMenuPermission(mp.id!, $any($event.target).checked)"
+                  class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                <span class="text-sm text-gray-600 group-hover:text-blue-600">{{ mp.permission.description }}</span>
+              </label>
+            </div>
+            <div *ngIf="!isMenuSelected(menu.id!)" class="ml-8 text-xs text-gray-400 italic">
+              Menú deshabilitado para este rol
+            </div>
+          </div>
         </div>
-        <p *ngIf="form.get('permissionIds')?.touched && form.get('permissionIds')?.invalid" class="text-[10px] text-red-500 italic">
-          Se debe seleccionar al menos un permiso.
-        </p>
       </div>
 
       <!-- Footer -->
-      <div class="pt-4 flex items-center justify-end gap-3 border-t border-gray-100 mt-6">
+      <div class="pt-4 flex items-center justify-end gap-3 border-t border-gray-100 mt-6 sticky bottom-0 bg-white">
         <button type="button" (click)="onClose()"
           class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">
           Cancelar
         </button>
-        <button type="submit" [disabled]="form.invalid || isSubmitting"
+        <button type="submit" [disabled]="form.invalid || isSubmitting || selectedMenuPermissionIds.size === 0"
           class="px-6 py-2 bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-md hover:bg-blue-800 focus:ring-4 focus:ring-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2">
           <svg *ngIf="isSubmitting" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          {{ isSubmitting ? 'Guardando...' : 'Guardar Menú' }}
+          {{ isSubmitting ? 'Guardando...' : 'Guardar Rol' }}
         </button>
       </div>
     </form>

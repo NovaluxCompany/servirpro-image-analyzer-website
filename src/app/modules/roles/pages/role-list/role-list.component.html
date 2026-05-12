@@ -4,8 +4,8 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Gestión de Menús</h1>
-        <p class="mt-1 text-sm text-gray-500">Configura las secciones del sistema y sus permisos base</p>
+        <h1 class="text-3xl font-bold text-gray-900">Gestión de Roles</h1>
+        <p class="mt-1 text-sm text-gray-500">Define los perfiles de acceso y permisos específicos por módulo</p>
       </div>
       <button type="button"
         (click)="openCreateModal()"
@@ -13,7 +13,7 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        Nuevo Menú
+        Nuevo Rol
       </button>
     </div>
 
@@ -24,52 +24,40 @@
         <table class="w-full text-sm text-left text-gray-500">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
             <tr>
-              <th scope="col" class="px-6 py-4 font-semibold">Nombre del menú</th>
-              <th scope="col" class="px-6 py-4 font-semibold text-center">Ícono</th>
-              <th scope="col" class="px-6 py-4 font-semibold">Ruta</th>
-              <th scope="col" class="px-6 py-4 font-semibold">Permisos asociados</th>
+              <th scope="col" class="px-6 py-4 font-semibold">Nombre del rol</th>
+              <th scope="col" class="px-6 py-4 font-semibold">Menús asociados</th>
               <th scope="col" class="px-6 py-4 font-semibold text-center">Estado</th>
               <th scope="col" class="px-6 py-4 font-semibold">Fecha de creación</th>
               <th scope="col" class="px-6 py-4 font-semibold text-right">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
-            <tr *ngFor="let menu of menus()" class="hover:bg-gray-50 transition-colors">
+            <tr *ngFor="let role of roles()" class="hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4">
-                <span class="font-medium text-gray-900">{{ menu.name }}</span>
+                <span class="font-medium text-gray-900">{{ role.name }}</span>
+              </td>
+              <td class="px-6 py-4">
+                <p class="text-xs text-gray-600 max-w-xs truncate" [title]="getMenusList(role)">
+                  {{ getMenusList(role) }}
+                </p>
               </td>
               <td class="px-6 py-4 text-center">
-                <i [className]="'text-lg text-gray-600 ' + menu.icon"></i>
-                <span class="ml-2 text-xs text-gray-400">{{ menu.icon }}</span>
-              </td>
-              <td class="px-6 py-4">
-                <span class="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs font-medium">{{ menu.path }}</span>
-              </td>
-              <td class="px-6 py-4">
-                <div class="flex flex-wrap gap-1">
-                  <span *ngFor="let mp of menu.menuPermissions"
-                        class="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-semibold border border-blue-100">
-                    {{ mp.permission.description }}
-                  </span>
-                </div>
-              </td>
-              <td class="px-6 py-4 text-center">
-                <span [ngClass]="menu.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                <span [ngClass]="role.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
                       class="px-2 py-1 rounded-full text-xs font-medium">
-                  {{ menu.isActive ? 'Activo' : 'Inactivo' }}
+                  {{ role.isActive ? 'Activo' : 'Inactivo' }}
                 </span>
               </td>
               <td class="px-6 py-4 text-gray-400 text-xs">
-                {{ menu.createdAt | date:'dd/MM/yyyy HH:mm' }}
+                {{ role.createdAt | date:'dd/MM/yyyy HH:mm' }}
               </td>
               <td class="px-6 py-4 text-right">
-                <button (click)="openEditModal(menu)" class="text-blue-600 hover:text-blue-900 font-medium mr-3">Editar</button>
-                <button (click)="deleteMenu(menu.id!)" class="text-red-600 hover:text-red-900 font-medium">Eliminar</button>
+                <button (click)="openEditModal(role)" class="text-blue-600 hover:text-blue-900 font-medium mr-3">Editar</button>
+                <button (click)="deleteRole(role.id!)" class="text-red-600 hover:text-red-900 font-medium">Eliminar</button>
               </td>
             </tr>
-            <tr *ngIf="menus().length === 0">
-              <td colspan="7" class="px-6 py-10 text-center text-gray-400">
-                No se encontraron menús registrados.
+            <tr *ngIf="roles().length === 0">
+              <td colspan="5" class="px-6 py-10 text-center text-gray-400">
+                No se encontraron roles registrados.
               </td>
             </tr>
           </tbody>
@@ -102,9 +90,9 @@
   </div>
 </div>
 
-<app-menu-for-modal
+<app-role-form-modal
   [isVisible]="showFormModal()"
-  [menuData]="selectedMenu()"
+  [roleData]="selectedRole()"
   (close)="showFormModal.set(false)"
   (saved)="onSaved()">
-</app-menu-for-modal>
+</app-role-form-modal>
