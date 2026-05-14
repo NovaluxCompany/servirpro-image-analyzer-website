@@ -1,4 +1,4 @@
-export type DocumentType = 'CC' | 'CE' | 'TI' | 'PA' | 'NIT';
+export type DocumentType = 'CC' | 'CE' | 'TI' | 'PA' | 'NIT' | 'PPT';
 
 export interface AffiliateMember {
   id?: string;
@@ -13,6 +13,7 @@ export interface AffiliateMember {
   address?: string;
   municipality?: string;
   reference?: string;
+  //Fecha whatsapp
   whatsappEntryDate?: string;
   companyEntryDate?: string;
   profession?: string;
@@ -27,6 +28,10 @@ export interface AffiliateMember {
   advisorName?: string;
   epsId?: string;
   epsName?: string;
+  pensionId?: string;
+  pensionName?: string;
+  compensationBoxId?: string;
+  compensationBoxName?: string;
   isActive?: boolean;
   entryDate?: string;
   // Datos ADRES
@@ -57,15 +62,16 @@ export interface CreateAffiliateMemberDto {
   profession?: string;
   whatsappEntryDate?: string;
   companyEntryDate?: string;
-  planId: string;
-  companyId: string;
-  grouperId: string;
-  advisorId: string;
-  epsId?: string;
+  planId: number | null;
+  companyId?: number | null;
+  grouperId: number | null;
+  advisorId: number | null;
+  epsId?: number | null;
+  pensionId?: number | null;
+  compensationBoxId?: number | null;
   isActive?: boolean;
   entryDate?: string;
   arl?: number;
-  pension?: string;
   compensationFund?: string;
 }
 

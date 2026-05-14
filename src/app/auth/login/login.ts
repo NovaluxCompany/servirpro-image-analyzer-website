@@ -1,6 +1,6 @@
 import { Component, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../core/service/auth.service';
 import { Router } from '@angular/router';
 import { TokenService } from '../../core/service/token.service';
@@ -8,7 +8,7 @@ import { TokenService } from '../../core/service/token.service';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './login.html'
 })
 
@@ -33,7 +33,7 @@ export class Login {
     this.resetState();
 
     if (!this.isFormValid()) {
-      return; 
+      return;
     }
 
     this.executeAuthentication();
@@ -48,7 +48,7 @@ export class Login {
   private isFormValid(): boolean {
     if (this.form.invalid) {
       this.showError = true;
-      
+
       const email = this.form.get('email');
       const password = this.form.get('password');
 
