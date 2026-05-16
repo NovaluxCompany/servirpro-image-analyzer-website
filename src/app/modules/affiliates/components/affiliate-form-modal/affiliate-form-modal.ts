@@ -97,7 +97,7 @@ export class AffiliateFormModalComponent implements OnInit {
     reference: ['', Validators.required],
     profession: ['', Validators.maxLength(255)],
     //Fecha whatsapp
-    companyEntryDate: ['', Validators.required],
+    companyEntryDate: [{ value: '', disabled: true }, Validators.required],
     // Datos de afiliación
     planId: ['', Validators.required],
     companyId: [''],
@@ -125,6 +125,7 @@ export class AffiliateFormModalComponent implements OnInit {
             isActive: true,
           });
           this.form.get('entryDate')?.setValue(this.todayDate());
+          this.form.get('companyEntryDate')?.setValue(this.todayDate());
           this.duplicateDocument.set(false);
           this.errorMessage.set(null);
         }
@@ -267,7 +268,7 @@ private updatePlanLogic(planId: any) {
       advisorId: a.advisorId ? String(a.advisorId) : '',
       epsId: a.epsId ? String(a.epsId) : '',
       isActive: a.isActive ?? true,
-      companyEntryDate: a.companyEntryDate ? this.toLocalDateStr(a.companyEntryDate) : undefined,
+      companyEntryDate: this.todayDate(),
       entryDate: a.entryDate ? this.toLocalDateStr(a.entryDate) : undefined,
       arl: a.arl ?? null,
       pensionId: a.pensionId ? String(a.pensionId) : '',
