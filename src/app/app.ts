@@ -10,7 +10,7 @@ import { ToastContainerComponent } from './core/components/toast-container/toast
   styleUrl: './app.css'
 })
 export class App implements OnInit {
-  protected readonly title = signal('ritmovivo-dashboard');
+  protected readonly title = signal('servirpro');
 
   ngOnInit(): void {
     initFlowbite();
