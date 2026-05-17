@@ -107,7 +107,7 @@ export class AffiliateFormModalComponent implements OnInit {
     pensionId: [''],
     compensationBoxId: [''],
     isActive: [true],
-    entryDate: [''],
+    entryDate: [{ value: '', disabled: true }],
     // Seguridad social (sin ADRES, sin price/deposit/charge)
     arl: [<number | null>null],
   });
@@ -268,8 +268,8 @@ private updatePlanLogic(planId: any) {
       advisorId: a.advisorId ? String(a.advisorId) : '',
       epsId: a.epsId ? String(a.epsId) : '',
       isActive: a.isActive ?? true,
-      companyEntryDate: this.todayDate(),
-      entryDate: a.entryDate ? this.toLocalDateStr(a.entryDate) : undefined,
+      companyEntryDate: this.toLocalDateStr(this.todayDate()),
+      entryDate: this.toLocalDateStr(this.todayDate()),
       arl: a.arl ?? null,
       pensionId: a.pensionId ? String(a.pensionId) : '',
       compensationBoxId: a.compensationBoxId ? String(a.compensationBoxId) : '',
@@ -338,8 +338,8 @@ private updatePlanLogic(planId: any) {
       pensionId: toNumberOrNull(raw.pensionId),
       compensationBoxId: toNumberOrNull(raw.compensationBoxId),
       isActive: raw.isActive ?? true,
-      companyEntryDate: raw.companyEntryDate || undefined,
-      entryDate: raw.entryDate || this.todayDate(),
+      companyEntryDate: this.toLocalDateStr(this.todayDate()),
+      entryDate: this.toLocalDateStr(this.todayDate()),
       arl: raw.arl ?? undefined,
     };
 
