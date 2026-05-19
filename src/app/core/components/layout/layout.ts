@@ -6,7 +6,7 @@ import { TokenService } from '../../service/token.service';
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [RouterModule],
   templateUrl: './layout.html'
 })
 export class LayoutComponent {

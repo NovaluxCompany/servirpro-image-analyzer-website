@@ -3,18 +3,8 @@ import { inject, Injectable } from '@angular/core';
 import { Observable, catchError, of, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../../core/service/token.service';
-import {
-  AffiliateMember,
-  CreateAffiliateMemberDto,
-  UpdateAffiliateMemberDto,
-} from '../interfaces/affiliate-member.interface';
-import {
-  Plan,
-  Company,
-  Grouper,
-  Advisor,
-  EpsItem,
-} from '../interfaces/catalog.interface';
+import { AffiliateMember,CreateAffiliateMemberDto,UpdateAffiliateMemberDto,} from '../interfaces/affiliate-member.interface';
+import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, } from '../interfaces/catalog.interface';
 import { PaginatedAffiliatesResponse } from '../interfaces/paginated-affiliates.interface';
 
 export interface AffiliateFilters {
@@ -128,6 +118,18 @@ export class AffiliateMembersService {
       .get<EpsItem[]>(`${environment.urlBD}/eps-providers/dropdown`, {
         headers: this.getHeaders(),
       })
+      .pipe(catchError(() => of([])));
+  }
+
+  getPensions(): Observable<Pension[]> {
+    return this._http
+      .get<Pension[]>(`${environment.urlBD}/pensions/dropdown`, { headers: this.getHeaders() })
+      .pipe(catchError(() => of([])));
+  }
+
+  getCompensationBoxes(): Observable<CompensationBox[]> {
+    return this._http
+      .get<CompensationBox[]>(`${environment.urlBD}/compensation_box/dropdown`, { headers: this.getHeaders() })
       .pipe(catchError(() => of([])));
   }
 

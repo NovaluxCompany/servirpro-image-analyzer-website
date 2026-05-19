@@ -180,6 +180,13 @@ export class AffiliatesListComponent implements OnInit {
   // ── Utilidades ────────────────────────────────────────────────────
   formatDate(date?: string | Date): string {
     if (!date) return '—';
+    if (typeof date === 'string') {
+      const datePart = date.split('T')[0];
+      const parts = datePart.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+    }
     return new Date(date).toLocaleDateString('es-CO', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       timeZone: 'America/Bogota',
