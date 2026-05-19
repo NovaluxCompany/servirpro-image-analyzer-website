@@ -121,6 +121,7 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Profesion</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Documento</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -231,7 +232,7 @@
 
                   <!-- Plan -->
                   <td class="px-4 py-3">
-                    @if (affiliate.planName && affiliate.planName !== 'N/A') {
+                    @if (affiliate.planName && affiliate.planName !== '-') {
                       <span class="px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-100 rounded whitespace-nowrap">
                         {{ affiliate.planName }}
                       </span>
@@ -252,7 +253,13 @@
 
                   <!-- Empresa -->
                   <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                    {{ affiliate.companyName || 'Sin empresa' }}
+                    @if (affiliate.companyId && affiliate.companyId !== '-') {
+                      <span class="px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-100 rounded whitespace-nowrap">
+                        {{ affiliate.companyName }}
+                      </span>
+                    } @else {
+                      <span class="text-gray-400">&#8212;</span>
+                    }
                   </td>
 
                   <!-- Agrupadora -->
@@ -265,6 +272,16 @@
                     {{ affiliate.profession || '&#8212;' }}
                   </td>
 
+                  <!-- Botón Descargar Cedula -->
+                  <td>
+                    @if (affiliate.grouperName == 'GESTION') {
+                      <button type="button" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    Descargar
+                  </button>
+                    }
                 </tr>
               }
             }

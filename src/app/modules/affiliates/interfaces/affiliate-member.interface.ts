@@ -46,6 +46,8 @@ export interface AffiliateMember {
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string;
+  //
+  document?: File;
 }
 
 export interface CreateAffiliateMemberDto {
