@@ -55,11 +55,7 @@ export interface AffiliateMember {
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string;
-
-  // Modificado: Ahora mapea el array relacional que viene del Backend
-  documents?: AffiliateDocument[];
-
-  // Mantenemos la referencia en memoria del archivo físico si la usas en formularios reactivos
+  //
   document?: File;
 }
 

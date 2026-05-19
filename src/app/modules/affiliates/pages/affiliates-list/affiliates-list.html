@@ -271,10 +271,16 @@
                 </span>
               </td>
 
-              <!-- Referencia -->
-              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ affiliate.reference || '&#8212;' }}
-              </td>
+                  <!-- Plan -->
+                  <td class="px-4 py-3">
+                    @if (affiliate.planName && affiliate.planName !== '-') {
+                      <span class="px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-100 rounded whitespace-nowrap">
+                        {{ affiliate.planName }}
+                      </span>
+                    } @else {
+                      <span class="text-gray-400">&#8212;</span>
+                    }
+                  </td>
 
               <!-- Plan -->
               <td class="px-4 py-3">
@@ -292,10 +298,16 @@
                 {{ formatDate(affiliate.whatsappEntryDate) }}
               </td>
 
-              <!-- Asesor -->
-              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ affiliate.advisorName || '&#8212;' }}
-              </td>
+                  <!-- Empresa -->
+                  <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    @if (affiliate.companyId && affiliate.companyId !== '-') {
+                      <span class="px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-100 rounded whitespace-nowrap">
+                        {{ affiliate.companyName }}
+                      </span>
+                    } @else {
+                      <span class="text-gray-400">&#8212;</span>
+                    }
+                  </td>
 
               <!-- Empresa -->
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
@@ -313,28 +325,18 @@
                 {{ affiliate.grouperName || '&#8212;' }}
               </td>
 
-              <!-- Profesion -->
-              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ affiliate.profession || '&#8212;' }}
-              </td>
-
-              <!-- Botón Descargar Cedula -->
-              <td class="px-4 py-3">
-                @if (affiliate.documents && affiliate.documents.length > 0 && affiliate.documents[0].documentUrl) {
-                <button type="button" (click)="downloadDocument(affiliate)"
-                  class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 hover:border-emerald-300 transition-colors">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                  </svg>
-                  Descargar
-                </button>
-                } @else {
-                <span class="text-xs text-gray-400">Sin doc.</span>
-                }
-              </td>
-            </tr>
-            }
+                  <!-- Botón Descargar Cedula -->
+                  <td>
+                    @if (affiliate.grouperName == 'GESTION') {
+                      <button type="button" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    Descargar
+                  </button>
+                    }
+                </tr>
+              }
             }
           </tbody>
         </table>
