@@ -74,11 +74,11 @@ export class AffiliateFormModalComponent implements OnInit {
     return this.references().map((r) => ({ value: r, label: r }));
   }
   get pensionOptions(): SelectOption[] {
-  return this.pensions().map((p) => ({
-    value: String(p.id),
-    label: (p as any).namePensions || p.name
-  }));
-}
+    return this.pensions().map((p) => ({
+      value: String(p.id),
+      label: (p as any).namePensions || p.name
+    }));
+  }
   get compensationBoxOptions(): SelectOption[] {
     return this.compensationBoxes().map((c) => ({ value: String(c.id), label: (c as any).nameCompensationBox || c.name }));
   }
@@ -108,6 +108,7 @@ export class AffiliateFormModalComponent implements OnInit {
     compensationBoxId: [''],
     isActive: [true],
     entryDate: [{ value: '', disabled: true }],
+    documentFile: [{ value: <File | string | null>null, disabled: true }],
     // Seguridad social (sin ADRES, sin price/deposit/charge)
     arl: [<number | null>null],
   });
@@ -134,8 +135,9 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   selectedPlanLabel: string = '';
+  selectedGrouperLabel: string = '';
 
-  validateAfp(pensionControl: AbstractControl | null){
+  validateAfp(pensionControl: AbstractControl | null) {
     if (!this.selectedPlanLabel.includes('AFP')) {
       pensionControl?.disable();
       pensionControl?.setValue('');
@@ -146,7 +148,7 @@ export class AffiliateFormModalComponent implements OnInit {
     }
   }
 
-  validateArl(arlControl: AbstractControl | null){
+  validateArl(arlControl: AbstractControl | null) {
     if (!this.selectedPlanLabel.includes('ARL')) {
       arlControl?.disable();
       arlControl?.setValue('');
@@ -157,7 +159,7 @@ export class AffiliateFormModalComponent implements OnInit {
     }
   }
 
-  validateCcf(ccfControl: AbstractControl | null){
+  validateCcf(ccfControl: AbstractControl | null) {
     if (!this.selectedPlanLabel.includes('CCF')) {
       ccfControl?.disable();
       ccfControl?.setValue('');
@@ -168,7 +170,7 @@ export class AffiliateFormModalComponent implements OnInit {
     }
   }
 
-  validateEps(epsControl: AbstractControl | null){
+  validateEps(epsControl: AbstractControl | null) {
     if (!this.selectedPlanLabel.includes('EPS')) {
       epsControl?.disable();
       epsControl?.setValue('');
@@ -179,26 +181,58 @@ export class AffiliateFormModalComponent implements OnInit {
     }
   }
 
-  ngOnInit() {
-  this.form.get('planId')?.valueChanges.subscribe(value => {
-    this.updatePlanLogic(value);
-  });
+  validateDocumentFile() {
+    const fileControl = this.form.get('documentFile');
+    if (!fileControl) return;
 
-  const initialValue = this.form.get('planId')?.value;
-  if (initialValue) {
-    this.updatePlanLogic(initialValue);
+    const label = this.selectedGrouperLabel || '';
+
+    if (label.includes('GESTIÓN') || label.includes('GESTION')) {
+      fileControl.enable({ emitEvent: false });
+      fileControl.setValidators([Validators.required]);
+    } else {
+      fileControl.clearValidators();
+      // Cambiamos null por '' para evitar el conflicto con 'never'
+      fileControl.setValue('', { emitEvent: false });
+      fileControl.disable({ emitEvent: false });
+    }
+
+    fileControl.updateValueAndValidity({ emitEvent: false });
   }
-}
 
-private updatePlanLogic(planId: any) {
-  const plan = this.planOptions.find(p => p.value === planId);
-  this.selectedPlanLabel = plan ? plan.label.toUpperCase() : '';
+  ngOnInit() {
+    this.form.get('planId')?.valueChanges.subscribe(value => {
+      this.updatePlanLogic(value);
+    });
 
-  this.validateAfp(this.form.get('pensionId'));
-  this.validateArl(this.form.get('arl'));
-  this.validateCcf(this.form.get('compensationBoxId'));
-  this.validateEps(this.form.get('epsId'));
-}
+    const initialValue = this.form.get('planId')?.value;
+    if (initialValue) {
+      this.updatePlanLogic(initialValue);
+    }
+
+    this.form.get('grouperId')?.valueChanges.subscribe((value) => {
+      if (!value) {
+        this.selectedGrouperLabel = '';
+        this.validateDocumentFile();
+        return;
+      }
+
+      const selectedGrouper = this.groupers().find(g => String(g.id) === String(value));
+      this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
+
+      this.validateDocumentFile();
+    });
+  }
+
+  private updatePlanLogic(planId: any) {
+    const plan = this.planOptions.find(p => p.value === planId);
+    this.selectedPlanLabel = plan ? plan.label.toUpperCase() : '';
+
+    this.validateAfp(this.form.get('pensionId'));
+    this.validateArl(this.form.get('arl'));
+    this.validateCcf(this.form.get('compensationBoxId'));
+    this.validateEps(this.form.get('epsId'));
+  }
 
   get isEdit(): boolean {
     return this.mode() === 'edit';
@@ -262,8 +296,8 @@ private updatePlanLogic(planId: any) {
       reference: a.reference ?? '',
       profession: a.profession ?? '',
 
-      planId: a.planId ? String(a.planId) : '',
       companyId: a.companyId ? String(a.companyId) : '',
+      planId: a.planId ? String(a.planId) : '',
       grouperId: a.grouperId ? String(a.grouperId) : '',
       advisorId: a.advisorId ? String(a.advisorId) : '',
       epsId: a.epsId ? String(a.epsId) : '',
@@ -273,6 +307,7 @@ private updatePlanLogic(planId: any) {
       arl: a.arl ?? null,
       pensionId: a.pensionId ? String(a.pensionId) : '',
       compensationBoxId: a.compensationBoxId ? String(a.compensationBoxId) : '',
+
     });
     this.errorMessage.set(null);
   }
