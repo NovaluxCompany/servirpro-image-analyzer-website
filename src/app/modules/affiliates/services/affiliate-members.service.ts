@@ -71,6 +71,15 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  // ── Obtener URL de descarga firmada ────────────────────────────────
+  getDownloadUrl(id: string, documentId: number): Observable<{ url: string }> {
+    return this._http
+      .get<{ url: string }>(`${this.baseUrl}/${id}/documents/${documentId}/download`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(this.handleError));
+  }
+
   // ── Activar / Desactivar ──────────────────────────────────────────
   toggleStatus(id: string): Observable<AffiliateMember> {
     return this._http
