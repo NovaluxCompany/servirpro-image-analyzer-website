@@ -177,6 +177,38 @@ export class AffiliatesListComponent implements OnInit {
     this.selectedAffiliate.set(null);
   }
 
+  downloadDocument(affiliate: AffiliateMember): void {
+    if (!affiliate.id || !affiliate.documents || affiliate.documents.length === 0) return;
+    const doc = affiliate.documents[0];
+    const documentId = doc.id;
+    const ext = doc.fileName.includes('.') ? doc.fileName.split('.').pop() : '';
+    const downloadName = ext ? `${affiliate.documentNumber}.${ext}` : affiliate.documentNumber;
+
+    this._service.getDownloadUrl(affiliate.id, documentId).subscribe({
+      next: (res) => {
+        fetch(res.url)
+          .then(response => response.blob())
+          .then(blob => {
+            const objectUrl = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = objectUrl;
+            anchor.download = downloadName;
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(objectUrl);
+          })
+          .catch(() => {
+            this._toast.showError('No se pudo descargar el archivo');
+          });
+      },
+      error: (err) => {
+        this._toast.showError('No se pudo generar el enlace de descarga');
+        this.errorMessage.set(err.message);
+      }
+    });
+  }
+
   // ── Utilidades ────────────────────────────────────────────────────
   formatDate(date?: string | Date): string {
     if (!date) return '—';
