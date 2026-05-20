@@ -46,6 +46,9 @@ export class AffiliatesListComponent implements OnInit {
   formMode = signal<'create' | 'edit'>('create');
   selectedAffiliate = signal<AffiliateMember | null>(null);
 
+  // ── Email ─────────────────────────────────────────────────────────
+  sendingEmailId = signal<number | null>(null);
+
   ngOnInit(): void {
     // debounce text filter changes
     this.filterSubject.pipe(debounceTime(400)).subscribe(() => {
@@ -227,5 +230,22 @@ export class AffiliatesListComponent implements OnInit {
 
   get allAffiliatesForModal(): AffiliateMember[] {
     return this.affiliates();
+  }
+
+  sendEmail(affiliate: AffiliateMember): void {
+    const affiliationId = Number(affiliate.id);
+    if (!affiliationId || this.sendingEmailId() !== null) return;
+
+    this.sendingEmailId.set(affiliationId);
+    this._service.sendEmail(affiliationId).subscribe({
+      next: () => {
+        this._toast.showSuccess('Correo enviado correctamente');
+        this.sendingEmailId.set(null);
+      },
+      error: (err) => {
+        this._toast.showError(err.message ?? 'No se pudo enviar el correo');
+        this.sendingEmailId.set(null);
+      },
+    });
   }
 }

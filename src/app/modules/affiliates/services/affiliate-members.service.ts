@@ -91,6 +91,17 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  // ── Enviar correo vía n8n ──────────────────────────────────────────
+  sendEmail(affiliationId: number): Observable<{ success: boolean; message: string }> {
+    return this._http
+      .post<{ success: boolean; message: string }>(
+        `${environment.urlBD}/affiliations/${affiliationId}/send-email`,
+        {},
+        { headers: this.getHeaders() }
+      )
+      .pipe(catchError(this.handleError));
+  }
+
   // ── Catálogos ─────────────────────────────────────────────────────
   getPlans(): Observable<Plan[]> {
     return this._http
