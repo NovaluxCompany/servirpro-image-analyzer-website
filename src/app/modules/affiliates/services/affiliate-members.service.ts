@@ -53,7 +53,7 @@ export class AffiliateMembersService {
   }
 
   // ── Crear afiliado ────────────────────────────────────────────────
-  createAffiliate(dto: CreateAffiliateMemberDto): Observable<AffiliateMember> {
+  createAffiliate(dto: CreateAffiliateMemberDto | FormData): Observable<AffiliateMember> {
     return this._http
       .post<AffiliateMember>(this.baseUrl, dto, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError));
@@ -62,7 +62,7 @@ export class AffiliateMembersService {
   // ── Editar afiliado ───────────────────────────────────────────────
   updateAffiliate(
     id: string,
-    dto: UpdateAffiliateMemberDto
+    dto: UpdateAffiliateMemberDto | FormData
   ): Observable<AffiliateMember> {
     return this._http
       .patch<AffiliateMember>(`${this.baseUrl}/${id}`, dto, {

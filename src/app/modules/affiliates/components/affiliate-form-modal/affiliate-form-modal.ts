@@ -312,6 +312,17 @@ export class AffiliateFormModalComponent implements OnInit {
     this.errorMessage.set(null);
   }
 
+  selectedFile: File | null = null;
+
+  onFileSelected(event: any): void {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedFile = file;
+    } else {
+      this.selectedFile = null;
+    }
+  }
+
   onDocumentNumberBlur(): void {
     this.checkDuplicate();
   }
@@ -378,10 +389,24 @@ export class AffiliateFormModalComponent implements OnInit {
       arl: raw.arl ?? undefined,
     };
 
+    let payload: CreateAffiliateMemberDto | FormData = dto;
+
+    if (this.selectedFile) {
+      const formData = new FormData();
+      Object.keys(dto).forEach((key) => {
+        const value = (dto as any)[key];
+        if (value !== undefined && value !== null) {
+          formData.append(key, String(value));
+        }
+      });
+      formData.append('files', this.selectedFile);
+      payload = formData;
+    }
+
     const obs =
       this.isEdit && this.affiliate()?.id
-        ? this._service.updateAffiliate(this.affiliate()!.id!, dto)
-        : this._service.createAffiliate(dto);
+        ? this._service.updateAffiliate(this.affiliate()!.id!, payload)
+        : this._service.createAffiliate(payload);
 
     obs.subscribe({
       next: () => {

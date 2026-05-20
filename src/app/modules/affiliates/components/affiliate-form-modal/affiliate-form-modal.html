@@ -356,8 +356,9 @@
                 </label>
 
                 <input type="file" formControlName="documentFile"
-                  [class.opacity-60]="!!form.get('documentFile')?.disabled"}
+                  [class.opacity-60]="!!form.get('documentFile')?.disabled"
                   accept=".pdf"
+                  (change)="onFileSelected($event)"
                   [disabled]="!!form.get('documentFile')?.disabled"
                   class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50" />
               </div>
