@@ -53,7 +53,7 @@ export class AffiliateMembersService {
   }
 
   // ── Crear afiliado ────────────────────────────────────────────────
-  createAffiliate(dto: CreateAffiliateMemberDto): Observable<AffiliateMember> {
+  createAffiliate(dto: CreateAffiliateMemberDto | FormData): Observable<AffiliateMember> {
     return this._http
       .post<AffiliateMember>(this.baseUrl, dto, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError));
@@ -62,10 +62,19 @@ export class AffiliateMembersService {
   // ── Editar afiliado ───────────────────────────────────────────────
   updateAffiliate(
     id: string,
-    dto: UpdateAffiliateMemberDto
+    dto: UpdateAffiliateMemberDto | FormData
   ): Observable<AffiliateMember> {
     return this._http
       .patch<AffiliateMember>(`${this.baseUrl}/${id}`, dto, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(this.handleError));
+  }
+
+  // ── Obtener URL de descarga firmada ────────────────────────────────
+  getDownloadUrl(id: string, documentId: number): Observable<{ url: string }> {
+    return this._http
+      .get<{ url: string }>(`${this.baseUrl}/${id}/documents/${documentId}/download`, {
         headers: this.getHeaders(),
       })
       .pipe(catchError(this.handleError));
@@ -76,6 +85,17 @@ export class AffiliateMembersService {
     return this._http
       .patch<AffiliateMember>(
         `${this.baseUrl}/${id}/toggle`,
+        {},
+        { headers: this.getHeaders() }
+      )
+      .pipe(catchError(this.handleError));
+  }
+
+  // ── Enviar correo vía n8n ──────────────────────────────────────────
+  sendEmail(affiliationId: number): Observable<{ success: boolean; message: string }> {
+    return this._http
+      .post<{ success: boolean; message: string }>(
+        `${environment.urlBD}/affiliations/${affiliationId}/send-email`,
         {},
         { headers: this.getHeaders() }
       )

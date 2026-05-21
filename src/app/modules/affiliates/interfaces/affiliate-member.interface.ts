@@ -1,5 +1,14 @@
 export type DocumentType = 'CC' | 'CE' | 'TI' | 'PA' | 'NIT' | 'PPT';
 
+// ── Nueva Interfaz Relacional para Documentos ──────────────────────
+export interface AffiliateDocument {
+  id: number;
+  affiliationId: number;
+  documentUrl: string; // URL pública entregada por Supabase
+  fileName: string;    // Nombre único del archivo en el Bucket
+  position: number;    // Índice de ordenamiento del archivo
+}
+
 export interface AffiliateMember {
   id?: string;
   // Datos personales
@@ -13,7 +22,7 @@ export interface AffiliateMember {
   address?: string;
   municipality?: string;
   reference?: string;
-  //Fecha whatsapp
+  // Fecha whatsapp
   whatsappEntryDate?: string;
   companyEntryDate?: string;
   profession?: string;
@@ -46,6 +55,12 @@ export interface AffiliateMember {
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string;
+
+  // Modificado: Ahora mapea el array relacional que viene del Backend
+  documents?: AffiliateDocument[];
+
+  // Mantenemos la referencia en memoria del archivo físico si la usas en formularios reactivos
+  document?: File;
 }
 
 export interface CreateAffiliateMemberDto {
