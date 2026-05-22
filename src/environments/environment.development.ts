@@ -1,3 +1,3 @@
 export const environment = {
-    urlBD: 'http://localhost:3000/api',
+    urlBD: 'https://servirpro-image-analyzer-api-1.onrender.com/api',
 };
