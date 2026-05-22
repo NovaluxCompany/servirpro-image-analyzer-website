@@ -30,6 +30,7 @@ export class AffiliateFormModalComponent implements OnInit {
   isLoading = signal(false);
   duplicateDocument = signal(false);
   errorMessage = signal<string | null>(null);
+  fileError = signal<string | null>(null);
   catalogsLoading = signal(true);
 
   plans = signal<Plan[]>([]);
@@ -314,13 +315,38 @@ export class AffiliateFormModalComponent implements OnInit {
 
   selectedFile: File | null = null;
 
+  private static readonly ALLOWED_FILE_TYPES = ['application/pdf'];
+  private static readonly MAX_FILE_SIZE_MB = 10;
+
   onFileSelected(event: any): void {
-    const file = event.target.files[0];
-    if (file) {
-      this.selectedFile = file;
-    } else {
+    const file: File | null = event.target.files?.[0] ?? null;
+    this.fileError.set(null);
+
+    if (!file) {
       this.selectedFile = null;
+      this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+      return;
     }
+
+    if (!AffiliateFormModalComponent.ALLOWED_FILE_TYPES.includes(file.type)) {
+      this.fileError.set('Solo se permiten archivos en formato PDF.');
+      this.selectedFile = null;
+      this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+      event.target.value = '';
+      return;
+    }
+
+    const maxBytes = AffiliateFormModalComponent.MAX_FILE_SIZE_MB * 1024 * 1024;
+    if (file.size > maxBytes) {
+      this.fileError.set(`El archivo no puede superar ${AffiliateFormModalComponent.MAX_FILE_SIZE_MB} MB.`);
+      this.selectedFile = null;
+      this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+      event.target.value = '';
+      return;
+    }
+
+    this.selectedFile = file;
+    this.form.get('documentFile')?.setValue(file.name, { emitEvent: false });
   }
 
   onDocumentNumberBlur(): void {
@@ -389,35 +415,49 @@ export class AffiliateFormModalComponent implements OnInit {
       arl: raw.arl ?? undefined,
     };
 
-    let payload: CreateAffiliateMemberDto | FormData = dto;
-
-    if (this.selectedFile) {
-      const formData = new FormData();
-      Object.keys(dto).forEach((key) => {
-        const value = (dto as any)[key];
-        if (value !== undefined && value !== null) {
-          formData.append(key, String(value));
-        }
-      });
-      formData.append('files', this.selectedFile);
-      payload = formData;
-    }
-
     const obs =
       this.isEdit && this.affiliate()?.id
-        ? this._service.updateAffiliate(this.affiliate()!.id!, payload)
-        : this._service.createAffiliate(payload);
+        ? this._service.updateAffiliate(this.affiliate()!.id!, dto)
+        : this._service.createAffiliate(dto);
 
     obs.subscribe({
-      next: () => {
-        this._toast.showSuccess(
-          this.isEdit ? 'Afiliado actualizado exitosamente' : 'Afiliación creada exitosamente'
-        );
+      next: (result: any) => {
+        const successMsg = this.isEdit ? 'Afiliado actualizado exitosamente' : 'Afiliación creada exitosamente';
+
+        if (this.selectedFile) {
+          const affiliateId = result?.id ?? this.affiliate()?.id;
+          if (affiliateId) {
+            this._service.uploadDocument(affiliateId, this.selectedFile).subscribe({
+              next: () => {
+                this._toast.showSuccess(successMsg);
+                this.isLoading.set(false);
+                this.saved.emit();
+              },
+              error: () => {
+                this.fileError.set('El afiliado fue guardado, pero no se pudo subir el documento. Inténtalo nuevamente.');
+                this._toast.showSuccess(successMsg);
+                this.isLoading.set(false);
+                this.saved.emit();
+              },
+            });
+            return;
+          }
+        }
+
+        this._toast.showSuccess(successMsg);
         this.isLoading.set(false);
         this.saved.emit();
       },
       error: (err) => {
-        this.errorMessage.set(err.message);
+        const backend = err?.error;
+        if (backend?.message) {
+          const msg = Array.isArray(backend.message)
+            ? backend.message.join(' • ')
+            : String(backend.message);
+          this.errorMessage.set(msg);
+        } else {
+          this.errorMessage.set(err.message ?? 'Ha ocurrido un error inesperado.');
+        }
         this.isLoading.set(false);
       },
     });

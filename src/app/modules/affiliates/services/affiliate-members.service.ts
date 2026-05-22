@@ -53,16 +53,25 @@ export class AffiliateMembersService {
   }
 
   // ── Crear afiliado ────────────────────────────────────────────────
-  createAffiliate(dto: CreateAffiliateMemberDto | FormData): Observable<AffiliateMember> {
+  createAffiliate(dto: CreateAffiliateMemberDto): Observable<AffiliateMember> {
     return this._http
       .post<AffiliateMember>(this.baseUrl, dto, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError));
+  }
+
+  // ── Subir documento a afiliado existente ──────────────────────────
+  uploadDocument(affiliateId: string | number, file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this._http
+      .post<any>(`${this.baseUrl}/${affiliateId}/documents`, formData)
       .pipe(catchError(this.handleError));
   }
 
   // ── Editar afiliado ───────────────────────────────────────────────
   updateAffiliate(
     id: string,
-    dto: UpdateAffiliateMemberDto | FormData
+    dto: UpdateAffiliateMemberDto
   ): Observable<AffiliateMember> {
     return this._http
       .patch<AffiliateMember>(`${this.baseUrl}/${id}`, dto, {
