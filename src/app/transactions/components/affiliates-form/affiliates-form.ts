@@ -81,7 +81,7 @@ export class AffiliatesFormComponent {
     const filtered = this.affiliates().filter(affiliate =>
       affiliate.fullName.toLowerCase().includes(filter) ||
       affiliate.idNumber.includes(filter) ||
-      affiliate.reference.toLowerCase().includes(filter) ||
+      affiliate.reference?.toLowerCase().includes(filter) ||
       affiliate.plan.toLowerCase().includes(filter)
     );
 
