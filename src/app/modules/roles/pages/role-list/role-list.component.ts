@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RolesService } from '../../services/roles.service';
 import { Role } from '../../interfaces/role.interface';
 import { RoleFormModalComponent } from '../../components/role-form-modal/role-form-modal.component';
+import { ToastService } from '../../../../core/service/toast.service';
 
 @Component({
   selector: 'app-role-list',
@@ -12,6 +13,7 @@ import { RoleFormModalComponent } from '../../components/role-form-modal/role-fo
 })
 export class RoleListComponent implements OnInit {
   private rolesService = inject(RolesService);
+  private toastService = inject(ToastService);
   protected Math = Math;
 
   roles = signal<Role[]>([]);
@@ -20,18 +22,25 @@ export class RoleListComponent implements OnInit {
   pageSize = signal(10);
   showFormModal = signal(false);
   selectedRole = signal<Role | null>(null);
+  isLoading = signal(false);
+  roleToDelete = signal<Role | null>(null);
 
   ngOnInit() {
     this.loadRoles();
   }
 
   loadRoles() {
+    this.isLoading.set(true);
     this.rolesService.findAll(this.currentPage(), this.pageSize()).subscribe({
       next: (response) => {
         this.roles.set(response.items);
         this.totalItems.set(response.meta.totalItems);
+        this.isLoading.set(false);
       },
-      error: (err) => console.error('Error loading roles', err)
+      error: () => {
+        this.toastService.showError('Error al cargar los roles. Intenta de nuevo.');
+        this.isLoading.set(false);
+      }
     });
   }
 
@@ -52,16 +61,32 @@ export class RoleListComponent implements OnInit {
 
   onSaved() {
     this.showFormModal.set(false);
+    this.toastService.showSuccess('Rol guardado correctamente.');
     this.loadRoles();
   }
 
-  deleteRole(id: number) {
-    if (confirm('¿Está seguro de eliminar este rol?')) {
-      this.rolesService.remove(id).subscribe({
-        next: () => this.loadRoles(),
-        error: (err) => console.error('Error deleting role', err)
-      });
-    }
+  confirmDelete(role: Role) {
+    this.roleToDelete.set(role);
+  }
+
+  cancelDelete() {
+    this.roleToDelete.set(null);
+  }
+
+  deleteRole() {
+    const role = this.roleToDelete();
+    if (!role?.id) return;
+    this.rolesService.remove(role.id).subscribe({
+      next: () => {
+        this.toastService.showSuccess('Rol eliminado correctamente.');
+        this.roleToDelete.set(null);
+        this.loadRoles();
+      },
+      error: () => {
+        this.toastService.showError('No se pudo eliminar el rol. Intenta de nuevo.');
+        this.roleToDelete.set(null);
+      }
+    });
   }
 
   get totalPages(): number {
@@ -69,8 +94,7 @@ export class RoleListComponent implements OnInit {
   }
 
   get pages(): number[] {
-    const total = this.totalPages;
-    return Array.from({ length: total }, (_, i) => i + 1);
+    return Array.from({ length: this.totalPages }, (_, i) => i + 1);
   }
 
   getMenusList(role: Role): string {

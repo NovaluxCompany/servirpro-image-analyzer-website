@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../core/service/auth.service';
 import { Router } from '@angular/router';
 import { TokenService } from '../../core/service/token.service';
+import { PermissionService } from '../../core/service/permission.service';
 
 @Component({
   selector: 'app-login',
@@ -23,6 +24,10 @@ export class Login {
   private _router = inject(Router);
   private _cdr = inject(ChangeDetectorRef);
   private _fb = inject(FormBuilder);
+  private _permission = inject(PermissionService);
+
+  // Rutas válidas registradas en el router de Angular
+  private readonly KNOWN_ROUTES = ['/transacciones', '/afiliados', '/menu', '/roles'];
 
   form = this._fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -71,7 +76,20 @@ export class Login {
     this._authService.loginDB(email!, password!).subscribe({
       next: () => {
         this.isLoading = false;
-        this._router.navigate(['/transacciones']);
+        const user = this._tokenService.getUser();
+        const menuPaths = user?.menuPaths ?? [];
+
+        // Extraer segmentos raíz de menuPaths y filtrar solo rutas que existen en el router
+        const validFromMenu = menuPaths
+          .map(p => '/' + p.split('/').filter(Boolean)[0])
+          .find(seg => this.KNOWN_ROUTES.includes(seg));
+
+        // Fallback: primera ruta conocida accesible según el rol (PermissionService)
+        const validFromRole = this.KNOWN_ROUTES
+          .find(r => this._permission.canAccessRoute(r.replace('/', '')));
+
+        const destination = validFromMenu ?? validFromRole ?? '/transacciones';
+        this._router.navigate([destination]);
       },
       error: () => {
         this.isLoading = false;

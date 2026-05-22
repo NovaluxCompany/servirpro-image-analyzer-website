@@ -2,6 +2,7 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { TokenService } from '../../service/token.service';
+import { PermissionService } from '../../service/permission.service';
 
 @Component({
   selector: 'app-layout',
@@ -12,6 +13,7 @@ import { TokenService } from '../../service/token.service';
 export class LayoutComponent {
   private _router = inject(Router);
   private _tokenService = inject(TokenService);
+  private _permission = inject(PermissionService);
 
   isSidebarOpen = signal(true);
   currentRoute = signal('');
@@ -21,11 +23,23 @@ export class LayoutComponent {
   userName = computed(() => this.currentUser()?.name ?? 'Usuario');
   userRole = computed(() => this.currentUser()?.roles?.[0] ?? 'Sin rol');
 
-  // Menu visibility: show item if user has access to that path, OR if user has no menuPaths (admin fallback)
+  // Menu visibility: muestra el item si está en menuPaths del usuario,
+  // o si el rol tiene acceso según PermissionService (cubre rutas que el backend
+  // no tiene correctamente configuradas, como /usuarios → /afiliados en Pagos).
   canSee = (path: string): boolean => {
     const menuPaths = this.currentUser()?.menuPaths ?? [];
-    if (menuPaths.length === 0) return true; // no restrictions = show all
-    return menuPaths.some(p => p === path || p.startsWith(path) || path.startsWith(p));
+    if (menuPaths.length === 0) return true; // sin restricciones = mostrar todo
+
+    // 1º: verificar en menuPaths de la BD (normalizado por segmento raíz)
+    const segment = path.replace(/^\//, '').split('/')[0];
+    const hasMenuAccess = menuPaths.some(p => {
+      const pBase = '/' + p.replace(/^\//, '').split('/')[0];
+      return ('/' + segment) === pBase;
+    });
+    if (hasMenuAccess) return true;
+
+    // 2º: fallback por rol (cubre casos donde BD tiene rutas incorrectas como /usuarios en vez de /afiliados)
+    return this._permission.canAccessRoute(segment);
   };
 
   // Role-based visibility
