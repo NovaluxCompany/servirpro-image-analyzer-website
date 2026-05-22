@@ -349,6 +349,12 @@ export class AffiliateFormModalComponent implements OnInit {
     this.form.get('documentFile')?.setValue(file.name, { emitEvent: false });
   }
 
+  clearFile(): void {
+    this.selectedFile = null;
+    this.fileError.set(null);
+    this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+  }
+
   onDocumentNumberBlur(): void {
     this.checkDuplicate();
   }
