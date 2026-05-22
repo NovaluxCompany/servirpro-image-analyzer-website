@@ -5,6 +5,7 @@ import { LayoutComponent } from './core/components/layout/layout';
 
 export const routes: Routes = [
     {path: '', component: Login},
+    {path: 'login', component: Login},
     {
         path: '',
         component: LayoutComponent,
@@ -17,7 +18,16 @@ export const routes: Routes = [
             {
                 path: 'afiliados',
                 loadChildren: () => import('./modules/affiliates/affiliates.routes').then(m => m.affiliatesRoutes)
+            },
+            {
+              path: 'menu',
+                loadChildren: () => import('./modules/menu/services/menu.routes').then(m => m.menuRoutes)
+            },
+            {
+              path: 'roles',
+              loadChildren: () => import('./modules/roles/roles.routes').then(m => m.rolesRoutes)
             }
+
         ]
     }
 ];

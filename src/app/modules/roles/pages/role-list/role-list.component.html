@@ -1,0 +1,98 @@
+<div class="min-h-screen p-6 bg-gray-50">
+  <div class="max-w-full mx-auto">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Gestión de Roles</h1>
+        <p class="mt-1 text-sm text-gray-500">Define los perfiles de acceso y permisos específicos por módulo</p>
+      </div>
+      <button type="button"
+        (click)="openCreateModal()"
+        class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 shadow-md hover:shadow-lg transition-all duration-200">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Nuevo Rol
+      </button>
+    </div>
+
+
+    <!-- Tabla -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-500">
+          <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th scope="col" class="px-6 py-4 font-semibold">Nombre del rol</th>
+              <th scope="col" class="px-6 py-4 font-semibold">Menús asociados</th>
+              <th scope="col" class="px-6 py-4 font-semibold text-center">Estado</th>
+              <th scope="col" class="px-6 py-4 font-semibold">Fecha de creación</th>
+              <th scope="col" class="px-6 py-4 font-semibold text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr *ngFor="let role of roles()" class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4">
+                <span class="font-medium text-gray-900">{{ role.name }}</span>
+              </td>
+              <td class="px-6 py-4">
+                <p class="text-xs text-gray-600 max-w-xs truncate" [title]="getMenusList(role)">
+                  {{ getMenusList(role) }}
+                </p>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <span [ngClass]="role.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                      class="px-2 py-1 rounded-full text-xs font-medium">
+                  {{ role.isActive ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 text-gray-400 text-xs">
+                {{ role.createdAt | date:'dd/MM/yyyy HH:mm' }}
+              </td>
+              <td class="px-6 py-4 text-right">
+                <button (click)="openEditModal(role)" class="text-blue-600 hover:text-blue-900 font-medium mr-3">Editar</button>
+                <button (click)="deleteRole(role.id!)" class="text-red-600 hover:text-red-900 font-medium">Eliminar</button>
+              </td>
+            </tr>
+            <tr *ngIf="roles().length === 0">
+              <td colspan="5" class="px-6 py-10 text-center text-gray-400">
+                No se encontraron roles registrados.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div *ngIf="totalPages > 1" class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+        <span class="text-sm text-gray-700">
+          Mostrando {{ (currentPage() - 1) * pageSize() + 1 }} a {{ Math.min(currentPage() * pageSize(), totalItems()) }} de {{ totalItems() }} resultados
+        </span>
+        <div class="inline-flex items-center -space-x-px">
+          <button (click)="onPageChange(currentPage() - 1)" [disabled]="currentPage() === 1"
+            class="px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50">
+            Anterior
+          </button>
+          <button *ngFor="let page of pages" (click)="onPageChange(page)"
+            [ngClass]="currentPage() === page ? 'bg-blue-50 text-blue-600 border-blue-300 z-10' : 'bg-white text-gray-500 border-gray-300'"
+            class="px-3 py-2 leading-tight border hover:bg-gray-100 hover:text-gray-700">
+            {{ page }}
+          </button>
+          <button (click)="onPageChange(currentPage() + 1)" [disabled]="currentPage() === totalPages"
+            class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50">
+            Siguiente
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<app-role-form-modal
+  [isVisible]="showFormModal()"
+  [roleData]="selectedRole()"
+  (close)="showFormModal.set(false)"
+  (saved)="onSaved()">
+</app-role-form-modal>
