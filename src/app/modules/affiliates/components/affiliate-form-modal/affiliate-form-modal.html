@@ -95,16 +95,30 @@
               }
             </div>
 
-            <!-- Nombre completo -->
+            <!-- Nombres -->
             <div>
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                Nombre completo <span class="text-red-500">*</span>
+                Nombres <span class="text-red-500">*</span>
               </label>
-              <input type="text" formControlName="fullName" maxlength="255" placeholder="Ej: Juan Perez Garcia"
+              <input type="text" formControlName="firstName" maxlength="255" placeholder="Ej: Juan Carlos"
                 class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                [class.border-red-400]="isFieldInvalid('fullName')"
-                [class.border-gray-300]="!isFieldInvalid('fullName')">
-              @if (isFieldInvalid('fullName')) {
+                [class.border-red-400]="isFieldInvalid('firstName')"
+                [class.border-gray-300]="!isFieldInvalid('firstName')">
+              @if (isFieldInvalid('firstName')) {
+              <p class="mt-1 text-xs text-red-500">Campo requerido</p>
+              }
+            </div>
+
+            <!-- Apellidos -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                Apellidos <span class="text-red-500">*</span>
+              </label>
+              <input type="text" formControlName="lastName" maxlength="255" placeholder="Ej: Perez Garcia"
+                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                [class.border-red-400]="isFieldInvalid('lastName')"
+                [class.border-gray-300]="!isFieldInvalid('lastName')">
+              @if (isFieldInvalid('lastName')) {
               <p class="mt-1 text-xs text-red-500">Campo requerido</p>
               }
             </div>
@@ -175,7 +189,7 @@
             <!-- Fecha ingreso empresa -->
             <div>
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                Fecha de ingreso empresa <span class="text-red-500">*</span>
+                Fecha de ingreso <span class="text-red-500">*</span>
               </label>
               <input type="date" formControlName="companyEntryDate" readonly [class.cursor-not-allowed]="true"
                 class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-600">

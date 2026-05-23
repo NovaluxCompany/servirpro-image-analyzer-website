@@ -104,7 +104,7 @@ export class AffiliateMembersService {
   sendEmail(affiliationId: number): Observable<{ success: boolean; message: string }> {
     return this._http
       .post<{ success: boolean; message: string }>(
-        `${environment.urlBD}/affiliations/${affiliationId}/send-email`,
+        `${environment.urlBD}/affiliates/${affiliationId}/send-email`,
         {},
         { headers: this.getHeaders() }
       )

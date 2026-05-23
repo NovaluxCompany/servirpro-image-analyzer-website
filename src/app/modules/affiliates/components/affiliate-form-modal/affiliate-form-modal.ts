@@ -88,7 +88,8 @@ export class AffiliateFormModalComponent implements OnInit {
     // Datos personales
     documentType: ['CC', Validators.required],
     documentNumber: ['', [Validators.required, Validators.maxLength(20)]],
-    fullName: ['', [Validators.required, Validators.maxLength(255)]],
+    firstName: ['', [Validators.required, Validators.maxLength(255)]],
+    lastName: ['', [Validators.required, Validators.maxLength(255)]],
     birthDate: [''],
     documentExpDate: [''],
     phone: ['', Validators.maxLength(50)],
@@ -287,7 +288,8 @@ export class AffiliateFormModalComponent implements OnInit {
     this.form.patchValue({
       documentType: a.documentType,
       documentNumber: a.documentNumber,
-      fullName: a.fullName,
+      firstName: a.firstName ?? '',
+      lastName: a.lastName ?? '',
       birthDate: this.toLocalDateStr(a.birthDate),
       documentExpDate: this.toLocalDateStr(a.documentExpDate),
       phone: a.phone ?? '',
@@ -395,10 +397,14 @@ export class AffiliateFormModalComponent implements OnInit {
       const parsed = Number(value);
       return isNaN(parsed) ? null : parsed;
     };
+    const firstName = (raw.firstName ?? '').trim();
+    const lastName = (raw.lastName ?? '').trim();
     const dto: CreateAffiliateMemberDto = {
       documentType: raw.documentType!,
       documentNumber: raw.documentNumber!,
-      fullName: raw.fullName!,
+      firstName,
+      lastName,
+      fullName: [firstName, lastName].filter(Boolean).join(' '),
       birthDate: raw.birthDate || undefined,
       documentExpDate: raw.documentExpDate || undefined,
       phone: raw.phone || undefined,
