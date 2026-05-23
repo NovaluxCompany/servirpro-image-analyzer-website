@@ -49,6 +49,17 @@ export class AffiliatesListComponent implements OnInit {
   // ── Email ─────────────────────────────────────────────────────────
   sendingEmailId = signal<number | null>(null);
 
+  // ── Dropdown acciones ─────────────────────────────────────────────
+  openDropdownId = signal<string | null>(null);
+
+  toggleDropdown(id: string): void {
+    this.openDropdownId.set(this.openDropdownId() === id ? null : id);
+  }
+
+  closeDropdown(): void {
+    this.openDropdownId.set(null);
+  }
+
   ngOnInit(): void {
     // debounce text filter changes
     this.filterSubject.pipe(debounceTime(400)).subscribe(() => {
