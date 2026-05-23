@@ -48,7 +48,7 @@ export class TransactionCreateComponent {
   private updateValuePaid(): void {
     const totalValue = this.form.get('totalValue')?.value || 0;
     const discountedValue = this.form.get('discountedValue')?.value || 0;
-    
+
     // Validar que el descuento no sea mayor al total
     if (discountedValue > totalValue) {
       this.form.get('discountedValue')?.setErrors({ 'maxDiscount': true });
@@ -59,7 +59,7 @@ export class TransactionCreateComponent {
         this.form.get('discountedValue')?.setErrors(Object.keys(remainingErrors).length > 0 ? remainingErrors : null);
       }
     }
-    
+
     const amountPaid = totalValue - discountedValue;
     this.form.get('amountPaid')?.setValue(amountPaid);
   }
@@ -110,7 +110,11 @@ export class TransactionCreateComponent {
     }
 
     // Obtener afiliados seleccionados
-    const selectedAffiliates = this.affiliatesForm.getSelectedAffiliates();
+    const selectedAffiliates = this.affiliatesForm.getSelectedAffiliates().map(affiliate => ({
+      ...affiliate,
+      charge: affiliate.profession ?? affiliate.charge ?? null,
+      arl: affiliate.arl !== undefined ? affiliate.arl : null,
+    }));
     formData.append('affiliates', JSON.stringify(selectedAffiliates));
 
     // Agregar imágenes

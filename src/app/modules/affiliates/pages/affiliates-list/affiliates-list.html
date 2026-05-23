@@ -120,7 +120,6 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Profesion</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Documento</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -188,56 +187,84 @@
 
               <!-- Acciones -->
               <td class="px-4 py-3">
-                <div class="flex items-center gap-2">
-                  <button type="button" (click)="openEdit(affiliate)" title="Editar afiliado"
-                    class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-lg hover:bg-blue-200 transition-colors">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                <div class="relative">
+                  <button type="button"
+                    (click)="toggleDropdown(affiliate.id ?? affiliate.documentNumber); $event.stopPropagation()"
+                    class="inline-flex items-center justify-center w-8 h-8 text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                    title="Acciones">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
                     </svg>
-                    Editar
                   </button>
-                  @if (!affiliate.isActive) {
-                  <button type="button" (click)="openStatusToggle(affiliate)" title="Activar afiliado"
-                    class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-100 border border-emerald-200 rounded-lg hover:bg-emerald-200 transition-colors">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Activar
-                  </button>
-                  } @else {
-                  <button type="button" (click)="openStatusToggle(affiliate)" title="Desactivar afiliado"
-                    class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-100 border border-red-200 rounded-lg hover:bg-red-200 transition-colors">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                    </svg>
-                    Desactivar
-                  </button>
-                  }
 
-                  @if(affiliate.documents && affiliate.documents.length > 0 && affiliate.documents[0].documentUrl){
-                  <button type="button" (click)="sendEmail(affiliate)"
-                    [disabled]="sendingEmailId() === +affiliate.id!"
-                    title="Enviar correo"
-                    class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-800 active:scale-95 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                  @if (openDropdownId() === (affiliate.id ?? affiliate.documentNumber)) {
+                  <div class="absolute left-0 z-20 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
 
-                    @if (sendingEmailId() === +affiliate.id!) {
-                    <svg class="w-4 h-4 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                    </svg>
-                    <span>Enviando...</span>
+                    <!-- Editar -->
+                    <button type="button" (click)="openEdit(affiliate); closeDropdown()"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Editar
+                    </button>
+
+                    <!-- Activar / Desactivar -->
+                    @if (!affiliate.isActive) {
+                    <button type="button" (click)="openStatusToggle(affiliate); closeDropdown()"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-emerald-700 hover:bg-emerald-50 transition-colors">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Activar
+                    </button>
                     } @else {
-                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2"
-                      viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                    </svg>
-                    <span>Enviar correo</span>
+                    <button type="button" (click)="openStatusToggle(affiliate); closeDropdown()"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-red-700 hover:bg-red-50 transition-colors">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                      </svg>
+                      Desactivar
+                    </button>
                     }
-                  </button>
+
+                    <!-- Enviar correo -->
+                    @if (affiliate.documents && affiliate.documents.length > 0 && affiliate.documents[0].documentUrl) {
+                    <button type="button" (click)="sendEmail(affiliate); closeDropdown()"
+                      [disabled]="sendingEmailId() === +affiliate.id!"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      @if (sendingEmailId() === +affiliate.id!) {
+                      <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                      </svg>
+                      Enviando...
+                      } @else {
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                      </svg>
+                      Enviar correo
+                      }
+                    </button>
+                    }
+
+                    <!-- Descargar documento -->
+                    @if (affiliate.documents && affiliate.documents.length > 0 && affiliate.documents[0].documentUrl) {
+                    <button type="button" (click)="downloadDocument(affiliate); closeDropdown()"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-emerald-700 hover:bg-emerald-50 transition-colors">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                      Descargar documento
+                    </button>
+                    }
+
+                  </div>
                   }
                 </div>
               </td>
@@ -318,21 +345,6 @@
                 {{ affiliate.profession || '&#8212;' }}
               </td>
 
-              <!-- Botón Descargar Cedula -->
-              <td class="px-4 py-3">
-                @if (affiliate.documents && affiliate.documents.length > 0 && affiliate.documents[0].documentUrl) {
-                <button type="button" (click)="downloadDocument(affiliate)"
-                  class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 hover:border-emerald-300 transition-colors">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                  </svg>
-                  Descargar
-                </button>
-                } @else {
-                <span class="text-xs text-gray-400">Sin doc.</span>
-                }
-              </td>
             </tr>
             }
             }
