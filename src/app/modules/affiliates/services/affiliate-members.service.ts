@@ -68,6 +68,15 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  // ── Eliminar documento de afiliado ────────────────────────────────
+  deleteDocument(affiliateId: string | number, documentId: number): Observable<void> {
+    return this._http
+      .delete<void>(`${this.baseUrl}/${affiliateId}/documents/${documentId}`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(this.handleError));
+  }
+
   // ── Editar afiliado ───────────────────────────────────────────────
   updateAffiliate(
     id: string,

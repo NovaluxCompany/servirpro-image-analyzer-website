@@ -131,6 +131,13 @@ export class AffiliateFormModalComponent implements OnInit {
           this.form.get('companyEntryDate')?.setValue(this.todayDate());
           this.duplicateDocument.set(false);
           this.errorMessage.set(null);
+          this.selectedFile = null;
+          this.existingDocumentId = null;
+          this.keepExistingDocument = true;
+          this.fileError.set(null);
+          if (this.fileInputRef?.nativeElement) {
+            this.fileInputRef.nativeElement.value = '';
+          }
         }
       }
     });
@@ -192,9 +199,22 @@ export class AffiliateFormModalComponent implements OnInit {
     if (label.includes('GESTIÓN') || label.includes('GESTION')) {
       fileControl.enable({ emitEvent: false });
       fileControl.setValidators([Validators.required]);
+      // In edit mode, restore existing document display if user hasn't changed it
+      if (this.isEdit && this.existingDocumentId && this.keepExistingDocument && !fileControl.value) {
+        const existingDoc = this.affiliate()?.documents?.[0];
+        if (existingDoc) {
+          const displayName = existingDoc.fileName.split('/').pop() || existingDoc.fileName;
+          fileControl.setValue(displayName, { emitEvent: false });
+        }
+      }
     } else {
+      // Clear selected file and mark existing document for deletion
+      this.selectedFile = null;
+      this.keepExistingDocument = false;
+      if (this.fileInputRef?.nativeElement) {
+        this.fileInputRef.nativeElement.value = '';
+      }
       fileControl.clearValidators();
-      // Cambiamos null por '' para evitar el conflicto con 'never'
       fileControl.setValue('', { emitEvent: false });
       fileControl.disable({ emitEvent: false });
     }
@@ -279,12 +299,31 @@ export class AffiliateFormModalComponent implements OnInit {
         this.pensions.set(pensions);
         this.compensationBoxes.set(compensationBoxes);
         this.catalogsLoading.set(false);
+
+        // Re-run plan/grouper logic once catalogs are loaded (edit mode has values before catalogs arrive)
+        const currentPlanId = this.form.get('planId')?.value;
+        if (currentPlanId) {
+          this.updatePlanLogic(currentPlanId);
+        }
+        const currentGrouperId = this.form.get('grouperId')?.value;
+        if (currentGrouperId) {
+          const selectedGrouper = this.groupers().find(g => String(g.id) === String(currentGrouperId));
+          this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
+          this.validateDocumentFile();
+        }
       },
       error: () => this.catalogsLoading.set(false),
     });
   }
 
   private patchForm(a: AffiliateMember): void {
+    this.selectedFile = null;
+    this.existingDocumentId = a.documents?.[0]?.id ?? null;
+    this.keepExistingDocument = true;
+    this.fileError.set(null);
+    if (this.fileInputRef?.nativeElement) {
+      this.fileInputRef.nativeElement.value = '';
+    }
     this.form.patchValue({
       documentType: a.documentType,
       documentNumber: a.documentNumber,
@@ -316,6 +355,8 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   selectedFile: File | null = null;
+  existingDocumentId: number | null = null;
+  private keepExistingDocument = true;
   @ViewChild('fileInput') fileInputRef?: ElementRef<HTMLInputElement>;
 
   private static readonly ALLOWED_FILE_TYPES = ['application/pdf'];
@@ -349,11 +390,13 @@ export class AffiliateFormModalComponent implements OnInit {
     }
 
     this.selectedFile = file;
+    this.keepExistingDocument = false;
     this.form.get('documentFile')?.setValue(file.name, { emitEvent: false });
   }
 
   clearFile(): void {
     this.selectedFile = null;
+    this.keepExistingDocument = false;
     this.fileError.set(null);
     this.form.get('documentFile')?.setValue(null, { emitEvent: false });
     if (this.fileInputRef?.nativeElement) {
@@ -439,30 +482,38 @@ export class AffiliateFormModalComponent implements OnInit {
     obs.subscribe({
       next: (result: any) => {
         const successMsg = this.isEdit ? 'Afiliado actualizado exitosamente' : 'Afiliación creada exitosamente';
+        const affiliateId = result?.id ?? this.affiliate()?.id;
 
-        if (this.selectedFile) {
-          const affiliateId = result?.id ?? this.affiliate()?.id;
-          if (affiliateId) {
+        const finalize = () => {
+          this._toast.showSuccess(successMsg);
+          this.isLoading.set(false);
+          this.saved.emit();
+        };
+
+        const uploadNewFile = () => {
+          if (this.selectedFile && affiliateId) {
             this._service.uploadDocument(affiliateId, this.selectedFile).subscribe({
-              next: () => {
-                this._toast.showSuccess(successMsg);
-                this.isLoading.set(false);
-                this.saved.emit();
-              },
+              next: () => finalize(),
               error: () => {
                 this.fileError.set('El afiliado fue guardado, pero no se pudo subir el documento. Inténtalo nuevamente.');
-                this._toast.showSuccess(successMsg);
-                this.isLoading.set(false);
-                this.saved.emit();
+                finalize();
               },
             });
-            return;
+          } else {
+            finalize();
           }
-        }
+        };
 
-        this._toast.showSuccess(successMsg);
-        this.isLoading.set(false);
-        this.saved.emit();
+        // Delete old document if needed (grouper changed away from GESTIÓN, or user replaced/cleared file)
+        const shouldDelete = !this.keepExistingDocument && !!this.existingDocumentId && !!affiliateId;
+        if (shouldDelete) {
+          this._service.deleteDocument(affiliateId!, this.existingDocumentId!).subscribe({
+            next: () => uploadNewFile(),
+            error: () => uploadNewFile(), // Continue even if delete fails
+          });
+        } else {
+          uploadNewFile();
+        }
       },
       error: (err) => {
         const backend = err?.error;
