@@ -187,9 +187,9 @@
 
               <!-- Acciones -->
               <td class="px-4 py-3">
-                <div class="relative">
-                  <button type="button"
-                    (click)="toggleDropdown(affiliate.id ?? affiliate.documentNumber); $event.stopPropagation()"
+                <div>
+                  <button type="button" #actionBtn
+                    (click)="toggleDropdown(affiliate.id ?? affiliate.documentNumber, actionBtn); $event.stopPropagation()"
                     class="inline-flex items-center justify-center w-8 h-8 text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
                     title="Acciones">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -198,7 +198,9 @@
                   </button>
 
                   @if (openDropdownId() === (affiliate.id ?? affiliate.documentNumber)) {
-                  <div class="absolute left-0 z-20 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+                  <div class="fixed z-50 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1"
+                    [style.top.px]="dropdownPos().top"
+                    [style.left.px]="dropdownPos().left">
 
                     <!-- Editar -->
                     <button type="button" (click)="openEdit(affiliate); closeDropdown()"
@@ -232,7 +234,7 @@
                     }
 
                     <!-- Enviar correo -->
-                    @if (affiliate.documents && affiliate.documents.length > 0 && affiliate.documents[0].documentUrl) {
+                    @if (isGestionAffiliate(affiliate) && affiliate.documents && affiliate.documents.length > 0 && affiliate.documents[0].documentUrl) {
                     <button type="button" (click)="sendEmail(affiliate); closeDropdown()"
                       [disabled]="sendingEmailId() === +affiliate.id!"
                       class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -253,7 +255,7 @@
                     }
 
                     <!-- Descargar documento -->
-                    @if (affiliate.documents && affiliate.documents.length > 0 && affiliate.documents[0].documentUrl) {
+                    @if (isGestionAffiliate(affiliate) && affiliate.documents && affiliate.documents.length > 0 && affiliate.documents[0].documentUrl) {
                     <button type="button" (click)="downloadDocument(affiliate); closeDropdown()"
                       class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-emerald-700 hover:bg-emerald-50 transition-colors">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">

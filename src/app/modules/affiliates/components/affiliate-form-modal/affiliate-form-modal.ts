@@ -1,4 +1,4 @@
-import { Component, inject, input, output, OnInit, signal, effect } from '@angular/core';
+import { Component, inject, input, output, OnInit, signal, effect, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AffiliateMembersService } from '../../services/affiliate-members.service';
@@ -316,6 +316,7 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   selectedFile: File | null = null;
+  @ViewChild('fileInput') fileInputRef?: ElementRef<HTMLInputElement>;
 
   private static readonly ALLOWED_FILE_TYPES = ['application/pdf'];
   private static readonly MAX_FILE_SIZE_MB = 10;
@@ -355,6 +356,9 @@ export class AffiliateFormModalComponent implements OnInit {
     this.selectedFile = null;
     this.fileError.set(null);
     this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+    if (this.fileInputRef?.nativeElement) {
+      this.fileInputRef.nativeElement.value = '';
+    }
   }
 
   onDocumentNumberBlur(): void {
