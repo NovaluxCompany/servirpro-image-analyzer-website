@@ -14,6 +14,8 @@ export interface AffiliateMember {
   // Datos personales
   documentType: DocumentType;
   documentNumber: string;
+  firstName?: string;
+  lastName?: string;
   fullName: string;
   birthDate?: string;
   documentExpDate?: string;
@@ -66,6 +68,8 @@ export interface AffiliateMember {
 export interface CreateAffiliateMemberDto {
   documentType: string;
   documentNumber: string;
+  firstName?: string;
+  lastName?: string;
   fullName: string;
   birthDate?: string;
   documentExpDate?: string;
