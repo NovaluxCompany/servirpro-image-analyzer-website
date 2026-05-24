@@ -1,15 +1,14 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { ToastService } from '../../service/toast.service';
 
 @Component({
   selector: 'app-toast-container',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <div class="fixed top-4 right-4 z-50 space-y-2">
       @for (toast of toastService.toasts(); track toast.id) {
-        <div 
+        <div
           [class]="getToastClass(toast.type)"
           class="flex items-center p-4 w-full max-w-sm text-gray-500 bg-white rounded-lg shadow border animate-slide-in"
           role="alert"
@@ -30,8 +29,8 @@ import { ToastService } from '../../service/toast.service';
             }
           </div>
           <div class="ml-3 text-sm font-normal">{{ toast.message }}</div>
-          <button 
-            type="button" 
+          <button
+            type="button"
             (click)="toastService.removeToast(toast.id)"
             class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8"
           >

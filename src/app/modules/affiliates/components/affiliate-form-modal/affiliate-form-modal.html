@@ -1,364 +1,478 @@
 @if (isVisible()) {
-  <!-- Overlay -->
-  <div class="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-    <div class="relative w-full max-w-4xl my-6 bg-white rounded-2xl shadow-2xl flex flex-col">
+<!-- Overlay -->
+<div class="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+  <div class="relative w-full max-w-4xl my-6 bg-white rounded-2xl shadow-2xl flex flex-col">
 
-      <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-800 rounded-t-2xl">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-            </svg>
-          </div>
-          <div>
-            <h2 class="text-lg font-bold text-white">{{ title }}</h2>
-            <p class="text-xs text-blue-200">Completa los campos requeridos (marcados con *)</p>
-          </div>
-        </div>
-        <button type="button" (click)="onClose()"
-          class="w-8 h-8 flex items-center justify-center rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-800 rounded-t-2xl">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
           </svg>
-        </button>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-white">{{ title }}</h2>
+          <p class="text-xs text-blue-200">Completa los campos requeridos (marcados con *)</p>
+        </div>
       </div>
+      <button type="button" (click)="onClose()"
+        class="w-8 h-8 flex items-center justify-center rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
 
-      <!-- Body -->
-      <div class="flex-1 overflow-y-auto p-6 space-y-6">
+    <!-- Body -->
+    <div class="flex-1 overflow-y-auto p-6 space-y-6">
 
-        @if (errorMessage()) {
-          <div class="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-            <svg class="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p class="text-sm text-red-700">{{ errorMessage() }}</p>
-          </div>
-        }
+      @if (errorMessage()) {
+      <div class="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+        <svg class="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p class="text-sm text-red-700">{{ errorMessage() }}</p>
+      </div>
+      }
 
-        <form [formGroup]="form">
+      <form [formGroup]="form">
 
-          <!-- SECCION 1: DATOS PERSONALES -->
-          <div class="border border-gray-200 rounded-xl overflow-hidden">
-            <div class="flex items-center gap-3 px-4 py-3 bg-blue-50 border-b border-blue-100">
+        <!-- SECCION 1: DATOS PERSONALES -->
+        <div class="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+          <!-- Encabezado como botón para alternar el estado -->
+          <button type="button" (click)="section1Open = !section1Open"
+            class="w-full flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors border-b border-blue-100 focus:outline-none">
+            <div class="flex items-center gap-3">
               <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
                 <span class="text-xs font-bold text-white">1</span>
               </div>
               <h3 class="font-semibold text-blue-800 text-sm">Datos Personales</h3>
             </div>
-            <div class="p-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <!-- El icono ahora está aquí y rota 180 grados si está abierto -->
+            <svg class="w-5 h-5 text-blue-600 transition-transform duration-300" [class.rotate-180]="section1Open"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
 
-              <!-- Tipo de documento -->
-              <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                  Tipo de documento <span class="text-red-500">*</span>
-                </label>
-                <select formControlName="documentType"
-                  class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  [class.border-red-400]="isFieldInvalid('documentType')"
-                  [class.border-gray-300]="!isFieldInvalid('documentType')">
-                  @for (dt of documentTypes; track dt) {
-                    <option [value]="dt">{{ dt }}</option>
-                  }
-                </select>
-                @if (isFieldInvalid('documentType')) {
-                  <p class="mt-1 text-xs text-red-500">Campo requerido</p>
+          <!-- EL CONTENIDO SOLO SE MUESTRA SI section1Open ES TRUE -->
+          @if (section1Open) {
+          <div class="p-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
+            <!-- Tipo de documento -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                Tipo de documento <span class="text-red-500">*</span>
+              </label>
+              <select formControlName="documentType"
+                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                [class.border-red-400]="isFieldInvalid('documentType')">
+                @for (dt of documentTypes; track dt) {
+                <option [value]="dt">{{ dt }}</option>
                 }
+              </select>
+            </div>
+
+            <!-- Numero de documento -->
+
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                Numero de documento <span class="text-red-500">*</span>
+              </label>
+              <input type="text" formControlName="documentNumber" maxlength="20" placeholder="Ej: 1000334535"
+                (blur)="onDocumentNumberBlur()"
+                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                [class.border-red-400]="isFieldInvalid('documentNumber') || duplicateDocument()"
+                [class.border-gray-300]="!isFieldInvalid('documentNumber') && !duplicateDocument()">
+              @if (isFieldInvalid('documentNumber')) {
+              <p class="mt-1 text-xs text-red-500">Campo requerido (max. 20 caracteres)</p>
+              }
+              @if (duplicateDocument()) {
+              <p class="mt-1 text-xs text-red-500 font-semibold">Ya existe un afiliado con este numero de documento.</p>
+              }
+            </div>
+
+            <!-- Nombres -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                Nombres <span class="text-red-500">*</span>
+              </label>
+              <input type="text" formControlName="firstName" maxlength="255" placeholder="Ej: Juan Carlos"
+                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                [class.border-red-400]="isFieldInvalid('firstName')"
+                [class.border-gray-300]="!isFieldInvalid('firstName')">
+              @if (isFieldInvalid('firstName')) {
+              <p class="mt-1 text-xs text-red-500">Campo requerido</p>
+              }
+            </div>
+
+            <!-- Apellidos -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                Apellidos <span class="text-red-500">*</span>
+              </label>
+              <input type="text" formControlName="lastName" maxlength="255" placeholder="Ej: Perez Garcia"
+                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                [class.border-red-400]="isFieldInvalid('lastName')"
+                [class.border-gray-300]="!isFieldInvalid('lastName')">
+              @if (isFieldInvalid('lastName')) {
+              <p class="mt-1 text-xs text-red-500">Campo requerido</p>
+              }
+            </div>
+
+            <!-- Referencia (obligatorio, desplegable buscable) -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                Referencia <span class="text-red-500">*</span>
+              </label>
+              <app-searchable-select formControlName="reference" [options]="referenceOptions"
+                placeholder="Seleccionar referencia..." [allowFreeText]="true"
+                [isInvalid]="isFieldInvalid('reference')">
+              </app-searchable-select>
+              @if (isFieldInvalid('reference')) {
+              <p class="mt-1 text-xs text-red-500">Campo requerido</p>
+              }
+            </div>
+
+            <!-- Fecha nacimiento -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">Fecha de nacimiento</label>
+              <input type="date" formControlName="birthDate"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <!-- Vencimiento documento -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">Fecha expedición documento</label>
+              <input type="date" formControlName="documentExpDate"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <!-- Telefono -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">Telefono / Celular</label>
+              <input type="text" formControlName="phone" maxlength="50" placeholder="Ej: 3001234567"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <!-- Correo -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">Correo electronico <span
+                  class="text-red-500">*</span></label>
+              <input type="email" formControlName="email" placeholder="Ej: usuario@correo.com"
+                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                [class.border-red-400]="isFieldInvalid('email')" [class.border-gray-300]="!isFieldInvalid('email')"
+                required>
+              @if (isFieldInvalid('email')) {
+              <p class="mt-1 text-xs text-red-500">Correo no valido</p>
+              }
+            </div>
+
+            <!-- Municipio -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">Municipio</label>
+              <input type="text" formControlName="municipality" maxlength="255" placeholder="Ej: Medellin"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <!-- Direccion -->
+            <div class="sm:col-span-2 lg:col-span-3">
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">Direccion de residencia</label>
+              <input type="text" formControlName="address" maxlength="500" placeholder="Ej: Calle 10 # 43-50, Apto 301"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+
+            <!-- Fecha ingreso empresa -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                Fecha de ingreso <span class="text-red-500">*</span>
+              </label>
+              <input type="date" formControlName="companyEntryDate" readonly [class.cursor-not-allowed]="true"
+                class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-600">
+            </div>
+          </div>
+          }
+        </div>
+
+        <!-- SECCION 2: DATOS DE AFILIACION -->
+        <div class="border border-gray-200 rounded-xl overflow-hidden mt-6 bg-white shadow-sm">
+
+          <!-- Botón de Encabezado -->
+          <button type="button" (click)="section2Open = !section2Open"
+            class="w-full flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors border-b border-blue-100 focus:outline-none">
+            <div class="flex items-center gap-3">
+              <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                <span class="text-xs font-bold text-white">2</span>
               </div>
+              <h3 class="font-semibold text-blue-800 text-sm">Datos de Afiliación</h3>
+            </div>
 
-              <!-- Numero de documento -->
+            <svg class="w-5 h-5 text-blue-600 transition-transform duration-300" [class.rotate-180]="section2Open"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          <!-- Contenido Colapsable -->
+          @if(section2Open) {
+          <div class="p-4">
+
+            <!-- Lógica de Carga de Catálogos -->
+            @if (catalogsLoading()) {
+            <div class="flex items-center justify-center py-10 gap-2 text-sm text-gray-500">
+              <svg class="w-5 h-5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <span>Cargando catálogos...</span>
+            </div>
+            } @else {
+
+            <!-- Grid de campos -->
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
+              <!-- Plan -->
               <div>
                 <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                  Numero de documento <span class="text-red-500">*</span>
+                  Plan <span class="text-red-500">*</span>
                 </label>
-                <input type="text" formControlName="documentNumber" maxlength="20"
-                  placeholder="Ej: 1000334535"
-                  (blur)="onDocumentNumberBlur()"
-                  class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  [class.border-red-400]="isFieldInvalid('documentNumber') || duplicateDocument()"
-                  [class.border-gray-300]="!isFieldInvalid('documentNumber') && !duplicateDocument()">
-                @if (isFieldInvalid('documentNumber')) {
-                  <p class="mt-1 text-xs text-red-500">Campo requerido (max. 20 caracteres)</p>
-                }
-                @if (duplicateDocument()) {
-                  <p class="mt-1 text-xs text-red-500 font-semibold">Ya existe un afiliado con este numero de documento.</p>
-                }
-              </div>
-
-              <!-- Nombre completo -->
-              <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                  Nombre completo <span class="text-red-500">*</span>
-                </label>
-                <input type="text" formControlName="fullName" maxlength="255"
-                  placeholder="Ej: Juan Perez Garcia"
-                  class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  [class.border-red-400]="isFieldInvalid('fullName')"
-                  [class.border-gray-300]="!isFieldInvalid('fullName')">
-                @if (isFieldInvalid('fullName')) {
-                  <p class="mt-1 text-xs text-red-500">Campo requerido</p>
+                <app-searchable-select formControlName="planId" [options]="planOptions"
+                  placeholder="Seleccionar plan..." [isInvalid]="isFieldInvalid('planId')">
+                </app-searchable-select>
+                @if (isFieldInvalid('planId')) {
+                <p class="mt-1 text-xs text-red-500">Campo requerido</p>
                 }
               </div>
 
               <!-- Profesion -->
               <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Profesion</label>
-                <input type="text" formControlName="profession" maxlength="255"
-                  placeholder="Ej: Ingeniero, Contador..."
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Profesion @if
+                  (selectedPlanLabel.includes('ARL')) {
+                  <span class="text-red-500">*</span>
+                  }</label>
+
+                <input type="text" formControlName="profession" maxlength="255" placeholder="Ej: Ingeniero, Contador..."
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  [class.cursor-not-allowed]="!selectedPlanLabel.includes('ARL')"
+                  [readonly]="!selectedPlanLabel.includes('ARL')">
               </div>
 
-              <!-- Referencia (obligatorio, desplegable buscable) -->
+              <!-- Empresa -->
               <div>
                 <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                  Referencia <span class="text-red-500">*</span>
+                  Empresa
                 </label>
-                <app-searchable-select
-                  formControlName="reference"
-                  [options]="referenceOptions"
-                  placeholder="Seleccionar referencia..."
-                  [allowFreeText]="true"
-                  [isInvalid]="isFieldInvalid('reference')">
+                <app-searchable-select formControlName="companyId" [options]="companyOptions"
+                  placeholder="Seleccionar empresa...">
                 </app-searchable-select>
-                @if (isFieldInvalid('reference')) {
-                  <p class="mt-1 text-xs text-red-500">Campo requerido</p>
-                }
               </div>
 
-              <!-- Fecha nacimiento -->
+              <!-- Agrupadora -->
               <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Fecha de nacimiento</label>
-                <input type="date" formControlName="birthDate"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                  Agrupadora <span class="text-red-500">*</span>
+                </label>
+                <app-searchable-select formControlName="grouperId" [options]="grouperOptions"
+                  placeholder="Seleccionar agrupadora..." [isInvalid]="isFieldInvalid('grouperId')">
+                </app-searchable-select>
               </div>
 
-              <!-- Vencimiento documento -->
+              <!-- Asesor -->
               <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Fecha expedición documento</label>
-                <input type="date" formControlName="documentExpDate"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                  Asesor <span class="text-red-500">*</span>
+                </label>
+                <app-searchable-select formControlName="advisorId" [options]="advisorOptions"
+                  placeholder="Seleccionar asesor..." [isInvalid]="isFieldInvalid('advisorId')">
+                </app-searchable-select>
               </div>
 
-              <!-- Telefono -->
+              <!-- EPS -->
               <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Telefono / Celular</label>
-                <input type="text" formControlName="phone" maxlength="50"
-                  placeholder="Ej: 3001234567"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                  EPS asignada
+                  @if (selectedPlanLabel.includes('EPS')) {
+                  <span class="text-red-500">*</span>
+                  }
+                </label>
+
+                <app-searchable-select formControlName="epsId" [options]="epsOptions" placeholder="Seleccionar EPS..."
+                  [isInvalid]="isFieldInvalid('epsId')" [class.opacity-60]="!selectedPlanLabel.includes('EPS')"
+                  [class.cursor-not-allowed]="!selectedPlanLabel.includes('EPS')"
+                  [class.pointer-events-none]="!selectedPlanLabel.includes('EPS')">
+                </app-searchable-select>
               </div>
 
-              <!-- Correo -->
+              <!-- Fecha de ingreso -->
               <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Correo electronico</label>
-                <input type="email" formControlName="email"
-                  placeholder="Ej: usuario@correo.com"
-                  class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  [class.border-red-400]="isFieldInvalid('email')"
-                  [class.border-gray-300]="!isFieldInvalid('email')">
-                @if (isFieldInvalid('email')) {
-                  <p class="mt-1 text-xs text-red-500">Correo no valido</p>
-                }
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                  Fecha de ingreso <span class="text-xs font-normal text-gray-400">(automática)</span>
+                </label>
+                <input type="date" formControlName="entryDate" readonly [class.cursor-not-allowed]="true"
+                  class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-600">
               </div>
 
-              <!-- Municipio -->
+              <!-- ARL -->
               <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Municipio</label>
-                <input type="text" formControlName="municipality" maxlength="255"
-                  placeholder="Ej: Medellin"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Nivel ARL (1-5)@if
+                  (selectedPlanLabel.includes('ARL')) {
+                  <span class="text-red-500">*</span>
+                  }</label>
+                <input type="number" formControlName="arl" min="1" max="5"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  [class.cursor-not-allowed]="!selectedPlanLabel.includes('ARL')"
+                  [readonly]="!selectedPlanLabel.includes('ARL')">
               </div>
 
-              <!-- Direccion -->
+              <!-- Pension -->
+              <div>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">AFP / Fondo de pensiones @if
+                  (selectedPlanLabel.includes('AFP')) {
+                  <span class="text-red-500">*</span>
+                  }
+                </label>
+
+                <app-searchable-select formControlName="pensionId" [options]="pensionOptions"
+                  placeholder="Seleccionar AFP / Fondo de pensiones..." [isInvalid]="isFieldInvalid('pensionId')"
+                  [class.opacity-60]="!selectedPlanLabel.includes('AFP')"
+                  [class.pointer-events-none]="!selectedPlanLabel.includes('AFP')">
+                </app-searchable-select>
+              </div>
+
+              <!-- Caja compensacion -->
+
+              <div>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                  Caja de compensación asignada
+                  @if (selectedPlanLabel.includes('CCF')) {
+                  <span class="text-red-500">*</span>
+                  }
+                </label>
+
+                <app-searchable-select formControlName="compensationBoxId" [options]="compensationBoxOptions"
+                  placeholder="Seleccionar Caja de compensación..." [isInvalid]="isFieldInvalid('compensationBoxId')"
+                  [class.opacity-60]="!selectedPlanLabel.includes('CCF')"
+                  [class.pointer-events-none]="!selectedPlanLabel.includes('CCF')">
+                </app-searchable-select>
+              </div>
+
+              <!-- Documento -->
               <div class="sm:col-span-2 lg:col-span-3">
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Direccion de residencia</label>
-                <input type="text" formControlName="address" maxlength="500"
-                  placeholder="Ej: Calle 10 # 43-50, Apto 301"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                  Documento de identidad
+                  @if (!form.get('documentFile')?.disabled) {
+                  <span class="text-red-500">*</span>
+                  }
+                  <span class="ml-1 text-gray-400 font-normal">(Solo PDF · Requerido para Gestión)</span>
+                </label>
 
-              <!-- Fecha ingreso WhatsApp -->
-              <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Fecha ingreso WhatsApp</label>
-                <input type="date" formControlName="whatsappEntryDate"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
+                <!-- Zona de carga -->
+                <div class="relative mt-1 flex flex-col items-center justify-center gap-1 border-2 border-dashed rounded-xl p-5 transition-colors min-h-[96px]"
+                  [class.border-blue-300]="!form.get('documentFile')?.disabled && !form.get('documentFile')?.value && !isFieldInvalid('documentFile')"
+                  [class.border-red-300]="isFieldInvalid('documentFile')"
+                  [class.border-green-300]="!!form.get('documentFile')?.value"
+                  [class.border-gray-200]="!!form.get('documentFile')?.disabled"
+                  [class.bg-blue-50\/50]="!form.get('documentFile')?.disabled && !form.get('documentFile')?.value"
+                  [class.bg-green-50]="!!form.get('documentFile')?.value"
+                  [class.bg-gray-50]="!!form.get('documentFile')?.disabled"
+                  [class.opacity-50]="!!form.get('documentFile')?.disabled"
+                  [class.cursor-not-allowed]="!!form.get('documentFile')?.disabled">
 
-              <!-- Fecha ingreso empresa -->
-              <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Fecha ingreso empresa</label>
-                <input type="date" formControlName="companyEntryDate"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
-
-            </div>
-          </div>
-
-          <!-- SECCION 2: DATOS DE AFILIACION -->
-          <div class="border border-gray-200 rounded-xl overflow-hidden mt-6">
-            <div class="flex items-center gap-3 px-4 py-3 bg-blue-50 border-b border-blue-100">
-              <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                <span class="text-xs font-bold text-white">2</span>
-              </div>
-              <h3 class="font-semibold text-blue-800 text-sm">Datos de Afiliacion</h3>
-            </div>
-            <div class="p-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-
-              @if (catalogsLoading()) {
-                <div class="col-span-full flex items-center justify-center py-6 gap-2 text-sm text-gray-500">
-                  <svg class="w-4 h-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  @if (!form.get('documentFile')?.value) {
+                  <!-- Estado vacío -->
+                  <svg class="w-7 h-7"
+                    [class.text-blue-400]="!form.get('documentFile')?.disabled"
+                    [class.text-gray-300]="!!form.get('documentFile')?.disabled"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Cargando catalogos...
-                </div>
-              } @else {
-
-                <!-- Plan -->
-                <div>
-                  <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                    Plan <span class="text-red-500">*</span>
-                  </label>
-                  <app-searchable-select
-                    formControlName="planId"
-                    [options]="planOptions"
-                    placeholder="Seleccionar plan..."
-                    [isInvalid]="isFieldInvalid('planId')">
-                  </app-searchable-select>
-                  @if (isFieldInvalid('planId')) {
-                    <p class="mt-1 text-xs text-red-500">Campo requerido</p>
+                  <p class="text-xs font-medium"
+                    [class.text-blue-600]="!form.get('documentFile')?.disabled"
+                    [class.text-gray-400]="!!form.get('documentFile')?.disabled">
+                    @if (!form.get('documentFile')?.disabled) { Haz clic para seleccionar un PDF }
+                    @else { Disponible solo para agrupadora de Gestión }
+                  </p>
+                  <p class="text-xs text-gray-400">Máximo 10 MB</p>
+                  } @else {
+                  <!-- Archivo seleccionado -->
+                  <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p class="text-xs font-semibold text-green-700 text-center break-all px-2">{{ form.get('documentFile')?.value }}</p>
+                  <button type="button" (click)="clearFile()"
+                    class="mt-1 text-xs text-red-500 hover:text-red-700 underline transition-colors">
+                    Quitar archivo
+                  </button>
                   }
+
+                  <!-- Input oculto sobre toda la zona -->
+                  <input type="file"
+                    #fileInput
+                    accept=".pdf"
+                    (change)="onFileSelected($event)"
+                    [disabled]="!!form.get('documentFile')?.disabled"
+                    class="absolute inset-0 w-full h-full opacity-0"
+                    [class.cursor-pointer]="!form.get('documentFile')?.disabled && !form.get('documentFile')?.value"
+                    [class.cursor-not-allowed]="!!form.get('documentFile')?.disabled"
+                    [class.pointer-events-none]="!!form.get('documentFile')?.value" />
                 </div>
 
-                <!-- Empresa -->
-                <div>
-                  <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                    Empresa <span class="text-red-500">*</span>
-                  </label>
-                  <app-searchable-select
-                    formControlName="companyId"
-                    [options]="companyOptions"
-                    placeholder="Seleccionar empresa..."
-                    [isInvalid]="isFieldInvalid('companyId')">
-                  </app-searchable-select>
-                  @if (isFieldInvalid('companyId')) {
-                    <p class="mt-1 text-xs text-red-500">Campo requerido</p>
-                  }
-                </div>
+                @if (fileError()) {
+                <p class="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                      clip-rule="evenodd" />
+                  </svg>
+                  {{ fileError() }}
+                </p>
+                }
+                @if (isFieldInvalid('documentFile')) {
+                <p class="mt-1.5 text-xs text-red-500">El documento es requerido para afiliados de Gestión</p>
+                }
+              </div>
+            </div> <!-- Fin Grid -->
+            }
+          </div> <!-- Fin P-4 -->
+          }
+        </div>
 
-                <!-- Agrupadora -->
-                <div>
-                  <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                    Agrupadora <span class="text-red-500">*</span>
-                  </label>
-                  <app-searchable-select
-                    formControlName="grouperId"
-                    [options]="grouperOptions"
-                    placeholder="Seleccionar agrupadora..."
-                    [isInvalid]="isFieldInvalid('grouperId')">
-                  </app-searchable-select>
-                  @if (isFieldInvalid('grouperId')) {
-                    <p class="mt-1 text-xs text-red-500">Campo requerido</p>
-                  }
-                </div>
-
-                <!-- Asesor -->
-                <div>
-                  <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                    Asesor <span class="text-red-500">*</span>
-                  </label>
-                  <app-searchable-select
-                    formControlName="advisorId"
-                    [options]="advisorOptions"
-                    placeholder="Seleccionar asesor..."
-                    [isInvalid]="isFieldInvalid('advisorId')">
-                  </app-searchable-select>
-                  @if (isFieldInvalid('advisorId')) {
-                    <p class="mt-1 text-xs text-red-500">Campo requerido</p>
-                  }
-                </div>
-
-                <!-- EPS -->
-                <div>
-                  <label class="block mb-1.5 text-xs font-semibold text-gray-700">EPS asignada</label>
-                  <app-searchable-select
-                    formControlName="epsId"
-                    [options]="epsOptions"
-                    placeholder="Seleccionar EPS...">
-                  </app-searchable-select>
-                </div>
-
-                <!-- Fecha de ingreso (automatica) -->
-                <div>
-                  <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                    Fecha de ingreso
-                    <span class="text-xs font-normal text-gray-400">(automatica)</span>
-                  </label>
-                  <input type="date" formControlName="entryDate" readonly
-                    class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-600">
-                </div>
-
-                <!-- ARL -->
-                <div>
-                  <label class="block mb-1.5 text-xs font-semibold text-gray-700">Nivel ARL (1-5)</label>
-                  <input type="number" formControlName="arl" min="1" max="5"
-                    placeholder="Ej: 1"
-                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-
-                <!-- Pension -->
-                <div>
-                  <label class="block mb-1.5 text-xs font-semibold text-gray-700">AFP / Fondo de pensiones</label>
-                  <input type="text" formControlName="pension"
-                    placeholder="Ej: Porvenir"
-                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-
-                <!-- Caja compensacion -->
-                <div>
-                  <label class="block mb-1.5 text-xs font-semibold text-gray-700">Caja de compensacion</label>
-                  <input type="text" formControlName="compensationFund"
-                    placeholder="Ej: COMFAMA"
-                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-
-              }
-            </div>
-          </div>
-
-        </form>
-      </div>
-
-      <!-- Footer -->
-      <div class="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-        <p class="text-xs text-gray-500">
-          <span class="text-red-500">*</span> Campos obligatorios
-        </p>
-        <div class="flex items-center gap-3">
-          <button type="button" (click)="onClose()" [disabled]="isLoading()"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
-            Cancelar
-          </button>
-          <button type="button" (click)="onSubmit()"
-            [disabled]="form.invalid || isLoading()"
-            class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-            @if (isLoading()) {
+        <!-- Footer -->
+        <div
+          class="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+          <p class="text-xs text-gray-500">
+            <span class="text-red-500">*</span> Campos obligatorios
+          </p>
+          <div class="flex items-center gap-3">
+            <button type="button" (click)="onClose()" [disabled]="isLoading()"
+              class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+              Cancelar
+            </button>
+            <button type="button" (click)="onSubmit()" [disabled]="form.invalid || isLoading()"
+              class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+              @if (isLoading()) {
               <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
               Guardando...
-            } @else {
+              } @else {
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
               {{ isEdit ? 'Guardar cambios' : 'Crear afiliado' }}
-            }
-          </button>
+              }
+            </button>
+          </div>
         </div>
-      </div>
-
+      </form>
     </div>
   </div>
+</div>
 }

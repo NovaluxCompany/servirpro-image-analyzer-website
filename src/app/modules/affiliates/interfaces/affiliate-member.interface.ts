@@ -1,10 +1,21 @@
-export type DocumentType = 'CC' | 'CE' | 'TI' | 'PA' | 'NIT';
+export type DocumentType = 'CC' | 'CE' | 'TI' | 'PA' | 'NIT' | 'PPT';
+
+// ── Nueva Interfaz Relacional para Documentos ──────────────────────
+export interface AffiliateDocument {
+  id: number;
+  affiliationId: number;
+  documentUrl: string; // URL pública entregada por Supabase
+  fileName: string;    // Nombre único del archivo en el Bucket
+  position: number;    // Índice de ordenamiento del archivo
+}
 
 export interface AffiliateMember {
   id?: string;
   // Datos personales
   documentType: DocumentType;
   documentNumber: string;
+  firstName?: string;
+  lastName?: string;
   fullName: string;
   birthDate?: string;
   documentExpDate?: string;
@@ -13,6 +24,7 @@ export interface AffiliateMember {
   address?: string;
   municipality?: string;
   reference?: string;
+  // Fecha whatsapp
   whatsappEntryDate?: string;
   companyEntryDate?: string;
   profession?: string;
@@ -27,6 +39,10 @@ export interface AffiliateMember {
   advisorName?: string;
   epsId?: string;
   epsName?: string;
+  pensionId?: string;
+  pensionName?: string;
+  compensationBoxId?: string;
+  compensationBoxName?: string;
   isActive?: boolean;
   entryDate?: string;
   // Datos ADRES
@@ -41,11 +57,19 @@ export interface AffiliateMember {
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string;
+
+  // Modificado: Ahora mapea el array relacional que viene del Backend
+  documents?: AffiliateDocument[];
+
+  // Mantenemos la referencia en memoria del archivo físico si la usas en formularios reactivos
+  document?: File;
 }
 
 export interface CreateAffiliateMemberDto {
   documentType: string;
   documentNumber: string;
+  firstName?: string;
+  lastName?: string;
   fullName: string;
   birthDate?: string;
   documentExpDate?: string;
@@ -57,15 +81,16 @@ export interface CreateAffiliateMemberDto {
   profession?: string;
   whatsappEntryDate?: string;
   companyEntryDate?: string;
-  planId: string;
-  companyId: string;
-  grouperId: string;
-  advisorId: string;
-  epsId?: string;
+  planId: number | null;
+  companyId?: number | null;
+  grouperId: number | null;
+  advisorId: number | null;
+  epsId?: number | null;
+  pensionId?: number | null;
+  compensationBoxId?: number | null;
   isActive?: boolean;
   entryDate?: string;
   arl?: number;
-  pension?: string;
   compensationFund?: string;
 }
 

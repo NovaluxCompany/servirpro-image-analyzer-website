@@ -1,10 +1,10 @@
-import { Component, inject, input, output, OnInit, signal, effect } from '@angular/core';
+import { Component, inject, input, output, OnInit, signal, effect, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AffiliateMembersService } from '../../services/affiliate-members.service';
 import { ToastService } from '../../../../core/service/toast.service';
 import { AffiliateMember, CreateAffiliateMemberDto } from '../../interfaces/affiliate-member.interface';
-import { Plan, Company, Grouper, Advisor, EpsItem } from '../../interfaces/catalog.interface';
+import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox } from '../../interfaces/catalog.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 import { forkJoin } from 'rxjs';
 
@@ -30,6 +30,7 @@ export class AffiliateFormModalComponent implements OnInit {
   isLoading = signal(false);
   duplicateDocument = signal(false);
   errorMessage = signal<string | null>(null);
+  fileError = signal<string | null>(null);
   catalogsLoading = signal(true);
 
   plans = signal<Plan[]>([]);
@@ -37,9 +38,22 @@ export class AffiliateFormModalComponent implements OnInit {
   groupers = signal<Grouper[]>([]);
   advisors = signal<Advisor[]>([]);
   epsList = signal<EpsItem[]>([]);
+  pensions = signal<Pension[]>([]);
+  compensationBoxes = signal<CompensationBox[]>([]);
   references = signal<string[]>([]);
 
-  readonly documentTypes = ['CC', 'CE', 'TI', 'PA', 'NIT'];
+  section1Open = true
+  section2Open = true
+
+  readonly documentTypes = ['CC', 'CE', 'TI', 'PA', 'NIT', 'PPT'];
+
+  toggleSection1() {
+    this.section1Open = !this.section1Open;
+  }
+
+  toggleSection2() {
+    this.section2Open = !this.section2Open;
+  }
 
   // SelectOption arrays for searchable dropdowns
   get planOptions(): SelectOption[] {
@@ -60,34 +74,45 @@ export class AffiliateFormModalComponent implements OnInit {
   get referenceOptions(): SelectOption[] {
     return this.references().map((r) => ({ value: r, label: r }));
   }
+  get pensionOptions(): SelectOption[] {
+    return this.pensions().map((p) => ({
+      value: String(p.id),
+      label: (p as any).namePensions || p.name
+    }));
+  }
+  get compensationBoxOptions(): SelectOption[] {
+    return this.compensationBoxes().map((c) => ({ value: String(c.id), label: (c as any).nameCompensationBox || c.name }));
+  }
 
   form = this._fb.group({
     // Datos personales
     documentType: ['CC', Validators.required],
     documentNumber: ['', [Validators.required, Validators.maxLength(20)]],
-    fullName: ['', [Validators.required, Validators.maxLength(255)]],
+    firstName: ['', [Validators.required, Validators.maxLength(255)]],
+    lastName: ['', [Validators.required, Validators.maxLength(255)]],
     birthDate: [''],
     documentExpDate: [''],
     phone: ['', Validators.maxLength(50)],
-    email: ['', Validators.email],
+    email: ['', [Validators.required, Validators.email]],
     address: ['', Validators.maxLength(500)],
     municipality: ['', Validators.maxLength(255)],
     reference: ['', Validators.required],
     profession: ['', Validators.maxLength(255)],
-    whatsappEntryDate: [''],
-    companyEntryDate: [''],
+    //Fecha whatsapp
+    companyEntryDate: [{ value: '', disabled: true }, Validators.required],
     // Datos de afiliación
     planId: ['', Validators.required],
-    companyId: ['', Validators.required],
+    companyId: [''],
     grouperId: ['', Validators.required],
     advisorId: ['', Validators.required],
     epsId: [''],
+    pensionId: [''],
+    compensationBoxId: [''],
     isActive: [true],
-    entryDate: [''],
+    entryDate: [{ value: '', disabled: true }],
+    documentFile: [{ value: <File | string | null>null, disabled: true }],
     // Seguridad social (sin ADRES, sin price/deposit/charge)
     arl: [<number | null>null],
-    pension: [''],
-    compensationFund: [''],
   });
 
   constructor() {
@@ -103,14 +128,133 @@ export class AffiliateFormModalComponent implements OnInit {
             isActive: true,
           });
           this.form.get('entryDate')?.setValue(this.todayDate());
+          this.form.get('companyEntryDate')?.setValue(this.todayDate());
           this.duplicateDocument.set(false);
           this.errorMessage.set(null);
+          this.selectedFile = null;
+          this.existingDocumentId = null;
+          this.keepExistingDocument = true;
+          this.fileError.set(null);
+          if (this.fileInputRef?.nativeElement) {
+            this.fileInputRef.nativeElement.value = '';
+          }
         }
       }
     });
   }
 
-  ngOnInit(): void {}
+  selectedPlanLabel: string = '';
+  selectedGrouperLabel: string = '';
+
+  validateAfp(pensionControl: AbstractControl | null) {
+    if (!this.selectedPlanLabel.includes('AFP')) {
+      pensionControl?.disable();
+      pensionControl?.setValue('');
+      pensionControl?.clearValidators();
+    } else {
+      pensionControl?.setValidators([Validators.required]);
+      pensionControl?.enable();
+    }
+  }
+
+  validateArl(arlControl: AbstractControl | null) {
+    if (!this.selectedPlanLabel.includes('ARL')) {
+      arlControl?.disable();
+      arlControl?.setValue('');
+      arlControl?.clearValidators();
+    } else {
+      arlControl?.setValidators(Validators.required);
+      arlControl?.enable();
+    }
+  }
+
+  validateCcf(ccfControl: AbstractControl | null) {
+    if (!this.selectedPlanLabel.includes('CCF')) {
+      ccfControl?.disable();
+      ccfControl?.setValue('');
+      ccfControl?.clearValidators();
+    } else {
+      ccfControl?.setValidators([Validators.required]);
+      ccfControl?.enable();
+    }
+  }
+
+  validateEps(epsControl: AbstractControl | null) {
+    if (!this.selectedPlanLabel.includes('EPS')) {
+      epsControl?.disable();
+      epsControl?.setValue('');
+      epsControl?.clearValidators();
+    } else {
+      epsControl?.setValidators(Validators.required);
+      epsControl?.enable();
+    }
+  }
+
+  validateDocumentFile() {
+    const fileControl = this.form.get('documentFile');
+    if (!fileControl) return;
+
+    const label = this.selectedGrouperLabel || '';
+
+    if (label.includes('GESTIÓN') || label.includes('GESTION')) {
+      fileControl.enable({ emitEvent: false });
+      fileControl.setValidators([Validators.required]);
+      // In edit mode, restore existing document display if user hasn't changed it
+      if (this.isEdit && this.existingDocumentId && this.keepExistingDocument && !fileControl.value) {
+        const existingDoc = this.affiliate()?.documents?.[0];
+        if (existingDoc) {
+          const displayName = existingDoc.fileName.split('/').pop() || existingDoc.fileName;
+          fileControl.setValue(displayName, { emitEvent: false });
+        }
+      }
+    } else {
+      // Clear selected file and mark existing document for deletion
+      this.selectedFile = null;
+      this.keepExistingDocument = false;
+      if (this.fileInputRef?.nativeElement) {
+        this.fileInputRef.nativeElement.value = '';
+      }
+      fileControl.clearValidators();
+      fileControl.setValue('', { emitEvent: false });
+      fileControl.disable({ emitEvent: false });
+    }
+
+    fileControl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  ngOnInit() {
+    this.form.get('planId')?.valueChanges.subscribe(value => {
+      this.updatePlanLogic(value);
+    });
+
+    const initialValue = this.form.get('planId')?.value;
+    if (initialValue) {
+      this.updatePlanLogic(initialValue);
+    }
+
+    this.form.get('grouperId')?.valueChanges.subscribe((value) => {
+      if (!value) {
+        this.selectedGrouperLabel = '';
+        this.validateDocumentFile();
+        return;
+      }
+
+      const selectedGrouper = this.groupers().find(g => String(g.id) === String(value));
+      this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
+
+      this.validateDocumentFile();
+    });
+  }
+
+  private updatePlanLogic(planId: any) {
+    const plan = this.planOptions.find(p => p.value === planId);
+    this.selectedPlanLabel = plan ? plan.label.toUpperCase() : '';
+
+    this.validateAfp(this.form.get('pensionId'));
+    this.validateArl(this.form.get('arl'));
+    this.validateCcf(this.form.get('compensationBoxId'));
+    this.validateEps(this.form.get('epsId'));
+  }
 
   get isEdit(): boolean {
     return this.mode() === 'edit';
@@ -142,25 +286,49 @@ export class AffiliateFormModalComponent implements OnInit {
       advisors: this._service.getAdvisors(),
       epsList: this._service.getEpsList(),
       references: this._service.getReferences(),
+      pensions: this._service.getPensions(),
+      compensationBoxes: this._service.getCompensationBoxes(),
     }).subscribe({
-      next: ({ plans, companies, groupers, advisors, epsList, references }) => {
+      next: ({ plans, companies, groupers, advisors, epsList, references, pensions, compensationBoxes }) => {
         this.plans.set(plans);
         this.companies.set(companies);
         this.groupers.set(groupers);
         this.advisors.set(advisors);
         this.epsList.set(epsList);
         this.references.set(references);
+        this.pensions.set(pensions);
+        this.compensationBoxes.set(compensationBoxes);
         this.catalogsLoading.set(false);
+
+        // Re-run plan/grouper logic once catalogs are loaded (edit mode has values before catalogs arrive)
+        const currentPlanId = this.form.get('planId')?.value;
+        if (currentPlanId) {
+          this.updatePlanLogic(currentPlanId);
+        }
+        const currentGrouperId = this.form.get('grouperId')?.value;
+        if (currentGrouperId) {
+          const selectedGrouper = this.groupers().find(g => String(g.id) === String(currentGrouperId));
+          this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
+          this.validateDocumentFile();
+        }
       },
       error: () => this.catalogsLoading.set(false),
     });
   }
 
   private patchForm(a: AffiliateMember): void {
+    this.selectedFile = null;
+    this.existingDocumentId = a.documents?.[0]?.id ?? null;
+    this.keepExistingDocument = true;
+    this.fileError.set(null);
+    if (this.fileInputRef?.nativeElement) {
+      this.fileInputRef.nativeElement.value = '';
+    }
     this.form.patchValue({
       documentType: a.documentType,
       documentNumber: a.documentNumber,
-      fullName: a.fullName,
+      firstName: a.firstName ?? '',
+      lastName: a.lastName ?? '',
       birthDate: this.toLocalDateStr(a.birthDate),
       documentExpDate: this.toLocalDateStr(a.documentExpDate),
       phone: a.phone ?? '',
@@ -169,20 +337,71 @@ export class AffiliateFormModalComponent implements OnInit {
       municipality: a.municipality ?? '',
       reference: a.reference ?? '',
       profession: a.profession ?? '',
-      whatsappEntryDate: this.toLocalDateStr(a.whatsappEntryDate),
-      companyEntryDate: this.toLocalDateStr(a.companyEntryDate),
-      planId: a.planId ? String(a.planId) : '',
+
       companyId: a.companyId ? String(a.companyId) : '',
+      planId: a.planId ? String(a.planId) : '',
       grouperId: a.grouperId ? String(a.grouperId) : '',
       advisorId: a.advisorId ? String(a.advisorId) : '',
       epsId: a.epsId ? String(a.epsId) : '',
       isActive: a.isActive ?? true,
-      entryDate: this.toLocalDateStr(a.entryDate),
+      companyEntryDate: this.toLocalDateStr(this.todayDate()),
+      entryDate: this.toLocalDateStr(this.todayDate()),
       arl: a.arl ?? null,
-      pension: a.pension ?? '',
-      compensationFund: a.compensationFund ?? '',
+      pensionId: a.pensionId ? String(a.pensionId) : '',
+      compensationBoxId: a.compensationBoxId ? String(a.compensationBoxId) : '',
+
     });
     this.errorMessage.set(null);
+  }
+
+  selectedFile: File | null = null;
+  existingDocumentId: number | null = null;
+  private keepExistingDocument = true;
+  @ViewChild('fileInput') fileInputRef?: ElementRef<HTMLInputElement>;
+
+  private static readonly ALLOWED_FILE_TYPES = ['application/pdf'];
+  private static readonly MAX_FILE_SIZE_MB = 10;
+
+  onFileSelected(event: any): void {
+    const file: File | null = event.target.files?.[0] ?? null;
+    this.fileError.set(null);
+
+    if (!file) {
+      this.selectedFile = null;
+      this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+      return;
+    }
+
+    if (!AffiliateFormModalComponent.ALLOWED_FILE_TYPES.includes(file.type)) {
+      this.fileError.set('Solo se permiten archivos en formato PDF.');
+      this.selectedFile = null;
+      this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+      event.target.value = '';
+      return;
+    }
+
+    const maxBytes = AffiliateFormModalComponent.MAX_FILE_SIZE_MB * 1024 * 1024;
+    if (file.size > maxBytes) {
+      this.fileError.set(`El archivo no puede superar ${AffiliateFormModalComponent.MAX_FILE_SIZE_MB} MB.`);
+      this.selectedFile = null;
+      this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+      event.target.value = '';
+      return;
+    }
+
+    this.selectedFile = file;
+    this.keepExistingDocument = false;
+    this.form.get('documentFile')?.setValue(file.name, { emitEvent: false });
+  }
+
+  clearFile(): void {
+    this.selectedFile = null;
+    this.keepExistingDocument = false;
+    this.fileError.set(null);
+    this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+    if (this.fileInputRef?.nativeElement) {
+      this.fileInputRef.nativeElement.value = '';
+    }
   }
 
   onDocumentNumberBlur(): void {
@@ -217,10 +436,22 @@ export class AffiliateFormModalComponent implements OnInit {
     this.errorMessage.set(null);
 
     const raw = this.form.getRawValue();
+
+    const toNumberOrNull = (value: any): number | null => {
+      if (value === null || value === undefined || String(value).trim() === '') {
+        return null;
+      }
+      const parsed = Number(value);
+      return isNaN(parsed) ? null : parsed;
+    };
+    const firstName = (raw.firstName ?? '').trim();
+    const lastName = (raw.lastName ?? '').trim();
     const dto: CreateAffiliateMemberDto = {
       documentType: raw.documentType!,
       documentNumber: raw.documentNumber!,
-      fullName: raw.fullName!,
+      firstName,
+      lastName,
+      fullName: [firstName, lastName].filter(Boolean).join(' '),
       birthDate: raw.birthDate || undefined,
       documentExpDate: raw.documentExpDate || undefined,
       phone: raw.phone || undefined,
@@ -229,18 +460,18 @@ export class AffiliateFormModalComponent implements OnInit {
       municipality: raw.municipality || undefined,
       reference: raw.reference!,
       profession: raw.profession || undefined,
-      whatsappEntryDate: raw.whatsappEntryDate || undefined,
-      companyEntryDate: raw.companyEntryDate || undefined,
-      planId: raw.planId!,
-      companyId: raw.companyId!,
-      grouperId: raw.grouperId!,
-      advisorId: raw.advisorId!,
-      epsId: raw.epsId || undefined,
+      whatsappEntryDate: this.todayDate(),
+      planId: toNumberOrNull(raw.planId),
+      companyId: toNumberOrNull(raw.companyId),
+      grouperId: toNumberOrNull(raw.grouperId),
+      advisorId: toNumberOrNull(raw.advisorId),
+      epsId: toNumberOrNull(raw.epsId),
+      pensionId: toNumberOrNull(raw.pensionId),
+      compensationBoxId: toNumberOrNull(raw.compensationBoxId),
       isActive: raw.isActive ?? true,
-      entryDate: raw.entryDate || this.todayDate(),
+      companyEntryDate: this.toLocalDateStr(this.todayDate()),
+      entryDate: this.toLocalDateStr(this.todayDate()),
       arl: raw.arl ?? undefined,
-      pension: raw.pension || undefined,
-      compensationFund: raw.compensationFund || undefined,
     };
 
     const obs =
@@ -249,15 +480,51 @@ export class AffiliateFormModalComponent implements OnInit {
         : this._service.createAffiliate(dto);
 
     obs.subscribe({
-      next: () => {
-        this._toast.showSuccess(
-          this.isEdit ? 'Afiliado actualizado exitosamente' : 'Afiliación creada exitosamente'
-        );
-        this.isLoading.set(false);
-        this.saved.emit();
+      next: (result: any) => {
+        const successMsg = this.isEdit ? 'Afiliado actualizado exitosamente' : 'Afiliación creada exitosamente';
+        const affiliateId = result?.id ?? this.affiliate()?.id;
+
+        const finalize = () => {
+          this._toast.showSuccess(successMsg);
+          this.isLoading.set(false);
+          this.saved.emit();
+        };
+
+        const uploadNewFile = () => {
+          if (this.selectedFile && affiliateId) {
+            this._service.uploadDocument(affiliateId, this.selectedFile).subscribe({
+              next: () => finalize(),
+              error: () => {
+                this.fileError.set('El afiliado fue guardado, pero no se pudo subir el documento. Inténtalo nuevamente.');
+                finalize();
+              },
+            });
+          } else {
+            finalize();
+          }
+        };
+
+        // Delete old document if needed (grouper changed away from GESTIÓN, or user replaced/cleared file)
+        const shouldDelete = !this.keepExistingDocument && !!this.existingDocumentId && !!affiliateId;
+        if (shouldDelete) {
+          this._service.deleteDocument(affiliateId!, this.existingDocumentId!).subscribe({
+            next: () => uploadNewFile(),
+            error: () => uploadNewFile(), // Continue even if delete fails
+          });
+        } else {
+          uploadNewFile();
+        }
       },
       error: (err) => {
-        this.errorMessage.set(err.message);
+        const backend = err?.error;
+        if (backend?.message) {
+          const msg = Array.isArray(backend.message)
+            ? backend.message.join(' • ')
+            : String(backend.message);
+          this.errorMessage.set(msg);
+        } else {
+          this.errorMessage.set(err.message ?? 'Ha ocurrido un error inesperado.');
+        }
         this.isLoading.set(false);
       },
     });

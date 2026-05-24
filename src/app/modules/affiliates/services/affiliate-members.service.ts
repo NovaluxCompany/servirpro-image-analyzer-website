@@ -3,18 +3,8 @@ import { inject, Injectable } from '@angular/core';
 import { Observable, catchError, of, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../../core/service/token.service';
-import {
-  AffiliateMember,
-  CreateAffiliateMemberDto,
-  UpdateAffiliateMemberDto,
-} from '../interfaces/affiliate-member.interface';
-import {
-  Plan,
-  Company,
-  Grouper,
-  Advisor,
-  EpsItem,
-} from '../interfaces/catalog.interface';
+import { AffiliateMember,CreateAffiliateMemberDto,UpdateAffiliateMemberDto,} from '../interfaces/affiliate-member.interface';
+import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, } from '../interfaces/catalog.interface';
 import { PaginatedAffiliatesResponse } from '../interfaces/paginated-affiliates.interface';
 
 export interface AffiliateFilters {
@@ -69,6 +59,24 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  // ── Subir documento a afiliado existente ──────────────────────────
+  uploadDocument(affiliateId: string | number, file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this._http
+      .post<any>(`${this.baseUrl}/${affiliateId}/documents`, formData)
+      .pipe(catchError(this.handleError));
+  }
+
+  // ── Eliminar documento de afiliado ────────────────────────────────
+  deleteDocument(affiliateId: string | number, documentId: number): Observable<void> {
+    return this._http
+      .delete<void>(`${this.baseUrl}/${affiliateId}/documents/${documentId}`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(this.handleError));
+  }
+
   // ── Editar afiliado ───────────────────────────────────────────────
   updateAffiliate(
     id: string,
@@ -81,11 +89,31 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  // ── Obtener URL de descarga firmada ────────────────────────────────
+  getDownloadUrl(id: string, documentId: number): Observable<{ url: string }> {
+    return this._http
+      .get<{ url: string }>(`${this.baseUrl}/${id}/documents/${documentId}/download`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(this.handleError));
+  }
+
   // ── Activar / Desactivar ──────────────────────────────────────────
   toggleStatus(id: string): Observable<AffiliateMember> {
     return this._http
       .patch<AffiliateMember>(
         `${this.baseUrl}/${id}/toggle`,
+        {},
+        { headers: this.getHeaders() }
+      )
+      .pipe(catchError(this.handleError));
+  }
+
+  // ── Enviar correo vía n8n ──────────────────────────────────────────
+  sendEmail(affiliationId: number): Observable<{ success: boolean; message: string }> {
+    return this._http
+      .post<{ success: boolean; message: string }>(
+        `${environment.urlBD}/affiliates/${affiliationId}/send-email`,
         {},
         { headers: this.getHeaders() }
       )
@@ -128,6 +156,18 @@ export class AffiliateMembersService {
       .get<EpsItem[]>(`${environment.urlBD}/eps-providers/dropdown`, {
         headers: this.getHeaders(),
       })
+      .pipe(catchError(() => of([])));
+  }
+
+  getPensions(): Observable<Pension[]> {
+    return this._http
+      .get<Pension[]>(`${environment.urlBD}/pensions/dropdown`, { headers: this.getHeaders() })
+      .pipe(catchError(() => of([])));
+  }
+
+  getCompensationBoxes(): Observable<CompensationBox[]> {
+    return this._http
+      .get<CompensationBox[]>(`${environment.urlBD}/compensation_box/dropdown`, { headers: this.getHeaders() })
       .pipe(catchError(() => of([])));
   }
 
