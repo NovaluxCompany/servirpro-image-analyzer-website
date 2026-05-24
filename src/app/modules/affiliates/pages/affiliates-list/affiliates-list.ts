@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, inject, signal, OnInit, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AffiliateMembersService, AffiliateFilters } from '../../services/affiliate-members.service';
@@ -51,12 +51,24 @@ export class AffiliatesListComponent implements OnInit {
 
   // ── Dropdown acciones ─────────────────────────────────────────────
   openDropdownId = signal<string | null>(null);
+  dropdownPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
 
-  toggleDropdown(id: string): void {
-    this.openDropdownId.set(this.openDropdownId() === id ? null : id);
+  toggleDropdown(id: string, buttonEl: HTMLElement): void {
+    if (this.openDropdownId() === id) {
+      this.openDropdownId.set(null);
+      return;
+    }
+    const rect = buttonEl.getBoundingClientRect();
+    this.dropdownPos.set({ top: rect.bottom + 4, left: rect.left });
+    this.openDropdownId.set(id);
   }
 
   closeDropdown(): void {
+    this.openDropdownId.set(null);
+  }
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
     this.openDropdownId.set(null);
   }
 
@@ -241,6 +253,11 @@ export class AffiliatesListComponent implements OnInit {
 
   get allAffiliatesForModal(): AffiliateMember[] {
     return this.affiliates();
+  }
+
+  isGestionAffiliate(affiliate: AffiliateMember): boolean {
+    const name = (affiliate.grouperName ?? '').toUpperCase();
+    return name.includes('GESTI');
   }
 
   sendEmail(affiliate: AffiliateMember): void {

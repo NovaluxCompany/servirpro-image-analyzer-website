@@ -399,6 +399,7 @@
 
                   <!-- Input oculto sobre toda la zona -->
                   <input type="file"
+                    #fileInput
                     accept=".pdf"
                     (change)="onFileSelected($event)"
                     [disabled]="!!form.get('documentFile')?.disabled"
