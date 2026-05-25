@@ -217,26 +217,19 @@ export class AffiliatesListComponent implements OnInit {
     const ext = doc.fileName.includes('.') ? doc.fileName.split('.').pop() : '';
     const downloadName = ext ? `${affiliate.documentNumber}.${ext}` : affiliate.documentNumber;
 
-    this._service.getDownloadUrl(affiliate.id, documentId).subscribe({
-      next: (res) => {
-        fetch(res.url)
-          .then(response => response.blob())
-          .then(blob => {
-            const objectUrl = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = objectUrl;
-            anchor.download = downloadName;
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-            URL.revokeObjectURL(objectUrl);
-          })
-          .catch(() => {
-            this._toast.showError('No se pudo descargar el archivo');
-          });
+    this._service.downloadBlob(affiliate.id, documentId).subscribe({
+      next: (blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = downloadName;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(objectUrl);
       },
       error: (err) => {
-        this._toast.showError('No se pudo generar el enlace de descarga');
+        this._toast.showError('No se pudo descargar el archivo');
         this.errorMessage.set(err.message);
       }
     });

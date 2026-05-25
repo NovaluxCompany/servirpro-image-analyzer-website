@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, catchError, of, throwError } from 'rxjs';
+import { Observable, catchError, of, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../../core/service/token.service';
 import { AffiliateMember,CreateAffiliateMemberDto,UpdateAffiliateMemberDto,} from '../interfaces/affiliate-member.interface';
@@ -59,12 +59,14 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
-  // ── Subir documento a afiliado existente ──────────────────────────
+  // ── Subir documento a afiliado existente ───────────────────────────────────
   uploadDocument(affiliateId: string | number, file: File): Observable<any> {
     const formData = new FormData();
     formData.append('file', file);
+    const token = this._tokenService.getToken();
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
     return this._http
-      .post<any>(`${this.baseUrl}/${affiliateId}/documents`, formData)
+      .post<any>(`${this.baseUrl}/${affiliateId}/documents`, formData, { headers })
       .pipe(catchError(this.handleError));
   }
 
@@ -89,13 +91,18 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
-  // ── Obtener URL de descarga firmada ────────────────────────────────
-  getDownloadUrl(id: string, documentId: number): Observable<{ url: string }> {
+  // ── Descargar documento como blob ────────────────────────────────
+  downloadBlob(id: string, documentId: number): Observable<Blob> {
+    // Paso 1: pedir la URL firmada (o pública) al backend
     return this._http
       .get<{ url: string }>(`${this.baseUrl}/${id}/documents/${documentId}/download`, {
         headers: this.getHeaders(),
       })
-      .pipe(catchError(this.handleError));
+      .pipe(
+        // Paso 2: descargar el archivo real con esa URL
+        switchMap(({ url }) => this._http.get(url, { responseType: 'blob' })),
+        catchError(this.handleError),
+      );
   }
 
   // ── Activar / Desactivar ──────────────────────────────────────────
