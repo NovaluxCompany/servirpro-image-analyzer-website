@@ -139,4 +139,20 @@ export class TransactionsListComponent {
   onViewDetail(id: string): void {
     this._router.navigate(['/transacciones', id]);
   }
+
+  get isAdmin(): boolean {
+    return this._permission.can('transaction:disable');
+  }
+
+  onDisableTransaction(id: string): void {
+    this._transactionsService.setTransactionActive(id, false).subscribe({
+      next: () => {
+        this._toastService.showSuccess('Pago inhabilitado correctamente');
+        this.loadTransactions(this.currentFilters, this.currentPage());
+      },
+      error: () => {
+        this._toastService.showError('Error al inhabilitar el pago');
+      }
+    });
+  }
 }

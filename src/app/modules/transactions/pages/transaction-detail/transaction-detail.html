@@ -9,7 +9,7 @@
       <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100" role="alert">
         <span class="font-medium">Error:</span> {{ errorMessage() }}
       </div>
-      <button 
+      <button
         type="button"
         (click)="goBack()"
         class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5"
@@ -26,7 +26,7 @@
           <p class="mt-1 text-sm text-gray-500">{{ transaction()!.reference }}</p>
         </div>
         <div class="flex items-center gap-3">
-          <button 
+          <button
             type="button"
             (click)="refreshTransaction()"
             class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200"
@@ -36,7 +36,7 @@
             </svg>
             Actualizar
           </button>
-          <button 
+          <button
             type="button"
             (click)="goBack()"
             class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5"
@@ -65,23 +65,23 @@
           <!-- Datos principales -->
           <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
             <h2 class="mb-4 text-xl font-semibold text-gray-900">Información General</h2>
-            
+
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <p class="text-sm text-gray-500">Referencia</p>
                 <p class="font-medium text-gray-900">{{ transaction()!.reference }}</p>
               </div>
-              
+
               <div>
                 <p class="text-sm text-gray-500">Estado</p>
                 <app-transaction-status-badge [status]="transaction()!.status" />
               </div>
-              
+
               <div>
                 <p class="text-sm text-gray-500">Fecha de creación</p>
                 <p class="font-medium text-gray-900">{{ formatDate(transaction()!.createdAt) }}</p>
               </div>
-              
+
               <div>
                 <p class="text-sm text-gray-500">Última actualización</p>
                 <p class="font-medium text-gray-900">{{ formatDate(transaction()!.updatedAt) }}</p>
@@ -100,7 +100,7 @@
           <!-- Montos -->
           <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
             <h2 class="mb-4 text-xl font-semibold text-gray-900">Análisis de Montos</h2>
-            
+
             <div class="space-y-4">
               <div class="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
                 <span class="text-gray-700">Valor Total</span>
@@ -118,7 +118,7 @@
                 <span class="text-gray-700">Valor Pagado</span>
                 <span class="text-xl font-bold text-green-900">{{ formatCurrency(transaction()!.amountPaid) }}</span>
               </div>
-              
+
               @if (transaction()?.amountGeneratedAI !== undefined) {
                 <div class="flex items-center justify-between p-4 bg-purple-50 rounded-lg">
                   <span class="text-gray-700">Monto generado por IA</span>
@@ -148,10 +148,16 @@
 
           <!-- Afiliados -->
           <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
-            <h2 class="mb-4 text-xl font-semibold text-gray-900">
-              Afiliados ({{ transaction()!.affiliates.length }})
-            </h2>
-            
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-semibold text-gray-900">
+                Afiliados ({{ transaction()!.affiliates.length }})
+              </h2>
+              <div class="text-sm text-right">
+                <p class="text-gray-500">Realizado por</p>
+                <p class="font-medium text-gray-900">{{ transaction()!.createdByUser?.name ?? 'admin' }}</p>
+              </div>
+            </div>
+
             <div class="space-y-4">
               @for (affiliate of transaction()!.affiliates; track $index) {
                 <div class="p-4 border border-gray-200 rounded-lg">
@@ -161,7 +167,7 @@
                       {{ affiliate.type }} {{ affiliate.idNumber }}
                     </span>
                   </div>
-                  
+
                   <div class="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <p class="text-gray-500">Plan</p>
@@ -182,7 +188,7 @@
                   </div>
                 </div>
               }
-              
+
               <div class="p-3 bg-gray-50 rounded-lg">
                 <div class="flex items-center justify-between">
                   <span class="font-semibold text-gray-700">Total de precios de afiliados:</span>
@@ -209,7 +215,7 @@
             <h2 class="mb-4 text-xl font-semibold text-gray-900">
               Comprobantes ({{ transaction()!.images.length }})
             </h2>
-            
+
             <div class="grid grid-cols-2 gap-3">
               @for (image of transaction()!.images; track $index) {
                 <button
@@ -217,7 +223,7 @@
                   (click)="openImageModal(image)"
                   class="relative overflow-hidden border-2 border-gray-200 rounded-lg group hover:border-blue-500 transition-colors"
                 >
-                  <img 
+                  <img
                     [src]="image"
                     [alt]="'Comprobante ' + ($index + 1)"
                     class="object-cover w-full h-32 group-hover:scale-110 transition-transform"
@@ -240,7 +246,7 @@
 
 <!-- Image Modal -->
 @if (showImageModal() && selectedImageUrl()) {
-  <div 
+  <div
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
     (click)="closeImageModal()"
   >
@@ -254,7 +260,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
-      <img 
+      <img
         [src]="selectedImageUrl()!"
         alt="Comprobante ampliado"
         class="max-w-full max-h-[90vh] rounded-lg"
