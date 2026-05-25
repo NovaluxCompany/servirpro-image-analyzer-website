@@ -25,12 +25,12 @@ export const routes: Routes = [
             },
             {
                 path: 'menu',
-                canActivate: [roleGuard],
+                canActivate: [redirectBackGuard],
                 loadChildren: () => import('./modules/menu/services/menu.routes').then(m => m.menuRoutes)
             },
             {
                 path: 'roles',
-                canActivate: [roleGuard],
+                canActivate: [redirectBackGuard],
                 loadChildren: () => import('./modules/roles/roles.routes').then(m => m.rolesRoutes)
             }
         ]
