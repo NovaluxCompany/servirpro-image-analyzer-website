@@ -6,6 +6,7 @@ import { AffiliateMember } from '../../interfaces/affiliate-member.interface';
 import { AffiliateFormModalComponent } from '../../components/affiliate-form-modal/affiliate-form-modal';
 import { AffiliateStatusModalComponent } from '../../components/affiliate-status-modal/affiliate-status-modal';
 import { ToastService } from '../../../../core/service/toast.service';
+import { PermissionService } from '../../../../core/service/permission.service';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 import { debounceTime, Subject } from 'rxjs';
 
@@ -18,6 +19,7 @@ import { debounceTime, Subject } from 'rxjs';
 export class AffiliatesListComponent implements OnInit {
   private _service = inject(AffiliateMembersService);
   private _toast = inject(ToastService);
+  private _permission = inject(PermissionService);
 
   // ── Datos ─────────────────────────────────────────────────────────
   affiliates = signal<AffiliateMember[]>([]);
@@ -165,18 +167,23 @@ export class AffiliatesListComponent implements OnInit {
 
   // ── Acciones de la tabla ──────────────────────────────────────────
   openCreate(): void {
+    if (!this._permission.check('affiliate:create')) return;
     this.formMode.set('create');
     this.selectedAffiliate.set(null);
     this.showFormModal.set(true);
   }
 
   openEdit(affiliate: AffiliateMember): void {
+    // const permission = affiliate.isActive ? 'affiliate:edit-active' : 'affiliate:edit-inactive';
+    // if (!this._permission.check(permission)) return;
     this.formMode.set('edit');
     this.selectedAffiliate.set(affiliate);
     this.showFormModal.set(true);
   }
 
   openStatusToggle(affiliate: AffiliateMember): void {
+    const permission = affiliate.isActive ? 'affiliate:disable' : 'affiliate:enable';
+    if (!this._permission.check(permission)) return;
     this.selectedAffiliate.set(affiliate);
     this.showStatusModal.set(true);
   }
@@ -210,26 +217,19 @@ export class AffiliatesListComponent implements OnInit {
     const ext = doc.fileName.includes('.') ? doc.fileName.split('.').pop() : '';
     const downloadName = ext ? `${affiliate.documentNumber}.${ext}` : affiliate.documentNumber;
 
-    this._service.getDownloadUrl(affiliate.id, documentId).subscribe({
-      next: (res) => {
-        fetch(res.url)
-          .then(response => response.blob())
-          .then(blob => {
-            const objectUrl = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = objectUrl;
-            anchor.download = downloadName;
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-            URL.revokeObjectURL(objectUrl);
-          })
-          .catch(() => {
-            this._toast.showError('No se pudo descargar el archivo');
-          });
+    this._service.downloadBlob(affiliate.id, documentId).subscribe({
+      next: (blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = downloadName;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(objectUrl);
       },
       error: (err) => {
-        this._toast.showError('No se pudo generar el enlace de descarga');
+        this._toast.showError('No se pudo descargar el archivo');
         this.errorMessage.set(err.message);
       }
     });
