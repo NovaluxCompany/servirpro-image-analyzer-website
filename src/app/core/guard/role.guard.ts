@@ -56,7 +56,16 @@ export const roleGuard: CanActivateFn = (
   // Informar al usuario por qué no puede acceder a esta ruta
   toastService.showError('Tu rol no tiene acceso a esta sección.');
 
-  // Redirigir al primer path válido (existe en el router Angular + accesible para el rol)
+  // Intentar volver a la URL anterior donde el usuario ya estaba
+  const previousUrl =
+    router.getCurrentNavigation()?.previousNavigation?.finalUrl?.toString();
+
+  if (previousUrl) {
+    router.navigate([previousUrl]);
+    return false;
+  }
+
+  // Si no hay URL anterior (primera carga), redirigir al primer path válido
   const KNOWN_ROUTES = ['/transacciones', '/afiliados', '/menu', '/roles'];
 
   const validFromMenu = menuPaths

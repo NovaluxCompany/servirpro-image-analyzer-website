@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { Login } from './auth/login/login';
 import { LoginGuardian } from '../app/core/guard/login-guard';
 import { roleGuard } from './core/guard/role.guard';
+import { redirectBackGuard } from './core/guard/redirect-back.guard';
 import { LayoutComponent } from './core/components/layout/layout';
 
 export const routes: Routes = [
@@ -33,5 +34,6 @@ export const routes: Routes = [
                 loadChildren: () => import('./modules/roles/roles.routes').then(m => m.rolesRoutes)
             }
         ]
-    }
+    },
+    { path: '**', canActivate: [redirectBackGuard], component: Login }
 ];
