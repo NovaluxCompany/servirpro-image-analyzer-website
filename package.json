@@ -1,5 +1,5 @@
 {
-  "name": "ritmovivo-dashboard",
+  "name": "servirpro-image-analyzer-website",
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
@@ -21,7 +21,6 @@
     ]
   },
   "private": true,
-  "packageManager": "npm@11.3.0",
   "dependencies": {
     "@angular/common": "^21.1.0",
     "@angular/compiler": "^21.1.0",

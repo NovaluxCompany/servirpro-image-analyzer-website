@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, inject, signal, OnInit, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AffiliateMembersService, AffiliateFilters } from '../../services/affiliate-members.service';
@@ -47,6 +47,32 @@ export class AffiliatesListComponent implements OnInit {
   showStatusModal = signal(false);
   formMode = signal<'create' | 'edit'>('create');
   selectedAffiliate = signal<AffiliateMember | null>(null);
+
+  // ── Email ─────────────────────────────────────────────────────────
+  sendingEmailId = signal<number | null>(null);
+
+  // ── Dropdown acciones ─────────────────────────────────────────────
+  openDropdownId = signal<string | null>(null);
+  dropdownPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
+
+  toggleDropdown(id: string, buttonEl: HTMLElement): void {
+    if (this.openDropdownId() === id) {
+      this.openDropdownId.set(null);
+      return;
+    }
+    const rect = buttonEl.getBoundingClientRect();
+    this.dropdownPos.set({ top: rect.bottom + 4, left: rect.left });
+    this.openDropdownId.set(id);
+  }
+
+  closeDropdown(): void {
+    this.openDropdownId.set(null);
+  }
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.openDropdownId.set(null);
+  }
 
   ngOnInit(): void {
     // debounce text filter changes
@@ -184,6 +210,38 @@ export class AffiliatesListComponent implements OnInit {
     this.selectedAffiliate.set(null);
   }
 
+  downloadDocument(affiliate: AffiliateMember): void {
+    if (!affiliate.id || !affiliate.documents || affiliate.documents.length === 0) return;
+    const doc = affiliate.documents[0];
+    const documentId = doc.id;
+    const ext = doc.fileName.includes('.') ? doc.fileName.split('.').pop() : '';
+    const downloadName = ext ? `${affiliate.documentNumber}.${ext}` : affiliate.documentNumber;
+
+    this._service.getDownloadUrl(affiliate.id, documentId).subscribe({
+      next: (res) => {
+        fetch(res.url)
+          .then(response => response.blob())
+          .then(blob => {
+            const objectUrl = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = objectUrl;
+            anchor.download = downloadName;
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(objectUrl);
+          })
+          .catch(() => {
+            this._toast.showError('No se pudo descargar el archivo');
+          });
+      },
+      error: (err) => {
+        this._toast.showError('No se pudo generar el enlace de descarga');
+        this.errorMessage.set(err.message);
+      }
+    });
+  }
+
   // ── Utilidades ────────────────────────────────────────────────────
   formatDate(date?: string | Date): string {
     if (!date) return '—';
@@ -202,5 +260,27 @@ export class AffiliatesListComponent implements OnInit {
 
   get allAffiliatesForModal(): AffiliateMember[] {
     return this.affiliates();
+  }
+
+  isGestionAffiliate(affiliate: AffiliateMember): boolean {
+    const name = (affiliate.grouperName ?? '').toUpperCase();
+    return name.includes('GESTI');
+  }
+
+  sendEmail(affiliate: AffiliateMember): void {
+    const affiliationId = Number(affiliate.id);
+    if (!affiliationId || this.sendingEmailId() !== null) return;
+
+    this.sendingEmailId.set(affiliationId);
+    this._service.sendEmail(affiliationId).subscribe({
+      next: () => {
+        this._toast.showSuccess('Correo enviado correctamente');
+        this.sendingEmailId.set(null);
+      },
+      error: (err) => {
+        this._toast.showError(err.message ?? 'No se pudo enviar el correo');
+        this.sendingEmailId.set(null);
+      },
+    });
   }
 }

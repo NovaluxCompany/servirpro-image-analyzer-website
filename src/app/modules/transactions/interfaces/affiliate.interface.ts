@@ -11,6 +11,7 @@ export interface Affiliate {
   reference: string;
   deposit?: string;
   charge?: string;
+  profession?: string;
   arl?: number;
   compensationFund?: string;
   pension?: string;

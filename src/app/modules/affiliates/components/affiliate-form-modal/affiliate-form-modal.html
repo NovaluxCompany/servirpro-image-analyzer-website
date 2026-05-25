@@ -95,16 +95,30 @@
               }
             </div>
 
-            <!-- Nombre completo -->
+            <!-- Nombres -->
             <div>
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                Nombre completo <span class="text-red-500">*</span>
+                Nombres <span class="text-red-500">*</span>
               </label>
-              <input type="text" formControlName="fullName" maxlength="255" placeholder="Ej: Juan Perez Garcia"
+              <input type="text" formControlName="firstName" maxlength="255" placeholder="Ej: Juan Carlos"
                 class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                [class.border-red-400]="isFieldInvalid('fullName')"
-                [class.border-gray-300]="!isFieldInvalid('fullName')">
-              @if (isFieldInvalid('fullName')) {
+                [class.border-red-400]="isFieldInvalid('firstName')"
+                [class.border-gray-300]="!isFieldInvalid('firstName')">
+              @if (isFieldInvalid('firstName')) {
+              <p class="mt-1 text-xs text-red-500">Campo requerido</p>
+              }
+            </div>
+
+            <!-- Apellidos -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                Apellidos <span class="text-red-500">*</span>
+              </label>
+              <input type="text" formControlName="lastName" maxlength="255" placeholder="Ej: Perez Garcia"
+                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                [class.border-red-400]="isFieldInvalid('lastName')"
+                [class.border-gray-300]="!isFieldInvalid('lastName')">
+              @if (isFieldInvalid('lastName')) {
               <p class="mt-1 text-xs text-red-500">Campo requerido</p>
               }
             </div>
@@ -175,7 +189,7 @@
             <!-- Fecha ingreso empresa -->
             <div>
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                Fecha de ingreso empresa <span class="text-red-500">*</span>
+                Fecha de ingreso <span class="text-red-500">*</span>
               </label>
               <input type="date" formControlName="companyEntryDate" readonly [class.cursor-not-allowed]="true"
                 class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-600">
@@ -347,19 +361,81 @@
               </div>
 
               <!-- Documento -->
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700">
-                  Documento de Identidad (Requerido para Gestión)
-                  @if (isFieldInvalid('documentFile')) {
-                  <p class="text-xs text-red-500 mt-1">*</p>
+              <div class="sm:col-span-2 lg:col-span-3">
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                  Documento de identidad
+                  @if (!form.get('documentFile')?.disabled) {
+                  <span class="text-red-500">*</span>
                   }
+                  <span class="ml-1 text-gray-400 font-normal">(Solo PDF · Requerido para Gestión)</span>
                 </label>
 
-                <input type="file" formControlName="documentFile"
-                  [class.opacity-60]="!!form.get('documentFile')?.disabled"}
-                  accept=".pdf"
-                  [disabled]="!!form.get('documentFile')?.disabled"
-                  class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50" />
+                <!-- Zona de carga -->
+                <div class="relative mt-1 flex flex-col items-center justify-center gap-1 border-2 border-dashed rounded-xl p-5 transition-colors min-h-[96px]"
+                  [class.border-blue-300]="!form.get('documentFile')?.disabled && !form.get('documentFile')?.value && !isFieldInvalid('documentFile')"
+                  [class.border-red-300]="isFieldInvalid('documentFile')"
+                  [class.border-green-300]="!!form.get('documentFile')?.value"
+                  [class.border-gray-200]="!!form.get('documentFile')?.disabled"
+                  [class.bg-blue-50\/50]="!form.get('documentFile')?.disabled && !form.get('documentFile')?.value"
+                  [class.bg-green-50]="!!form.get('documentFile')?.value"
+                  [class.bg-gray-50]="!!form.get('documentFile')?.disabled"
+                  [class.opacity-50]="!!form.get('documentFile')?.disabled"
+                  [class.cursor-not-allowed]="!!form.get('documentFile')?.disabled">
+
+                  @if (!form.get('documentFile')?.value) {
+                  <!-- Estado vacío -->
+                  <svg class="w-7 h-7"
+                    [class.text-blue-400]="!form.get('documentFile')?.disabled"
+                    [class.text-gray-300]="!!form.get('documentFile')?.disabled"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p class="text-xs font-medium"
+                    [class.text-blue-600]="!form.get('documentFile')?.disabled"
+                    [class.text-gray-400]="!!form.get('documentFile')?.disabled">
+                    @if (!form.get('documentFile')?.disabled) { Haz clic para seleccionar un PDF }
+                    @else { Disponible solo para agrupadora de Gestión }
+                  </p>
+                  <p class="text-xs text-gray-400">Máximo 10 MB</p>
+                  } @else {
+                  <!-- Archivo seleccionado -->
+                  <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p class="text-xs font-semibold text-green-700 text-center break-all px-2">{{ form.get('documentFile')?.value }}</p>
+                  <button type="button" (click)="clearFile()"
+                    class="mt-1 text-xs text-red-500 hover:text-red-700 underline transition-colors">
+                    Quitar archivo
+                  </button>
+                  }
+
+                  <!-- Input oculto sobre toda la zona -->
+                  <input type="file"
+                    #fileInput
+                    accept=".pdf"
+                    (change)="onFileSelected($event)"
+                    [disabled]="!!form.get('documentFile')?.disabled"
+                    class="absolute inset-0 w-full h-full opacity-0"
+                    [class.cursor-pointer]="!form.get('documentFile')?.disabled && !form.get('documentFile')?.value"
+                    [class.cursor-not-allowed]="!!form.get('documentFile')?.disabled"
+                    [class.pointer-events-none]="!!form.get('documentFile')?.value" />
+                </div>
+
+                @if (fileError()) {
+                <p class="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                      clip-rule="evenodd" />
+                  </svg>
+                  {{ fileError() }}
+                </p>
+                }
+                @if (isFieldInvalid('documentFile')) {
+                <p class="mt-1.5 text-xs text-red-500">El documento es requerido para afiliados de Gestión</p>
+                }
               </div>
             </div> <!-- Fin Grid -->
             }
@@ -385,8 +461,8 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              } @else {
               Guardando...
+              } @else {
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>

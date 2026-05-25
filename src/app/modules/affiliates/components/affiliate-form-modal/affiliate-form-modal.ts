@@ -1,4 +1,4 @@
-import { Component, inject, input, output, OnInit, signal, effect } from '@angular/core';
+import { Component, inject, input, output, OnInit, signal, effect, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AffiliateMembersService } from '../../services/affiliate-members.service';
@@ -30,6 +30,7 @@ export class AffiliateFormModalComponent implements OnInit {
   isLoading = signal(false);
   duplicateDocument = signal(false);
   errorMessage = signal<string | null>(null);
+  fileError = signal<string | null>(null);
   catalogsLoading = signal(true);
 
   plans = signal<Plan[]>([]);
@@ -87,7 +88,8 @@ export class AffiliateFormModalComponent implements OnInit {
     // Datos personales
     documentType: ['CC', Validators.required],
     documentNumber: ['', [Validators.required, Validators.maxLength(20)]],
-    fullName: ['', [Validators.required, Validators.maxLength(255)]],
+    firstName: ['', [Validators.required, Validators.maxLength(255)]],
+    lastName: ['', [Validators.required, Validators.maxLength(255)]],
     birthDate: [''],
     documentExpDate: [''],
     phone: ['', Validators.maxLength(50)],
@@ -129,6 +131,13 @@ export class AffiliateFormModalComponent implements OnInit {
           this.form.get('companyEntryDate')?.setValue(this.todayDate());
           this.duplicateDocument.set(false);
           this.errorMessage.set(null);
+          this.selectedFile = null;
+          this.existingDocumentId = null;
+          this.keepExistingDocument = true;
+          this.fileError.set(null);
+          if (this.fileInputRef?.nativeElement) {
+            this.fileInputRef.nativeElement.value = '';
+          }
         }
       }
     });
@@ -190,9 +199,22 @@ export class AffiliateFormModalComponent implements OnInit {
     if (label.includes('GESTIÓN') || label.includes('GESTION')) {
       fileControl.enable({ emitEvent: false });
       fileControl.setValidators([Validators.required]);
+      // In edit mode, restore existing document display if user hasn't changed it
+      if (this.isEdit && this.existingDocumentId && this.keepExistingDocument && !fileControl.value) {
+        const existingDoc = this.affiliate()?.documents?.[0];
+        if (existingDoc) {
+          const displayName = existingDoc.fileName.split('/').pop() || existingDoc.fileName;
+          fileControl.setValue(displayName, { emitEvent: false });
+        }
+      }
     } else {
+      // Clear selected file and mark existing document for deletion
+      this.selectedFile = null;
+      this.keepExistingDocument = false;
+      if (this.fileInputRef?.nativeElement) {
+        this.fileInputRef.nativeElement.value = '';
+      }
       fileControl.clearValidators();
-      // Cambiamos null por '' para evitar el conflicto con 'never'
       fileControl.setValue('', { emitEvent: false });
       fileControl.disable({ emitEvent: false });
     }
@@ -277,16 +299,36 @@ export class AffiliateFormModalComponent implements OnInit {
         this.pensions.set(pensions);
         this.compensationBoxes.set(compensationBoxes);
         this.catalogsLoading.set(false);
+
+        // Re-run plan/grouper logic once catalogs are loaded (edit mode has values before catalogs arrive)
+        const currentPlanId = this.form.get('planId')?.value;
+        if (currentPlanId) {
+          this.updatePlanLogic(currentPlanId);
+        }
+        const currentGrouperId = this.form.get('grouperId')?.value;
+        if (currentGrouperId) {
+          const selectedGrouper = this.groupers().find(g => String(g.id) === String(currentGrouperId));
+          this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
+          this.validateDocumentFile();
+        }
       },
       error: () => this.catalogsLoading.set(false),
     });
   }
 
   private patchForm(a: AffiliateMember): void {
+    this.selectedFile = null;
+    this.existingDocumentId = a.documents?.[0]?.id ?? null;
+    this.keepExistingDocument = true;
+    this.fileError.set(null);
+    if (this.fileInputRef?.nativeElement) {
+      this.fileInputRef.nativeElement.value = '';
+    }
     this.form.patchValue({
       documentType: a.documentType,
       documentNumber: a.documentNumber,
-      fullName: a.fullName,
+      firstName: a.firstName ?? '',
+      lastName: a.lastName ?? '',
       birthDate: this.toLocalDateStr(a.birthDate),
       documentExpDate: this.toLocalDateStr(a.documentExpDate),
       phone: a.phone ?? '',
@@ -310,6 +352,56 @@ export class AffiliateFormModalComponent implements OnInit {
 
     });
     this.errorMessage.set(null);
+  }
+
+  selectedFile: File | null = null;
+  existingDocumentId: number | null = null;
+  private keepExistingDocument = true;
+  @ViewChild('fileInput') fileInputRef?: ElementRef<HTMLInputElement>;
+
+  private static readonly ALLOWED_FILE_TYPES = ['application/pdf'];
+  private static readonly MAX_FILE_SIZE_MB = 10;
+
+  onFileSelected(event: any): void {
+    const file: File | null = event.target.files?.[0] ?? null;
+    this.fileError.set(null);
+
+    if (!file) {
+      this.selectedFile = null;
+      this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+      return;
+    }
+
+    if (!AffiliateFormModalComponent.ALLOWED_FILE_TYPES.includes(file.type)) {
+      this.fileError.set('Solo se permiten archivos en formato PDF.');
+      this.selectedFile = null;
+      this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+      event.target.value = '';
+      return;
+    }
+
+    const maxBytes = AffiliateFormModalComponent.MAX_FILE_SIZE_MB * 1024 * 1024;
+    if (file.size > maxBytes) {
+      this.fileError.set(`El archivo no puede superar ${AffiliateFormModalComponent.MAX_FILE_SIZE_MB} MB.`);
+      this.selectedFile = null;
+      this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+      event.target.value = '';
+      return;
+    }
+
+    this.selectedFile = file;
+    this.keepExistingDocument = false;
+    this.form.get('documentFile')?.setValue(file.name, { emitEvent: false });
+  }
+
+  clearFile(): void {
+    this.selectedFile = null;
+    this.keepExistingDocument = false;
+    this.fileError.set(null);
+    this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+    if (this.fileInputRef?.nativeElement) {
+      this.fileInputRef.nativeElement.value = '';
+    }
   }
 
   onDocumentNumberBlur(): void {
@@ -352,10 +444,14 @@ export class AffiliateFormModalComponent implements OnInit {
       const parsed = Number(value);
       return isNaN(parsed) ? null : parsed;
     };
+    const firstName = (raw.firstName ?? '').trim();
+    const lastName = (raw.lastName ?? '').trim();
     const dto: CreateAffiliateMemberDto = {
       documentType: raw.documentType!,
       documentNumber: raw.documentNumber!,
-      fullName: raw.fullName!,
+      firstName,
+      lastName,
+      fullName: [firstName, lastName].filter(Boolean).join(' '),
       birthDate: raw.birthDate || undefined,
       documentExpDate: raw.documentExpDate || undefined,
       phone: raw.phone || undefined,
@@ -384,15 +480,51 @@ export class AffiliateFormModalComponent implements OnInit {
         : this._service.createAffiliate(dto);
 
     obs.subscribe({
-      next: () => {
-        this._toast.showSuccess(
-          this.isEdit ? 'Afiliado actualizado exitosamente' : 'Afiliación creada exitosamente'
-        );
-        this.isLoading.set(false);
-        this.saved.emit();
+      next: (result: any) => {
+        const successMsg = this.isEdit ? 'Afiliado actualizado exitosamente' : 'Afiliación creada exitosamente';
+        const affiliateId = result?.id ?? this.affiliate()?.id;
+
+        const finalize = () => {
+          this._toast.showSuccess(successMsg);
+          this.isLoading.set(false);
+          this.saved.emit();
+        };
+
+        const uploadNewFile = () => {
+          if (this.selectedFile && affiliateId) {
+            this._service.uploadDocument(affiliateId, this.selectedFile).subscribe({
+              next: () => finalize(),
+              error: () => {
+                this.fileError.set('El afiliado fue guardado, pero no se pudo subir el documento. Inténtalo nuevamente.');
+                finalize();
+              },
+            });
+          } else {
+            finalize();
+          }
+        };
+
+        // Delete old document if needed (grouper changed away from GESTIÓN, or user replaced/cleared file)
+        const shouldDelete = !this.keepExistingDocument && !!this.existingDocumentId && !!affiliateId;
+        if (shouldDelete) {
+          this._service.deleteDocument(affiliateId!, this.existingDocumentId!).subscribe({
+            next: () => uploadNewFile(),
+            error: () => uploadNewFile(), // Continue even if delete fails
+          });
+        } else {
+          uploadNewFile();
+        }
       },
       error: (err) => {
-        this.errorMessage.set(err.message);
+        const backend = err?.error;
+        if (backend?.message) {
+          const msg = Array.isArray(backend.message)
+            ? backend.message.join(' • ')
+            : String(backend.message);
+          this.errorMessage.set(msg);
+        } else {
+          this.errorMessage.set(err.message ?? 'Ha ocurrido un error inesperado.');
+        }
         this.isLoading.set(false);
       },
     });

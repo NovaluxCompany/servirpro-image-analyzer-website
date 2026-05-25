@@ -119,7 +119,11 @@ export class TransactionCreateComponent {
     }
 
     // Obtener afiliados seleccionados
-    const selectedAffiliates = this.affiliatesForm.getSelectedAffiliates();
+    const selectedAffiliates = this.affiliatesForm.getSelectedAffiliates().map(affiliate => ({
+      ...affiliate,
+      charge: affiliate.profession ?? affiliate.charge ?? null,
+      arl: affiliate.arl !== undefined ? affiliate.arl : null,
+    }));
     formData.append('affiliates', JSON.stringify(selectedAffiliates));
 
     // Agregar imágenes
