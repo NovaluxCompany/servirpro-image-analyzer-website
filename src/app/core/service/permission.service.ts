@@ -13,6 +13,7 @@ export type Permission =
   | 'affiliate:disable'
   | 'transaction:create'
   | 'transaction:edit'
+  | 'transaction:disable'
   | 'excel:download';
 
 /**
@@ -46,6 +47,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'affiliate:disable',
     'transaction:create',
     'transaction:edit',
+    'transaction:disable',
     'excel:download',
   ],
   administrador: [
@@ -56,6 +58,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'affiliate:disable',
     'transaction:create',
     'transaction:edit',
+    'transaction:disable',
     'excel:download',
   ],
   // Asesor: carga pagos (Excel) y visualiza afiliados. No puede modificar nada.
@@ -86,6 +89,7 @@ const PERMISSION_MESSAGES: Record<Permission, string> = {
   'affiliate:disable':      'Tu rol no tiene permiso para desactivar afiliados.',
   'transaction:create':     'Tu rol no tiene permiso para crear transacciones.',
   'transaction:edit':       'Solo el Administrador puede editar o revertir transacciones.',
+  'transaction:disable':    'Solo el Administrador puede inhabilitar transacciones.',
   'excel:download':         'Tu rol no tiene permiso para descargar reportes en Excel.',
 };
 

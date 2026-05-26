@@ -3,6 +3,7 @@ import { Receipt } from './receipt.interface';
 
 export interface Transaction {
   _id: string;
+  id?: number;
   reference: string;
   totalValue: number;
   amountPaid: number;
@@ -14,6 +15,8 @@ export interface Transaction {
   images: string[];
   receipts: Receipt[];
   observation?: string;
+  isActive?: boolean;
+  createdByUser?: { id: number; name: string } | null;
   createdAt: string;
   updatedAt: string;
 }
