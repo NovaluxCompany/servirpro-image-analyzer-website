@@ -12,7 +12,7 @@ const canCreateTransaction = () => {
   const permission = inject(PermissionService);
   const router = inject(Router);
   const toast = inject(ToastService);
-  if (permission.can('transaction:create')) return true;
+  if (permission.can('create')) return true;
   toast.showError('Tu rol no tiene permiso para crear transacciones.');
   router.navigate(['/transacciones']);
   return false;

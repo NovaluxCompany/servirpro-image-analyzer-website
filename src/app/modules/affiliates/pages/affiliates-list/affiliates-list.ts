@@ -167,23 +167,26 @@ export class AffiliatesListComponent implements OnInit {
 
   // ── Acciones de la tabla ──────────────────────────────────────────
   openCreate(): void {
-    if (!this._permission.check('affiliate:create')) return;
+    if (!this._permission.check('create', undefined, 'Tu rol no tiene permiso para crear afiliados.')) return;
     this.formMode.set('create');
     this.selectedAffiliate.set(null);
     this.showFormModal.set(true);
   }
 
   openEdit(affiliate: AffiliateMember): void {
-    const permission = affiliate.isActive ? 'affiliate:edit-active' : 'affiliate:edit-inactive';
-    if (!this._permission.check(permission)) return;
+    if (!this._permission.check('edit', undefined, 'Tu rol no tiene permiso para editar afiliados.')) return;
     this.formMode.set('edit');
     this.selectedAffiliate.set(affiliate);
     this.showFormModal.set(true);
   }
 
   openStatusToggle(affiliate: AffiliateMember): void {
-    const permission = affiliate.isActive ? 'affiliate:disable' : 'affiliate:enable';
-    if (!this._permission.check(permission)) return;
+    const permission = affiliate.isActive ? 'delete' : 'approve';
+    const message = affiliate.isActive
+      ? 'Tu rol no tiene permiso para deshabilitar afiliados.'
+      : 'Tu rol no tiene permiso para habilitar afiliados.';
+
+    if (!this._permission.check(permission, undefined, message)) return;
     this.selectedAffiliate.set(affiliate);
     this.showStatusModal.set(true);
   }

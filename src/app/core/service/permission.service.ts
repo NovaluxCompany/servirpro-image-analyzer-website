@@ -1,129 +1,100 @@
 import { inject, Injectable } from '@angular/core';
 import { TokenService } from './token.service';
 import { ToastService } from './toast.service';
+import { UserMenu } from '../interfaces/Response-login';
 
-/**
- * Permisos de acción disponibles en la aplicación.
- */
-export type Permission =
-  | 'affiliate:create'
-  | 'affiliate:edit-active'
-  | 'affiliate:edit-inactive'
-  | 'affiliate:enable'
-  | 'affiliate:disable'
-  | 'transaction:create'
-  | 'transaction:edit'
-  | 'transaction:disable'
-  | 'excel:download';
-
-/**
- * Acceso a rutas por rol (independiente de menuPaths en BD).
- * Garantiza que cada rol pueda acceder a sus módulos incluso si
- * la BD no tiene la ruta configurada en menuPaths.
- */
-const ROUTE_ACCESS_BY_ROLE: Record<string, string[]> = {
-  admin:             ['transacciones', 'afiliados', 'menu', 'roles'],
-  administrador:     ['transacciones', 'afiliados', 'menu', 'roles'],
-  asesor:            ['transacciones', 'afiliados'], // visualiza afiliados (sin modificar)
-  pagos:             ['transacciones'],          // solo módulo de pagos; /afiliados está bloqueado
-  'cargar-afiliados':['afiliados'],
-};
-
-/**
- * Mapa de permisos por rol (comparación en minúsculas).
- *
- * Roles:
- *   admin / administrador → acceso total
- *   asesor               → solo crear transacciones (cargar pagos)
- *   pagos                → activar/desactivar afiliados; ver y exportar transacciones
- *   cargar-afiliados     → crear/editar afiliados inactivos y activarlos
- */
-const ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  admin: [
-    'affiliate:create',
-    'affiliate:edit-active',
-    'affiliate:edit-inactive',
-    'affiliate:enable',
-    'affiliate:disable',
-    'transaction:create',
-    'transaction:edit',
-    'transaction:disable',
-    'excel:download',
-  ],
-  administrador: [
-    'affiliate:create',
-    'affiliate:edit-active',
-    'affiliate:edit-inactive',
-    'affiliate:enable',
-    'affiliate:disable',
-    'transaction:create',
-    'transaction:edit',
-    'transaction:disable',
-    'excel:download',
-  ],
-  // Asesor: puede crear transacciones (cargar pagos) y descargar Excel.
-  asesor: [
-    'transaction:create',
-    'excel:download',
-  ],
-  // Pagos: solo deshabilitar afiliados activos + ver/descargar transacciones.
-  pagos: [
-    'affiliate:disable',
-    'excel:download',
-  ],
-  // Cargar afiliados: crear, editar inactivos y habilitarlos. Sin deshabilitar ni Excel.
-  'cargar-afiliados': [
-    'affiliate:create',
-    'affiliate:edit-inactive',
-    'affiliate:enable',
-  ],
-};
-
-/**
- * Mensajes de error descriptivos para el usuario cuando no tiene permiso.
- */
-const PERMISSION_MESSAGES: Record<Permission, string> = {
-  'affiliate:create':       'Tu rol no tiene permiso para crear afiliados.',
-  'affiliate:edit-active':  'Solo el Administrador puede editar afiliados que ya están activos.',
-  'affiliate:edit-inactive':'Tu rol no tiene permiso para editar afiliados inactivos.',
-  'affiliate:enable':       'Tu rol no tiene permiso para activar afiliados.',
-  'affiliate:disable':      'Tu rol no tiene permiso para desactivar afiliados.',
-  'transaction:create':     'Tu rol no tiene permiso para crear transacciones.',
-  'transaction:edit':       'Solo el Administrador puede editar o revertir transacciones.',
-  'transaction:disable':    'Solo el Administrador puede inhabilitar transacciones.',
-  'excel:download':         'Tu rol no tiene permiso para descargar reportes en Excel.',
-};
+export type PermissionCode = string;
 
 @Injectable({ providedIn: 'root' })
 export class PermissionService {
   private _tokenService = inject(TokenService);
   private _toastService = inject(ToastService);
 
-  /**
-   * Devuelve true si el usuario tiene el permiso solicitado.
-   * Si el usuario no tiene roles asignados (modo bootstrap), concede todo.
-   */
-  can(permission: Permission): boolean {
+  private normalize(value: string): string {
+    return (value ?? '').toString().trim().toLowerCase();
+  }
+
+  private normalizePath(path: string): string {
+    const p = (path ?? '').trim();
+    if (!p) return '';
+    return p.startsWith('/') ? p.toLowerCase() : `/${p.toLowerCase()}`;
+  }
+
+  private getUserMenus(): UserMenu[] {
+    return this._tokenService.getUser()?.menus ?? [];
+  }
+
+  private hasPermissionOnPath(path: string, permissionCodes: PermissionCode[]): boolean {
+    const targetPath = this.normalizePath(path);
+    const targetPermissions = new Set(permissionCodes.map((p) => this.normalize(p)));
+    const menus = this.getUserMenus();
+
+    return menus.some((menu) => {
+      const menuPath = this.normalizePath(menu.path);
+      if (!(menuPath === targetPath || menuPath.startsWith(`${targetPath}/`))) return false;
+
+      return (menu.permissions ?? []).some((perm) => targetPermissions.has(this.normalize(perm)));
+    });
+  }
+
+  private getPathFromCurrentRoute(): string | null {
+    const currentUrl = window.location.pathname || '/';
+    const segment = currentUrl.split('/').filter(Boolean)[0];
+    if (!segment) return null;
+    return `/${segment}`;
+  }
+
+  private hasPathAccess(path: string): boolean {
+    const targetPath = this.normalizePath(path);
     const user = this._tokenService.getUser();
     if (!user) return false;
 
-    // Sin roles configurados → acceso total (modo bootstrap / admin sin restricciones)
-    const roles: string[] = user.roles ?? [];
-    if (roles.length === 0) return true;
+    const menuPaths = (user.menuPaths ?? []).map((p) => this.normalizePath(p));
+    if (menuPaths.some((p) => p === targetPath || p.startsWith(`${targetPath}/`))) {
+      return true;
+    }
 
-    return roles.some((role) => {
-      const normalized = role.toLowerCase().trim().replace(/[\s_]+/g, '-');
-      return ROLE_PERMISSIONS[normalized]?.includes(permission) ?? false;
+    return this.getUserMenus().some((menu) => {
+      const menuPath = this.normalizePath(menu.path);
+      return menuPath === targetPath || menuPath.startsWith(`${targetPath}/`);
     });
+  }
+
+  /**
+   * Evalua si el usuario tiene permiso sobre un menu/path.
+   * Si no se envia path, usa el segmento actual de la ruta.
+   */
+  can(permission: PermissionCode | PermissionCode[], path?: string): boolean {
+    const user = this._tokenService.getUser();
+    if (!user) return false;
+
+    const targetPath = path ? this.normalizePath(path) : this.getPathFromCurrentRoute();
+    if (!targetPath) return false;
+
+    const codes = Array.isArray(permission) ? permission : [permission];
+
+    // Si backend ya envia menus con permissions, ese es el source of truth.
+    if (this.getUserMenus().length > 0) {
+      return this.hasPermissionOnPath(targetPath, codes);
+    }
+
+    // Fallback temporal: sin menus en payload, al menos valida acceso al modulo por menuPaths.
+    return this.hasPathAccess(targetPath);
+  }
+
+  private buildDefaultMessage(codes: PermissionCode | PermissionCode[], path?: string): string {
+    const action = Array.isArray(codes) ? codes.join(' / ') : codes;
+    const location = path ? ` en ${path}` : '';
+    return `No tienes permiso (${action})${location}.`;
   }
 
   /**
    * Verifica el permiso y muestra un toast de error si no lo tiene.
    * Retorna true si tiene acceso, false en caso contrario.
    */
-  check(permission: Permission): boolean {
-    if (this.can(permission)) return true;
-    this._toastService.showError(PERMISSION_MESSAGES[permission]);
+  check(permission: PermissionCode | PermissionCode[], path?: string, message?: string): boolean {
+    if (this.can(permission, path)) return true;
+    this._toastService.showError(message ?? this.buildDefaultMessage(permission, path));
     return false;
   }
 
@@ -132,14 +103,8 @@ export class PermissionService {
    * Se usa como fallback en el roleGuard cuando menuPaths no cubre la ruta.
    */
   canAccessRoute(urlSegment: string): boolean {
-    const user = this._tokenService.getUser();
-    if (!user) return false;
-    const roles: string[] = user.roles ?? [];
-    if (roles.length === 0) return true;
-
-    return roles.some((role) => {
-      const normalized = role.toLowerCase().trim().replace(/[\s_]+/g, '-');
-      return ROUTE_ACCESS_BY_ROLE[normalized]?.includes(urlSegment) ?? false;
-    });
+    const currentBase = this.normalizePath(urlSegment);
+    if (!currentBase) return false;
+    return this.hasPathAccess(currentBase);
   }
 }

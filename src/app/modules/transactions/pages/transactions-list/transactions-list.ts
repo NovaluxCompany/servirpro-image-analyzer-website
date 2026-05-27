@@ -95,12 +95,12 @@ export class TransactionsListComponent {
   }
 
   onCreateTransaction(): void {
-    if (!this._permission.check('transaction:create')) return;
+    if (!this._permission.check('create', undefined, 'Tu rol no tiene permiso para crear transacciones.')) return;
     this._router.navigate(['/transacciones/crear']);
   }
 
   downloadExcel(): void {
-    if (!this._permission.check('excel:download')) return;
+    if (!this._permission.check('export', undefined, 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
     this.isDownloadingExcel.set(true);
     this.errorMessage.set(null);
 
@@ -141,7 +141,7 @@ export class TransactionsListComponent {
   }
 
   get isAdmin(): boolean {
-    return this._permission.can('transaction:disable');
+    return this._permission.can('delete');
   }
 
   onDisableTransaction(id: string): void {
