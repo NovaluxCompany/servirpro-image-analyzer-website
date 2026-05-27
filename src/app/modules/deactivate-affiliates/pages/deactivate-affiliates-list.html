@@ -10,10 +10,10 @@
       <button
         type="button"
         (click)="openConfirmationModal()"
-        [disabled]="selectedCount() === 0 || isLoading() || isSubmitting()"
-        class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        [disabled]="isDeactivateButtonDisabled()"
+        [title]="!canDeactivateByDate() ? 'La desactivación solo está habilitada cuando la fecha actual es mayor o igual al día ' + (context()?.minDay ?? 26) + ' del mes' : ''"
+        class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <i class="fas fa-user-slash"></i>
         Desactivar seleccionados
       </button>
     </div>
@@ -28,6 +28,16 @@
           &nbsp;&mdash;&nbsp; Pagina {{ currentPage() }} de {{ totalPages() }}
         </p>
       </div>
+
+      @if (!isLoading() && !errorMessage() && !canDeactivateByDate() && context()) {
+      <div class="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-2 text-sm text-amber-700">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+        No es posible desactivar afiliados si la fecha actual no es mayor o igual al día {{ context()!.minDay }} del mes. Hoy es el día {{ context()!.currentDay }}.
+      </div>
+      }
 
       @if (errorMessage()) {
       <div class="px-5 py-3 bg-red-50 border-b border-red-100 text-sm text-red-700">
@@ -75,7 +85,8 @@
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <i class="fas fa-users text-2xl text-gray-400"></i>
                   </div>
-                  <p class="text-gray-500 font-medium">No se encontraron afiliados</p>
+                  <p class="text-gray-500 font-medium">No hay afiliados activos para mostrar</p>
+                  <p class="text-gray-400 text-xs">Todos los afiliados están inactivos o no hay registros disponibles.</p>
                 </div>
               </td>
             </tr>

@@ -30,7 +30,17 @@ export class DeactivateAffiliatesList implements OnInit {
 
   protected readonly affiliates = signal<DeactivateAffiliateRow[]>([]);
 
-  protected readonly canDeactivateByDate = computed(() => this.context()?.canDeactivateByDate ?? false);
+  protected readonly canDeactivateByDate = computed(() => {
+    const context = this.context();
+    if (!context) {
+      return false;
+    }
+
+    return context.currentDay >= context.minDay && context.canDeactivateByDate;
+  });
+  protected readonly isDeactivateButtonDisabled = computed(
+    () => this.selectedCount() === 0 || this.isLoading() || this.isSubmitting() || !this.canDeactivateByDate(),
+  );
   protected readonly modalMessage = computed(
     () => `Se desactivarán ${this.selectedCount()} usuario(s), ¿desea continuar?`,
   );
@@ -141,7 +151,7 @@ export class DeactivateAffiliatesList implements OnInit {
       const minDay = this.context()?.minDay;
       this._toastService.showError(
         minDay
-          ? `La desactivación está habilitada desde el día ${minDay} de cada mes.`
+          ? `La desactivación está habilitada únicamente si la fecha actual es mayor o igual al día ${minDay} de cada mes.`
           : 'La desactivación no está habilitada para la fecha actual.',
       );
       return;
