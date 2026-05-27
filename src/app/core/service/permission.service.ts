@@ -61,8 +61,9 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'transaction:disable',
     'excel:download',
   ],
-  // Asesor: carga pagos (Excel) y visualiza afiliados. No puede modificar nada.
+  // Asesor: puede crear transacciones (cargar pagos) y descargar Excel.
   asesor: [
+    'transaction:create',
     'excel:download',
   ],
   // Pagos: solo deshabilitar afiliados activos + ver/descargar transacciones.
