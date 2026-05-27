@@ -174,8 +174,8 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   openEdit(affiliate: AffiliateMember): void {
-    // const permission = affiliate.isActive ? 'affiliate:edit-active' : 'affiliate:edit-inactive';
-    // if (!this._permission.check(permission)) return;
+    const permission = affiliate.isActive ? 'affiliate:edit-active' : 'affiliate:edit-inactive';
+    if (!this._permission.check(permission)) return;
     this.formMode.set('edit');
     this.selectedAffiliate.set(affiliate);
     this.showFormModal.set(true);
