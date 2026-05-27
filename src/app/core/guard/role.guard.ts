@@ -2,7 +2,6 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { TokenService } from '../service/token.service';
 import { ToastService } from '../service/toast.service';
-import { PermissionService } from '../service/permission.service';
 
 /**
  * Guard basado en menuPaths (control desde la base de datos).
@@ -21,7 +20,6 @@ export const roleGuard: CanActivateFn = (
 ) => {
   const tokenService = inject(TokenService);
   const toastService = inject(ToastService);
-  const permissionService = inject(PermissionService);
   const router = inject(Router);
 
   const user = tokenService.getUser();
@@ -48,10 +46,7 @@ export const roleGuard: CanActivateFn = (
     return currentBase === pBase || currentBase.startsWith(pBase + '/');
   });
 
-  // 2º check: acceso por rol definido en PermissionService (fallback si BD no está configurada)
-  const hasRoleAccess = permissionService.canAccessRoute(segment);
-
-  if (hasMenuAccess || hasRoleAccess) return true;
+  if (hasMenuAccess) return true;
 
   // Informar al usuario por qué no puede acceder a esta ruta
   toastService.showError('Tu rol no tiene acceso a esta sección.');
@@ -65,17 +60,10 @@ export const roleGuard: CanActivateFn = (
     return false;
   }
 
-  // Si no hay URL anterior (primera carga), redirigir al primer path válido
-  const KNOWN_ROUTES = ['/transacciones', '/afiliados', '/menu', '/roles'];
-
-  const validFromMenu = menuPaths
+  // Si no hay URL anterior (primera carga), redirigir al primer menu permitido en BD
+  const fallback = menuPaths
     .map(p => '/' + p.split('/').filter(Boolean)[0])
-    .find(seg => KNOWN_ROUTES.includes(seg));
-
-  const validFromRole = KNOWN_ROUTES
-    .find(r => permissionService.canAccessRoute(r.replace('/', '')));
-
-  const fallback = validFromMenu ?? validFromRole ?? '/';
+    .find(seg => seg !== '/') ?? '/';
   router.navigate([fallback]);
   return false;
 };

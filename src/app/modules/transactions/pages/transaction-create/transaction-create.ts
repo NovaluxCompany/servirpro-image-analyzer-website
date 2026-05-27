@@ -28,7 +28,7 @@ export class TransactionCreateComponent {
 
   ngOnInit(): void {
     // Defensa adicional: si llegó aquí sin permiso (guard fallido), redirige sin toast duplicado
-    if (!this._permission.can('transaction:create')) {
+    if (!this._permission.can('create')) {
       this._router.navigate(['/transacciones']);
     }
   }
