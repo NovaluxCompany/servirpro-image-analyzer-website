@@ -1,7 +1,34 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn, Route, Router } from '@angular/router';
 import { TokenService } from '../service/token.service';
 import { PermissionService } from '../service/permission.service';
+
+const normalizePath = (path: string): string => {
+  const cleaned = (path ?? '').trim();
+  if (!cleaned) return '';
+
+  const normalized = cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
+  return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
+};
+
+const collectConfiguredRoutes = (routes: readonly Route[], prefix = ''): string[] => {
+  return routes.flatMap((route) => {
+    const routePath = (route.path ?? '').trim();
+    const nextPrefix = routePath && routePath !== '**'
+      ? normalizePath(`${prefix}/${routePath}`)
+      : prefix;
+
+    const childRoutes = route.children?.length
+      ? collectConfiguredRoutes(route.children, nextPrefix)
+      : [];
+
+    if (!routePath || routePath === '**') {
+      return childRoutes;
+    }
+
+    return [nextPrefix, ...childRoutes];
+  });
+};
 
 /**
  * Guard para rutas no encontradas (wildcard **).
@@ -29,15 +56,23 @@ export const redirectBackGuard: CanActivateFn = () => {
 
   // El usuario está autenticado pero llegó directo a una URL inválida:
   // redirigir a la primera ruta accesible dentro del sistema.
-  const KNOWN_ROUTES = ['/transacciones', '/afiliados', '/menu', '/roles'];
-  const menuPaths: string[] = user.menuPaths ?? [];
+  const configuredRoutes = Array.from(new Set(
+    collectConfiguredRoutes(router.config)
+      .filter((path) => path !== '/' && path !== '/login')
+  ));
 
-  const validFromMenu = menuPaths
-    .map(p => '/' + p.split('/').filter(Boolean)[0])
-    .find(seg => KNOWN_ROUTES.includes(seg));
+  const candidatePaths = Array.from(new Set(
+    [
+      ...(user.menus ?? []).map((menu) => normalizePath(menu.path)),
+      ...(user.menuPaths ?? []).map((path) => normalizePath(path)),
+    ].filter(Boolean)
+  ));
 
-  const validFromRole = KNOWN_ROUTES
-    .find(r => permissionService.canAccessRoute(r.replace('/', '')));
+  const validFromMenu = candidatePaths
+    .find((path) => configuredRoutes.includes(path) && permissionService.canAccessRoute(path));
+
+  const validFromRole = configuredRoutes
+    .find((path) => permissionService.canAccessRoute(path));
 
   return router.createUrlTree([validFromMenu ?? validFromRole ?? '/']);
 };

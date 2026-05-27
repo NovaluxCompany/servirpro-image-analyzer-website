@@ -32,6 +32,11 @@ export const routes: Routes = [
                 path: 'roles',
                 canActivate: [redirectBackGuard],
                 loadChildren: () => import('./modules/roles/roles.routes').then(m => m.rolesRoutes)
+            },
+            {
+                path: 'desactivar-afiliados',
+                canActivate: [roleGuard],
+                loadChildren: () => import('./modules/deactivate-affiliates/deactivate-affiliates.routes').then(m => m.deactivateAffiliatesRoutes)
             }
         ]
     },

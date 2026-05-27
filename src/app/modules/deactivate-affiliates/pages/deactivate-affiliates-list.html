@@ -1,0 +1,82 @@
+<div class="min-h-screen p-6 bg-gray-50">
+	<div class="max-w-full mx-auto">
+		<div class="flex items-center justify-between mb-6">
+			<div>
+				<h1 class="text-2xl font-bold text-gray-900">Parámetros de Desactivación</h1>
+				<p class="mt-1 text-sm text-gray-500">
+					Configuración centralizada de la tabla <strong>param_config_general</strong> para reglas de negocio.
+				</p>
+			</div>
+		</div>
+
+		<div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+			<div class="overflow-x-auto">
+				<table class="w-full text-sm text-left text-gray-500">
+					<thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+						<tr>
+							<th scope="col" class="px-6 py-4 font-semibold">ID</th>
+							<th scope="col" class="px-6 py-4 font-semibold">Key</th>
+							<th scope="col" class="px-6 py-4 font-semibold">Valor</th>
+							<th scope="col" class="px-6 py-4 font-semibold">Descripción</th>
+							<th scope="col" class="px-6 py-4 font-semibold text-center">Estado</th>
+							<th scope="col" class="px-6 py-4 font-semibold">Fecha de creación</th>
+							<th scope="col" class="px-6 py-4 font-semibold">Última actualización</th>
+						</tr>
+					</thead>
+
+					<tbody class="divide-y divide-gray-100">
+						@for (config of configs(); track config.id) {
+							<tr class="hover:bg-gray-50 transition-colors duration-150">
+								<td class="px-6 py-4 font-semibold text-gray-900">{{ config.id }}</td>
+								<td class="px-6 py-4">
+									<span class="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs font-mono">{{ config.key }}</span>
+								</td>
+								<td class="px-6 py-4">
+									<span class="font-semibold text-gray-900">{{ config.value }}</span>
+								</td>
+								<td class="px-6 py-4 max-w-xl">
+									<p class="text-sm text-gray-700 leading-relaxed">{{ config.description }}</p>
+								</td>
+								<td class="px-6 py-4 text-center">
+									<span
+										class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full border"
+										[class.bg-emerald-100]="config.status"
+										[class.text-emerald-700]="config.status"
+										[class.border-emerald-200]="config.status"
+										[class.bg-red-100]="!config.status"
+										[class.text-red-700]="!config.status"
+										[class.border-red-200]="!config.status"
+									>
+										<span
+											class="w-1.5 h-1.5 rounded-full"
+											[class.bg-emerald-500]="config.status"
+											[class.bg-red-400]="!config.status"
+										></span>
+										{{ config.status ? 'Habilitado' : 'Inhabilitado' }}
+									</span>
+								</td>
+								<td class="px-6 py-4 text-xs text-gray-400">{{ config.creationDate | date: 'dd/MM/yyyy HH:mm' }}</td>
+								<td class="px-6 py-4 text-xs text-gray-400">{{ config.updateDate | date: 'dd/MM/yyyy HH:mm' }}</td>
+							</tr>
+						} @empty {
+							<tr>
+								<td colspan="7" class="px-6 py-16 text-center">
+									<div class="flex flex-col items-center gap-3">
+										<svg class="w-12 h-12 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h7" />
+										</svg>
+										<p class="text-gray-400 text-sm">No se encontraron parámetros configurados.</p>
+									</div>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+
+			<div class="px-6 py-4 bg-gray-50 border-t border-gray-100 text-sm text-gray-600">
+				Total de parámetros: <span class="font-semibold">{{ totalItems() }}</span>
+			</div>
+		</div>
+	</div>
+</div>
