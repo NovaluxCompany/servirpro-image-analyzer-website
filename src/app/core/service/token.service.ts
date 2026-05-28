@@ -43,7 +43,14 @@ export class TokenService {
 
   hasMenuAccess(path: string): boolean {
     const menuPaths = this._currentUser()?.menuPaths ?? [];
-    return menuPaths.length === 0 || menuPaths.some(p => path.startsWith(p) || p.includes(path));
+    const cleanedPath = (path ?? '').trim();
+    const targetPath = cleanedPath.startsWith('/') ? cleanedPath : `/${cleanedPath}`;
+
+    return menuPaths.length === 0 || menuPaths.some((p) => {
+      const cleanedMenuPath = (p ?? '').trim();
+      const allowedPath = cleanedMenuPath.startsWith('/') ? cleanedMenuPath : `/${cleanedMenuPath}`;
+      return targetPath === allowedPath || targetPath.startsWith(`${allowedPath}/`);
+    });
   }
 
   private _loadUserFromStorage(): UserInfo | null {
