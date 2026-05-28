@@ -71,7 +71,13 @@ export class Login {
     this._authService.loginDB(email!, password!).subscribe({
       next: () => {
         this.isLoading = false;
-        this._router.navigate(['/transacciones']);
+        const user = this._tokenService.getUser();
+        const menuPaths = (user?.menuPaths ?? [])
+          .map((p) => '/' + p.split('/').filter(Boolean)[0])
+          .filter((p) => p !== '/');
+
+        const destination = menuPaths[0] ?? '/';
+        this._router.navigate([destination]);
       },
       error: () => {
         this.isLoading = false;

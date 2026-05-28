@@ -234,7 +234,7 @@
                     }
 
                     <!-- Enviar correo -->
-                    @if (isGestionAffiliate(affiliate) && affiliate.documents && affiliate.documents.length > 0 && affiliate.documents[0].documentUrl) {
+                    @if (isGestionAffiliate(affiliate)) {
                     <button type="button" (click)="sendEmail(affiliate); closeDropdown()"
                       [disabled]="sendingEmailId() === +affiliate.id!"
                       class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -255,7 +255,7 @@
                     }
 
                     <!-- Descargar documento -->
-                    @if (isGestionAffiliate(affiliate) && affiliate.documents && affiliate.documents.length > 0 && affiliate.documents[0].documentUrl) {
+                    @if (isGestionAffiliate(affiliate) && affiliate.documents && affiliate.documents.length > 0) {
                     <button type="button" (click)="downloadDocument(affiliate); closeDropdown()"
                       class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-emerald-700 hover:bg-emerald-50 transition-colors">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">

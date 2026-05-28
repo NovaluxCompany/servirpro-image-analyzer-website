@@ -6,6 +6,7 @@ import { TransactionsService } from '../../services/transactions.service';
 import { AffiliatesFormComponent } from '../../components/affiliates-form/affiliates-form';
 import { ImageUploaderComponent } from '../../components/image-uploader/image-uploader';
 import { Affiliate } from '../../interfaces/affiliate.interface';
+import { PermissionService } from '../../../../core/service/permission.service';
 
 @Component({
   selector: 'app-transaction-create',
@@ -19,10 +20,18 @@ export class TransactionCreateComponent {
   private _fb = inject(FormBuilder);
   private _transactionsService = inject(TransactionsService);
   private _router = inject(Router);
+  private _permission = inject(PermissionService);
 
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   uploadedImages = signal<File[]>([]);
+
+  ngOnInit(): void {
+    // Defensa adicional: si llegó aquí sin permiso (guard fallido), redirige sin toast duplicado
+    if (!this._permission.can('create')) {
+      this._router.navigate(['/transacciones']);
+    }
+  }
 
   form = this._fb.group({
     totalValue: [{ value: 0, disabled: true }, [Validators.required, Validators.min(1)]],

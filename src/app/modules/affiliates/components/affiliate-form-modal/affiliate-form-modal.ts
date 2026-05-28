@@ -195,27 +195,30 @@ export class AffiliateFormModalComponent implements OnInit {
     if (!fileControl) return;
 
     const label = this.selectedGrouperLabel || '';
+    const existingDoc = this.affiliate()?.documents?.[0];
+    const existingDisplayName = existingDoc?.fileName?.split('/').pop() || existingDoc?.fileName || '';
 
     if (label.includes('GESTIÓN') || label.includes('GESTION')) {
       fileControl.enable({ emitEvent: false });
       fileControl.setValidators([Validators.required]);
       // In edit mode, restore existing document display if user hasn't changed it
       if (this.isEdit && this.existingDocumentId && this.keepExistingDocument && !fileControl.value) {
-        const existingDoc = this.affiliate()?.documents?.[0];
-        if (existingDoc) {
-          const displayName = existingDoc.fileName.split('/').pop() || existingDoc.fileName;
-          fileControl.setValue(displayName, { emitEvent: false });
+        if (existingDisplayName) {
+          fileControl.setValue(existingDisplayName, { emitEvent: false });
         }
       }
     } else {
-      // Clear selected file and mark existing document for deletion
+      // Keep previously uploaded file visible in edit mode even when disabled.
       this.selectedFile = null;
-      this.keepExistingDocument = false;
       if (this.fileInputRef?.nativeElement) {
         this.fileInputRef.nativeElement.value = '';
       }
       fileControl.clearValidators();
-      fileControl.setValue('', { emitEvent: false });
+      if (this.isEdit && this.existingDocumentId && this.keepExistingDocument && existingDisplayName) {
+        fileControl.setValue(existingDisplayName, { emitEvent: false });
+      } else if (!this.keepExistingDocument) {
+        fileControl.setValue('', { emitEvent: false });
+      }
       fileControl.disable({ emitEvent: false });
     }
 
@@ -351,6 +354,15 @@ export class AffiliateFormModalComponent implements OnInit {
       compensationBoxId: a.compensationBoxId ? String(a.compensationBoxId) : '',
 
     });
+
+    const existingDoc = a.documents?.[0];
+    if (existingDoc) {
+      const displayName = existingDoc.fileName.split('/').pop() || existingDoc.fileName;
+      this.form.get('documentFile')?.setValue(displayName, { emitEvent: false });
+    } else {
+      this.form.get('documentFile')?.setValue('', { emitEvent: false });
+    }
+
     this.errorMessage.set(null);
   }
 
@@ -381,7 +393,7 @@ export class AffiliateFormModalComponent implements OnInit {
     }
 
     const maxBytes = AffiliateFormModalComponent.MAX_FILE_SIZE_MB * 1024 * 1024;
-    if (file.size > maxBytes) {
+     if (file.size > maxBytes) {
       this.fileError.set(`El archivo no puede superar ${AffiliateFormModalComponent.MAX_FILE_SIZE_MB} MB.`);
       this.selectedFile = null;
       this.form.get('documentFile')?.setValue(null, { emitEvent: false });

@@ -7,6 +7,7 @@ import { TransactionFilters } from '../../interfaces/transaction-filters.interfa
 import { TransactionFiltersComponent } from '../../components/transaction-filters/transaction-filters';
 import { TransactionTableComponent } from '../../components/transaction-table/transaction-table';
 import { ToastService } from '../../../../core/service/toast.service';
+import { PermissionService } from '../../../../core/service/permission.service';
 
 @Component({
   selector: 'app-transactions-list',
@@ -18,6 +19,7 @@ export class TransactionsListComponent {
   private _transactionsService = inject(TransactionsService);
   private _router = inject(Router);
   private _toastService = inject(ToastService);
+  private _permission = inject(PermissionService);
 
   readonly pageSize = 10;
 
@@ -92,7 +94,13 @@ export class TransactionsListComponent {
     return range;
   }
 
+  onCreateTransaction(): void {
+    if (!this._permission.check('create', undefined, 'Tu rol no tiene permiso para crear transacciones.')) return;
+    this._router.navigate(['/transacciones/crear']);
+  }
+
   downloadExcel(): void {
+    if (!this._permission.check('export', undefined, 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
     this.isDownloadingExcel.set(true);
     this.errorMessage.set(null);
 
@@ -115,9 +123,15 @@ export class TransactionsListComponent {
         this._toastService.showSuccess('Excel descargado exitosamente');
       },
       error: (error) => {
-        this.errorMessage.set(error.message);
         this.isDownloadingExcel.set(false);
-        this._toastService.showError('Error al descargar el Excel');
+        if (error.status === 403) {
+          this._toastService.showError('No tienes permiso para descargar el reporte en Excel. Contacta al administrador.');
+        } else if (error.status === 401) {
+          this._toastService.showError('Tu sesión ha expirado. Inicia sesión nuevamente.');
+        } else {
+          const msg = error?.error?.message ?? error?.error?.error ?? 'Error al descargar el Excel. Intenta de nuevo.';
+          this._toastService.showError(msg);
+        }
       }
     });
   }
@@ -126,7 +140,19 @@ export class TransactionsListComponent {
     this._router.navigate(['/transacciones', id]);
   }
 
-  onCreateTransaction(): void {
-    this._router.navigate(['/transacciones/crear']);
+  get isAdmin(): boolean {
+    return this._permission.can('delete');
+  }
+
+  onDisableTransaction(id: string): void {
+    this._transactionsService.setTransactionActive(id, false).subscribe({
+      next: () => {
+        this._toastService.showSuccess('Pago inhabilitado correctamente');
+        this.loadTransactions(this.currentFilters, this.currentPage());
+      },
+      error: () => {
+        this._toastService.showError('Error al inhabilitar el pago');
+      }
+    });
   }
 }

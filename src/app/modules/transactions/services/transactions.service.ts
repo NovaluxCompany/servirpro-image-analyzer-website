@@ -80,6 +80,12 @@ export class TransactionsService {
       .pipe(catchError(this.handleError));
   }
 
+  setTransactionActive(id: string, isActive: boolean): Observable<{ id: number; isActive: boolean }> {
+    return this._http
+      .patch<{ id: number; isActive: boolean }>(`${this.baseUrl}/${id}/active`, { isActive }, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError));
+  }
+
   exportToExcel(filters?: TransactionFilters): Observable<Blob> {
     let params = new HttpParams();
 
