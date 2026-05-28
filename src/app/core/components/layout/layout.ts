@@ -37,12 +37,6 @@ export class LayoutComponent {
     this.currentUser()?.roles?.some(r => r.toLowerCase() === 'administrador' || r.toLowerCase() === 'admin') ?? false
   );
 
-  isPaymentsOrAdmin = computed(() => {
-    const roles = this.currentUser()?.roles ?? [];
-    const normalized = roles.map(r => r.toLowerCase().trim());
-    return normalized.includes('pagos') || normalized.includes('administrador') || normalized.includes('admin');
-  });
-
   constructor() {
     this.updateCurrentRoute();
   }
