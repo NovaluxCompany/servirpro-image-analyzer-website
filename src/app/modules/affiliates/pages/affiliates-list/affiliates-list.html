@@ -41,7 +41,7 @@
         </button>
         }
       </div>
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
 
         <!-- Nombre -->
         <div>
@@ -89,6 +89,16 @@
           </app-searchable-select>
         </div>
 
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Estado</label>
+          <select [(ngModel)]="filterIsActive" (ngModelChange)="onDropdownFilterChange()"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+            <option value="">Todos</option>
+            <option value="true">Activo</option>
+            <option value="false">Inactivo</option>
+          </select>
+        </div>
+
       </div>
     </div>
 
@@ -120,6 +130,8 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Profesion</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Envio Correo</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Observaciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -152,6 +164,12 @@
                 <div class="h-4 w-20 bg-gray-200 rounded"></div>
               </td>
               <td class="px-4 py-3">
+                <div class="h-4 w-16 bg-gray-200 rounded"></div>
+              </td>
+              <td class="px-4 py-3">
+                <div class="h-4 w-36 bg-gray-200 rounded"></div>
+              </td>
+              <td class="px-4 py-3">
                 <div class="h-4 w-28 bg-gray-200 rounded"></div>
               </td>
               <td class="px-4 py-3">
@@ -164,7 +182,7 @@
             }
             } @else if (affiliates().length === 0) {
             <tr>
-              <td colspan="11" class="px-4 py-16 text-center">
+              <td colspan="13" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,7 +261,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                       </svg>
-                      Enviando...
+                      En proceso de envio...
                       } @else {
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -345,6 +363,24 @@
               <!-- Profesion -->
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
                 {{ affiliate.profession || '&#8212;' }}
+              </td>
+
+              <!-- Envio Correo -->
+              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                @if (!affiliate.isActive) {
+                  -
+                } @else if (affiliate.emailSent) {
+                  SI
+                } @else if (isGestionAffiliate(affiliate)) {
+                  NO
+                } @else {
+                  -
+                }
+              </td>
+
+              <!-- Observaciones -->
+              <td class="px-4 py-3 text-gray-600 max-w-xs truncate" [title]="affiliate.observation || ''">
+                {{ affiliate.observation || '-' }}
               </td>
 
             </tr>

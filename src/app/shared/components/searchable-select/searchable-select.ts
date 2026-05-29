@@ -58,6 +58,18 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
   /** Reference to the panel element while it lives in document.body */
   private _bodyPanelEl: Element | null = null;
 
+  private closeDropdownPanel(resetSearch = true): void {
+    this.isOpen.set(false);
+    if (this._bodyPanelEl) {
+      this._bodyPanelEl.remove();
+      this._bodyPanelEl = null;
+    }
+    if (resetSearch) {
+      this.searchText = '';
+    }
+    this.onTouched();
+  }
+
   private onChange: (value: string) => void = () => {};
   private onTouched: () => void = () => {};
   isDisabled = signal(false);
@@ -67,10 +79,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
     if (!this.isOpen()) return;
     const target = event.target as HTMLElement;
     if (target.closest?.('.ss-dropdown-panel')) return;
-    this.isOpen.set(false);
-    this._bodyPanelEl = null;
-    this.searchText = '';
-    this.onTouched();
+    this.closeDropdownPanel();
   };
 
   selectedLabel = computed(() => {
@@ -101,10 +110,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
 
   ngOnDestroy(): void {
     window.removeEventListener('scroll', this.closeOnScroll, true);
-    if (this._bodyPanelEl) {
-      this._bodyPanelEl.remove();
-      this._bodyPanelEl = null;
-    }
+    this.closeDropdownPanel(false);
   }
 
   /**
@@ -177,9 +183,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
   openDropdown(): void {
     if (this.isDisabled()) return;
     if (this.isOpen()) {
-      this.isOpen.set(false);
-      this._bodyPanelEl = null;
-      this.searchText = '';
+      this.closeDropdownPanel();
       return;
     }
     this.updateDropdownPosition();
@@ -192,9 +196,8 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
   selectOption(option: SelectOption): void {
     this.selectedValue.set(option.value);
     this.searchText = '';
-    this.isOpen.set(false);
+    this.closeDropdownPanel(false);
     this.onChange(option.value);
-    this.onTouched();
   }
 
   // ── Combobox mode (allowFreeText) ─────────────────────────────────────────
@@ -225,16 +228,14 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
   onComboBlur(): void {
     // Delay so a click on a dropdown option registers before we close
     setTimeout(() => {
-      this.isOpen.set(false);
-      this.onTouched();
+      this.closeDropdownPanel(false);
     }, 150);
   }
 
   toggleComboDropdown(): void {
     if (this.isDisabled() || this.options.length === 0) return;
     if (this.isOpen()) {
-      this.isOpen.set(false);
-      this._bodyPanelEl = null;
+      this.closeDropdownPanel(false);
     } else {
       this.updateDropdownPosition();
       this.isOpen.set(true);
@@ -245,24 +246,21 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
   clearComboValue(): void {
     this.selectedValue.set('');
     this.onChange('');
-    this.isOpen.set(false);
-    this.onTouched();
+    this.closeDropdownPanel(false);
     setTimeout(() => this.comboRef?.nativeElement?.focus(), 30);
   }
 
   selectComboOption(option: SelectOption): void {
     this.selectedValue.set(option.value);
     this.onChange(option.value);
-    this.isOpen.set(false);
-    this.onTouched();
+    this.closeDropdownPanel(false);
   }
 
   clearSelection(): void {
     this.selectedValue.set('');
     this.searchText = '';
-    this.isOpen.set(false);
+    this.closeDropdownPanel(false);
     this.onChange('');
-    this.onTouched();
   }
 
   @HostListener('document:click', ['$event'])
@@ -272,10 +270,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
     const hostEl = this._elementRef.nativeElement as HTMLElement;
     // Also check the panel that was moved to document.body
     if (!hostEl.contains(target) && !this._bodyPanelEl?.contains(target)) {
-      this.isOpen.set(false);
-      this._bodyPanelEl = null;
-      this.searchText = '';
-      this.onTouched();
+      this.closeDropdownPanel();
     }
   }
 }

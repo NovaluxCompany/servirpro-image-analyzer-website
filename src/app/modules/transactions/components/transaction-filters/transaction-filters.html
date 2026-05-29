@@ -1,12 +1,12 @@
 <div class="mb-6 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
   <h3 class="mb-4 text-lg font-semibold text-gray-900">Filtros de búsqueda</h3>
-  
+
   <form [formGroup]="form" (ngSubmit)="onSearch()" class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
     <div>
       <label for="dateFrom" class="block mb-2 text-sm font-medium text-gray-900">Fecha desde</label>
-      <input 
-        type="date" 
-        id="dateFrom" 
+      <input
+        type="date"
+        id="dateFrom"
         formControlName="dateFrom"
         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
       >
@@ -14,9 +14,9 @@
 
     <div>
       <label for="dateTo" class="block mb-2 text-sm font-medium text-gray-900">Fecha hasta</label>
-      <input 
-        type="date" 
-        id="dateTo" 
+      <input
+        type="date"
+        id="dateTo"
         formControlName="dateTo"
         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
       >
@@ -24,9 +24,9 @@
 
     <div>
       <label for="reference" class="block mb-2 text-sm font-medium text-gray-900">Referencia</label>
-      <input 
-        type="text" 
-        id="reference" 
+      <input
+        type="text"
+        id="reference"
         formControlName="reference"
         placeholder="Buscar por referencia"
         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
@@ -35,9 +35,9 @@
 
     <div>
       <label for="affiliate" class="block mb-2 text-sm font-medium text-gray-900">Nombre del afiliado</label>
-      <input 
-        type="text" 
-        id="affiliate" 
+      <input
+        type="text"
+        id="affiliate"
         formControlName="affiliate"
         placeholder="Buscar por nombre"
         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
@@ -46,9 +46,9 @@
 
     <div>
       <label for="idNumber" class="block mb-2 text-sm font-medium text-gray-900">Cédula</label>
-      <input 
-        type="text" 
-        id="idNumber" 
+      <input
+        type="text"
+        id="idNumber"
         formControlName="idNumber"
         placeholder="Buscar por cédula"
         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
@@ -56,13 +56,13 @@
     </div>
 
     <div class="flex items-end gap-2">
-      <button 
+      <button
         type="submit"
         class="flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
       >
         Buscar
       </button>
-      <button 
+      <button
         type="button"
         (click)="onClear()"
         class="flex-1 text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center"

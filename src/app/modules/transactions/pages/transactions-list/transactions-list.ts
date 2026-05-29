@@ -8,6 +8,7 @@ import { TransactionFiltersComponent } from '../../components/transaction-filter
 import { TransactionTableComponent } from '../../components/transaction-table/transaction-table';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { TokenService } from '../../../../core/service/token.service';
 
 @Component({
   selector: 'app-transactions-list',
@@ -20,6 +21,7 @@ export class TransactionsListComponent {
   private _router = inject(Router);
   private _toastService = inject(ToastService);
   private _permission = inject(PermissionService);
+  private _tokenService = inject(TokenService);
 
   readonly pageSize = 10;
 
@@ -101,8 +103,14 @@ export class TransactionsListComponent {
 
   downloadExcel(): void {
     if (!this._permission.check('export', undefined, 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
+    if (this.totalItems() === 0) {
+      this._toastService.showError('No hay resultados para descargar con los filtros actuales.');
+      return;
+    }
+
     this.isDownloadingExcel.set(true);
     this.errorMessage.set(null);
+    this._toastService.showInfo('Descarga en proceso...');
 
     this._transactionsService.exportToExcel(this.currentFilters).subscribe({
       next: (blob) => {
@@ -124,14 +132,7 @@ export class TransactionsListComponent {
       },
       error: (error) => {
         this.isDownloadingExcel.set(false);
-        if (error.status === 403) {
-          this._toastService.showError('No tienes permiso para descargar el reporte en Excel. Contacta al administrador.');
-        } else if (error.status === 401) {
-          this._toastService.showError('Tu sesión ha expirado. Inicia sesión nuevamente.');
-        } else {
-          const msg = error?.error?.message ?? error?.error?.error ?? 'Error al descargar el Excel. Intenta de nuevo.';
-          this._toastService.showError(msg);
-        }
+        this._toastService.showError(error?.message ?? 'Error al descargar el Excel. Intenta de nuevo.');
       }
     });
   }
@@ -141,10 +142,19 @@ export class TransactionsListComponent {
   }
 
   get isAdmin(): boolean {
-    return this._permission.can('delete');
+    const roles = this._tokenService.getUser()?.roles ?? [];
+    return roles.some((role) => {
+      const normalized = role.toLowerCase();
+      return normalized === 'administrador' || normalized === 'admin';
+    });
   }
 
   onDisableTransaction(id: string): void {
+    if (!this.isAdmin) {
+      this._toastService.showError('Solo un administrador puede inhabilitar transacciones.');
+      return;
+    }
+
     this._transactionsService.setTransactionActive(id, false).subscribe({
       next: () => {
         this._toastService.showSuccess('Pago inhabilitado correctamente');
