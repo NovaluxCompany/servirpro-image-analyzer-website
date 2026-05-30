@@ -149,7 +149,7 @@
           <!-- Afiliados -->
           <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
             <h2 class="mb-4 text-xl font-semibold text-gray-900">
-              Afiliados ({{ affiliates().length }})
+              Afiliados ({{ affiliatesCount() }})
             </h2>
 
             <div class="space-y-4">
@@ -193,7 +193,7 @@
           </div>
 
           <!-- Comprobantes procesados -->
-          @if (transaction()!.status === 'processed' && receipts().length > 0) {
+          @if (transaction()!.status === 'processed' && receiptsCount() > 0) {
             <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
               <h2 class="mb-4 text-xl font-semibold text-gray-900">
                 Resultados del Análisis de IA
@@ -207,7 +207,7 @@
         <div class="lg:col-span-1">
           <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm sticky top-6">
             <h2 class="mb-4 text-xl font-semibold text-gray-900">
-              Comprobantes ({{ images().length }})
+              Comprobantes ({{ imagesCount() }})
             </h2>
 
             <div class="grid grid-cols-2 gap-3">

@@ -136,16 +136,32 @@ export class TransactionDetailComponent implements OnDestroy {
     this.selectedImageUrl.set(null);
   }
 
+  private toArray<T>(value: unknown): T[] {
+    return Array.isArray(value) ? (value as T[]) : [];
+  }
+
   affiliates(): Affiliate[] {
-    return this.transaction()?.affiliates ?? [];
+    return this.toArray<Affiliate>(this.transaction()?.affiliates);
   }
 
   receipts(): Receipt[] {
-    return this.transaction()?.receipts ?? [];
+    return this.toArray<Receipt>(this.transaction()?.receipts);
   }
 
   images(): string[] {
-    return this.transaction()?.images ?? [];
+    return this.toArray<string>(this.transaction()?.images);
+  }
+
+  affiliatesCount(): number {
+    return this.affiliates().length;
+  }
+
+  receiptsCount(): number {
+    return this.receipts().length;
+  }
+
+  imagesCount(): number {
+    return this.images().length;
   }
 
   getTotalPrice(): number {
