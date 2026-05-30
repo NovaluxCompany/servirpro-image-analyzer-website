@@ -8,7 +8,6 @@ import { TransactionFiltersComponent } from '../../components/transaction-filter
 import { TransactionTableComponent } from '../../components/transaction-table/transaction-table';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
-import { TokenService } from '../../../../core/service/token.service';
 
 @Component({
   selector: 'app-transactions-list',
@@ -21,7 +20,6 @@ export class TransactionsListComponent {
   private _router = inject(Router);
   private _toastService = inject(ToastService);
   private _permission = inject(PermissionService);
-  private _tokenService = inject(TokenService);
 
   readonly pageSize = 10;
 
@@ -141,17 +139,13 @@ export class TransactionsListComponent {
     this._router.navigate(['/transacciones', id]);
   }
 
-  get isAdmin(): boolean {
-    const roles = this._tokenService.getUser()?.roles ?? [];
-    return roles.some((role) => {
-      const normalized = role.toLowerCase();
-      return normalized === 'administrador' || normalized === 'admin';
-    });
+  get canDisableTransactions(): boolean {
+    return this._permission.can('delete', '/transacciones');
   }
 
   onDisableTransaction(id: string): void {
-    if (!this.isAdmin) {
-      this._toastService.showError('Solo un administrador puede inhabilitar transacciones.');
+    if (!this.canDisableTransactions) {
+      this._toastService.showError('No tienes permiso para inhabilitar transacciones.');
       return;
     }
 
