@@ -44,6 +44,8 @@ export interface AffiliateMember {
   compensationBoxId?: string;
   compensationBoxName?: string;
   isActive?: boolean;
+  emailSent?: boolean;
+  observation?: string;
   entryDate?: string;
   // Datos ADRES
   eps?: string;
@@ -92,6 +94,7 @@ export interface CreateAffiliateMemberDto {
   entryDate?: string;
   arl?: number;
   compensationFund?: string;
+  observation?: string;
 }
 
 export interface UpdateAffiliateMemberDto extends Partial<CreateAffiliateMemberDto> {}

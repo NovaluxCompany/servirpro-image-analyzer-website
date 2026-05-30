@@ -57,7 +57,7 @@
     <app-transaction-table
       [transactions]="transactions()"
       [isLoading]="isLoading()"
-      [canDisable]="isAdmin"
+      [canDisable]="canDisableTransactions"
       (viewDetail)="onViewDetail($event)"
       (disableTransaction)="onDisableTransaction($event)"
     />

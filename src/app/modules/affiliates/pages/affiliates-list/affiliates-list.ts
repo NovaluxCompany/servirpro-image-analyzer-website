@@ -37,6 +37,7 @@ export class AffiliatesListComponent implements OnInit {
   filterCedula = '';
   filterReference = '';
   filterAdvisor = '';
+  filterIsActive = '';
   advisorOptions = signal<SelectOption[]>([]);
   referenceOptions = signal<SelectOption[]>([]);
 
@@ -92,6 +93,7 @@ export class AffiliatesListComponent implements OnInit {
       cedula: this.filterCedula || undefined,
       reference: this.filterReference || undefined,
       advisor: this.filterAdvisor || undefined,
+      isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
     };
   }
 
@@ -137,12 +139,13 @@ export class AffiliatesListComponent implements OnInit {
     this.filterCedula = '';
     this.filterReference = '';
     this.filterAdvisor = '';
+    this.filterIsActive = '';
     this.currentPage.set(1);
     this.loadAffiliates();
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor);
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterIsActive);
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -220,6 +223,8 @@ export class AffiliatesListComponent implements OnInit {
     const ext = doc.fileName.includes('.') ? doc.fileName.split('.').pop() : '';
     const downloadName = ext ? `${affiliate.documentNumber}.${ext}` : affiliate.documentNumber;
 
+    this._toast.showInfo('Descarga en proceso...');
+
     this._service.downloadBlob(affiliate.id, documentId).subscribe({
       next: (blob) => {
         const objectUrl = URL.createObjectURL(blob);
@@ -230,6 +235,7 @@ export class AffiliatesListComponent implements OnInit {
         anchor.click();
         document.body.removeChild(anchor);
         URL.revokeObjectURL(objectUrl);
+        this._toast.showSuccess('Descarga exitosa');
       },
       error: (err) => {
         this._toast.showError('No se pudo descargar el archivo');
@@ -260,7 +266,8 @@ export class AffiliatesListComponent implements OnInit {
 
   isGestionAffiliate(affiliate: AffiliateMember): boolean {
     const name = (affiliate.grouperName ?? '').toUpperCase();
-    return name.includes('GESTI');
+    const grouperId = Number(affiliate.grouperId);
+    return name.includes('GESTION') || grouperId === 1;
   }
 
   sendEmail(affiliate: AffiliateMember): void {
@@ -268,9 +275,11 @@ export class AffiliatesListComponent implements OnInit {
     if (!affiliationId || this.sendingEmailId() !== null) return;
 
     this.sendingEmailId.set(affiliationId);
+    this._toast.showInfo('En proceso de envio de correo...');
     this._service.sendEmail(affiliationId).subscribe({
       next: () => {
         this._toast.showSuccess('Correo enviado correctamente');
+        this.loadAffiliates();
         this.sendingEmailId.set(null);
       },
       error: (err) => {

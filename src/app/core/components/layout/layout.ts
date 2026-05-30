@@ -32,11 +32,6 @@ export class LayoutComponent {
     return this._permission.canAccessRoute(path);
   };
 
-  // Role-based visibility
-  isAdmin = computed(() =>
-    this.currentUser()?.roles?.some(r => r.toLowerCase() === 'administrador' || r.toLowerCase() === 'admin') ?? false
-  );
-
   constructor() {
     this.updateCurrentRoute();
   }

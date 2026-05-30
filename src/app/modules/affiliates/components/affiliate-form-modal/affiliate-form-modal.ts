@@ -109,7 +109,8 @@ export class AffiliateFormModalComponent implements OnInit {
     pensionId: [''],
     compensationBoxId: [''],
     isActive: [true],
-    entryDate: [{ value: '', disabled: true }],
+    entryDate: ['', Validators.required],
+    observation: ['', Validators.maxLength(2000)],
     documentFile: [{ value: <File | string | null>null, disabled: true }],
     // Seguridad social (sin ADRES, sin price/deposit/charge)
     arl: [<number | null>null],
@@ -347,11 +348,12 @@ export class AffiliateFormModalComponent implements OnInit {
       advisorId: a.advisorId ? String(a.advisorId) : '',
       epsId: a.epsId ? String(a.epsId) : '',
       isActive: a.isActive ?? true,
-      companyEntryDate: this.toLocalDateStr(this.todayDate()),
-      entryDate: this.toLocalDateStr(this.todayDate()),
+      companyEntryDate: this.toLocalDateStr(a.companyEntryDate ?? a.entryDate ?? this.todayDate()),
+      entryDate: this.toLocalDateStr(a.entryDate ?? a.companyEntryDate ?? this.todayDate()),
       arl: a.arl ?? null,
       pensionId: a.pensionId ? String(a.pensionId) : '',
       compensationBoxId: a.compensationBoxId ? String(a.compensationBoxId) : '',
+      observation: a.observation ?? '',
 
     });
 
@@ -481,9 +483,10 @@ export class AffiliateFormModalComponent implements OnInit {
       pensionId: toNumberOrNull(raw.pensionId),
       compensationBoxId: toNumberOrNull(raw.compensationBoxId),
       isActive: raw.isActive ?? true,
-      companyEntryDate: this.toLocalDateStr(this.todayDate()),
-      entryDate: this.toLocalDateStr(this.todayDate()),
+      companyEntryDate: raw.entryDate || this.toLocalDateStr(this.todayDate()),
+      entryDate: raw.entryDate || this.toLocalDateStr(this.todayDate()),
       arl: raw.arl ?? undefined,
+      observation: raw.observation?.trim() || undefined,
     };
 
     const obs =

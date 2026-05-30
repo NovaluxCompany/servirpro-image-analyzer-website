@@ -14,6 +14,7 @@ export interface AffiliateFilters {
   cedula?: string;
   reference?: string;
   advisor?: string;
+  isActive?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -36,6 +37,7 @@ export class AffiliateMembersService {
     if (filters.cedula) params = params.set('cedula', filters.cedula);
     if (filters.reference) params = params.set('reference', filters.reference);
     if (filters.advisor) params = params.set('advisor', filters.advisor);
+    if (filters.isActive !== undefined) params = params.set('isActive', String(filters.isActive));
 
     return this._http
       .get<PaginatedAffiliatesResponse>(`${this.baseUrl}`, {

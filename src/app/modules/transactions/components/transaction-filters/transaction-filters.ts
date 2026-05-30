@@ -11,7 +11,7 @@ import { TransactionFilters } from '../../interfaces/transaction-filters.interfa
 })
 export class TransactionFiltersComponent {
   filterApplied = output<TransactionFilters>();
-  
+
   private _fb = new FormBuilder();
 
   form = this._fb.group({

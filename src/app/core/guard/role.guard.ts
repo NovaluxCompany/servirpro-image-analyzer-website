@@ -39,7 +39,7 @@ export const roleGuard: CanActivateFn = (
 
   const menuPaths: string[] = user.menuPaths ?? [];
 
-  // Sin menuPaths configurados → acceso total (bootstrap o admin sin restricciones aún)
+  // Sin menuPaths configurados → acceso total (bootstrap o perfil sin restricciones aún)
   if (menuPaths.length === 0) return true;
 
   const currentPath = normalizePath(state.url);
