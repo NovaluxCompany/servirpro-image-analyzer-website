@@ -38,7 +38,7 @@ export class AffiliatesListComponent implements OnInit {
   filterCedula = '';
   filterReference = '';
   filterAdvisor = '';
-  filterIsActive = 'true';
+  filterIsActive = '';
   advisorOptions = signal<SelectOption[]>([]);
   referenceOptions = signal<SelectOption[]>([]);
 
@@ -261,7 +261,7 @@ export class AffiliatesListComponent implements OnInit {
       cedula: this.filterCedula || undefined,
       reference: this.filterReference || undefined,
       advisor: this.filterAdvisor || undefined,
-      isActive: this.filterIsActive === '' ? true : this.filterIsActive === 'true',
+      isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
     };
 
     this._service.exportToExcel(exportFilters).subscribe({
