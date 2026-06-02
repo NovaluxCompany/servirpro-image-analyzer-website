@@ -1,11 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { forkJoin } from 'rxjs';
 import { ToastService } from '../../../core/service/toast.service';
 import {
-  DeactivateAffiliateRow,
+  AffiliateTransactionRow,
   DeactivationContext,
+  InactivationAffiliateRow,
 } from '../interfaces/deactivate-affiliates.interface';
 import { DeactivateAffiliatesService } from '../services/deactivate-affiliates.service';
+
+type InactivationTab = 'unpaid' | 'underpaid';
 
 @Component({
   selector: 'app-deactivate-affiliates-list',
@@ -18,17 +22,22 @@ export class DeactivateAffiliatesList implements OnInit {
   private readonly _deactivateAffiliatesService = inject(DeactivateAffiliatesService);
   private readonly _toastService = inject(ToastService);
 
-  protected readonly currentPage = signal(1);
-  protected readonly totalPages = signal(1);
-  protected readonly totalItems = signal(0);
   protected readonly isLoading = signal(false);
   protected readonly isSubmitting = signal(false);
   protected readonly showConfirmationModal = signal(false);
   protected readonly selectedIds = signal<number[]>([]);
   protected readonly context = signal<DeactivationContext | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly activeTab = signal<InactivationTab>('unpaid');
 
-  protected readonly affiliates = signal<DeactivateAffiliateRow[]>([]);
+  protected readonly unpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
+  protected readonly underpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
+
+  protected readonly isTransactionsModalOpen = signal(false);
+  protected readonly isLoadingTransactions = signal(false);
+  protected readonly transactionsError = signal<string | null>(null);
+  protected readonly selectedAffiliateForDetail = signal<InactivationAffiliateRow | null>(null);
+  protected readonly affiliateTransactions = signal<AffiliateTransactionRow[]>([]);
 
   protected readonly canDeactivateByDate = computed(() => {
     const context = this.context();
@@ -38,6 +47,13 @@ export class DeactivateAffiliatesList implements OnInit {
 
     return context.currentDay >= context.minDay && context.canDeactivateByDate;
   });
+
+  protected readonly currentAffiliates = computed(() =>
+    this.activeTab() === 'unpaid' ? this.unpaidAffiliates() : this.underpaidAffiliates(),
+  );
+
+  protected readonly totalItems = computed(() => this.currentAffiliates().length);
+
   protected readonly isDeactivateButtonDisabled = computed(
     () => this.selectedCount() === 0 || this.isLoading() || this.isSubmitting() || !this.canDeactivateByDate(),
   );
@@ -45,59 +61,41 @@ export class DeactivateAffiliatesList implements OnInit {
     () => `Se desactivarán ${this.selectedCount()} usuario(s), ¿desea continuar?`,
   );
 
-  protected readonly pageNumbers = computed(() => {
-    const total = this.totalPages();
-    const current = this.currentPage();
-    const delta = 2;
-    const range: number[] = [];
-
-    for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
-      range.push(i);
-    }
-
-    return range;
-  });
-
   protected readonly selectedVisibleCount = computed(() =>
-    this.affiliates().filter((affiliate) => this.isSelected(affiliate.id)).length,
+    this.currentAffiliates().filter((affiliate) => this.isSelected(affiliate.affiliateId)).length,
   );
 
   protected readonly allVisibleSelected = computed(() => {
-    const visible = this.affiliates();
-    return visible.length > 0 && visible.every((affiliate) => this.selectedIds().includes(affiliate.id));
+    const visible = this.currentAffiliates();
+    return visible.length > 0 && visible.every((affiliate) => this.selectedIds().includes(affiliate.affiliateId));
   });
 
   protected readonly someVisibleSelected = computed(() => {
-    const visible = this.affiliates();
-    const selectedCount = visible.filter((affiliate) => this.selectedIds().includes(affiliate.id)).length;
+    const visible = this.currentAffiliates();
+    const selectedCount = visible.filter((affiliate) => this.selectedIds().includes(affiliate.affiliateId)).length;
     return selectedCount > 0 && selectedCount < visible.length;
   });
 
   protected readonly selectedCount = computed(() => this.selectedIds().length);
 
   ngOnInit(): void {
-    this.loadAffiliates(1);
+    this.loadData();
   }
 
-  protected loadAffiliates(page: number): void {
+  protected loadData(): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
+    this.selectedIds.set([]);
 
-    this._deactivateAffiliatesService.getActiveAffiliates(page).subscribe({
+    forkJoin({
+      context: this._deactivateAffiliatesService.getContext(),
+      unpaid: this._deactivateAffiliatesService.getUnpaidAffiliates(),
+      underpaid: this._deactivateAffiliatesService.getUnderpaidAffiliates(),
+    }).subscribe({
       next: (response) => {
-        const safeTotalPages = Math.max(1, response.totalPages || 1);
-
-        if (response.page > safeTotalPages) {
-          this.loadAffiliates(safeTotalPages);
-          return;
-        }
-
-        this.affiliates.set(response.data);
-        this.totalItems.set(response.total);
-        this.currentPage.set(response.page);
-        this.totalPages.set(safeTotalPages);
         this.context.set(response.context);
-        this.selectedIds.set([]);
+        this.unpaidAffiliates.set(response.unpaid);
+        this.underpaidAffiliates.set(response.underpaid);
         this.isLoading.set(false);
       },
       error: (error: Error) => {
@@ -107,13 +105,13 @@ export class DeactivateAffiliatesList implements OnInit {
     });
   }
 
-  protected goToPage(page: number): void {
-    const nextPage = Math.min(Math.max(page, 1), this.totalPages());
-    if (nextPage === this.currentPage()) {
+  protected changeTab(tab: InactivationTab): void {
+    if (this.activeTab() === tab) {
       return;
     }
 
-    this.loadAffiliates(nextPage);
+    this.activeTab.set(tab);
+    this.selectedIds.set([]);
   }
 
   protected toggleRow(id: number, checked: boolean): void {
@@ -128,11 +126,11 @@ export class DeactivateAffiliatesList implements OnInit {
 
   protected toggleVisibleRows(checked: boolean): void {
     const next = new Set(this.selectedIds());
-    this.affiliates().forEach((affiliate) => {
+    this.currentAffiliates().forEach((affiliate) => {
       if (checked) {
-        next.add(affiliate.id);
+        next.add(affiliate.affiliateId);
       } else {
-        next.delete(affiliate.id);
+        next.delete(affiliate.affiliateId);
       }
     });
     this.selectedIds.set(Array.from(next));
@@ -181,7 +179,7 @@ export class DeactivateAffiliatesList implements OnInit {
         this._toastService.showSuccess(
           response?.message || `${selectedAtConfirmation} usuarios fueron desactivados exitosamente.`,
         );
-        this.loadAffiliates(this.currentPage());
+        this.loadData();
       },
       error: (error: Error) => {
         this.isSubmitting.set(false);
@@ -191,7 +189,37 @@ export class DeactivateAffiliatesList implements OnInit {
     });
   }
 
-  protected trackById(_: number, item: DeactivateAffiliateRow): number {
-    return item.id;
+  protected openTransactionsModal(affiliate: InactivationAffiliateRow): void {
+    this.selectedAffiliateForDetail.set(affiliate);
+    this.isTransactionsModalOpen.set(true);
+    this.isLoadingTransactions.set(true);
+    this.transactionsError.set(null);
+    this.affiliateTransactions.set([]);
+
+    this._deactivateAffiliatesService.getAffiliateTransactions(affiliate.affiliateId).subscribe({
+      next: (transactions) => {
+        this.affiliateTransactions.set(transactions);
+        this.isLoadingTransactions.set(false);
+      },
+      error: (error: Error) => {
+        this.transactionsError.set(error.message);
+        this.isLoadingTransactions.set(false);
+      },
+    });
+  }
+
+  protected closeTransactionsModal(): void {
+    this.isTransactionsModalOpen.set(false);
+    this.selectedAffiliateForDetail.set(null);
+    this.affiliateTransactions.set([]);
+    this.transactionsError.set(null);
+  }
+
+  protected trackById(_: number, item: InactivationAffiliateRow): number {
+    return item.affiliateId;
+  }
+
+  protected trackByTransactionId(_: number, item: AffiliateTransactionRow): number {
+    return item.transactionId;
   }
 }

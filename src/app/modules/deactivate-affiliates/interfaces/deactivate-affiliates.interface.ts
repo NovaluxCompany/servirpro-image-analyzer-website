@@ -34,3 +34,23 @@ export interface DeactivateAffiliatesResponse {
   affected: number;
   message: string;
 }
+
+export interface InactivationAffiliateRow {
+  affiliateId: number;
+  name: string;
+  document: string;
+  plan: string;
+  expectedAmount: number;
+  paidAmount?: number;
+  difference?: number;
+  lastPayment: string | null;
+}
+
+export interface AffiliateTransactionRow {
+  transactionId: number;
+  date: string;
+  amount: number;
+  concept: string;
+  status: string;
+  observation: string | null;
+}
