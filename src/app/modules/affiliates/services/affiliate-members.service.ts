@@ -127,8 +127,6 @@ export class AffiliateMembersService {
     if (filters.advisor) params = params.set('advisor', filters.advisor);
     if (filters.isActive !== undefined) {
       params = params.set('isActive', String(filters.isActive));
-    } else {
-      params = params.set('isActive', 'true');
     }
 
     return this._http
