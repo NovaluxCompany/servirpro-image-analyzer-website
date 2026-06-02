@@ -196,7 +196,7 @@ export class DeactivateAffiliatesList implements OnInit {
     this.transactionsError.set(null);
     this.affiliateTransactions.set([]);
 
-    this._deactivateAffiliatesService.getAffiliateTransactions(affiliate.affiliateId).subscribe({
+    this._deactivateAffiliatesService.getAffiliateTransactions(affiliate.document).subscribe({
       next: (transactions) => {
         this.affiliateTransactions.set(transactions);
         this.isLoadingTransactions.set(false);
@@ -219,7 +219,7 @@ export class DeactivateAffiliatesList implements OnInit {
     return item.affiliateId;
   }
 
-  protected trackByTransactionId(_: number, item: AffiliateTransactionRow): number {
+  protected trackByTransactionId(_: number, item: AffiliateTransactionRow): string {
     return item.transactionId;
   }
 }

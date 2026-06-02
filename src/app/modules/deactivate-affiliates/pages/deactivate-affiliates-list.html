@@ -227,7 +227,7 @@
       <div>
         <h3 class="text-base font-bold text-white">Detalle de transacciones</h3>
         <p class="text-xs text-blue-100 mt-0.5">
-          {{ selectedAffiliateForDetail()?.nombre }} {{ selectedAffiliateForDetail()?.apellido }}
+          {{ selectedAffiliateForDetail()?.name }}
         </p>
       </div>
       <button
@@ -250,10 +250,12 @@
         <table class="w-full text-sm text-left text-gray-600">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">ID</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Monto</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Concepto</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor total</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor pagado</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Descuento</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Coincidencia</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Observación</th>
             </tr>
@@ -261,21 +263,37 @@
           <tbody class="divide-y divide-gray-100">
             @if (isLoadingTransactions()) {
             <tr>
-              <td colspan="6" class="px-4 py-10 text-center text-gray-500">Cargando transacciones...</td>
+              <td colspan="8" class="px-4 py-10 text-center text-gray-500">Cargando transacciones...</td>
             </tr>
             } @else if (affiliateTransactions().length === 0) {
             <tr>
-              <td colspan="6" class="px-4 py-10 text-center text-gray-500">No hay transacciones activas para este afiliado.</td>
+              <td colspan="8" class="px-4 py-10 text-center text-gray-500">No hay transacciones activas para este afiliado.</td>
             </tr>
             } @else {
             @for (tx of affiliateTransactions(); track trackByTransactionId($index, tx)) {
             <tr>
-              <td class="px-4 py-3 whitespace-nowrap">{{ tx.transactionId }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ tx.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ tx.monto | number:'1.0-2' }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ tx.concepto }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ tx.estado }}</td>
-              <td class="px-4 py-3">{{ tx.observacion || '-' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ tx.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ tx.reference || '-' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ tx.totalValue | number:'1.0-2' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ tx.amountPaid | number:'1.0-2' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                @if (tx.discountedValue) {
+                  <span class="text-orange-600">{{ tx.discountedValue | number:'1.0-2' }}</span>
+                } @else {
+                  <span class="text-gray-400">-</span>
+                }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-center">
+                @if (tx.amountsMatch === true) {
+                  <span class="text-green-600 text-lg font-bold">✓</span>
+                } @else if (tx.amountsMatch === false) {
+                  <span class="text-red-600 text-lg font-bold">✗</span>
+                } @else {
+                  <span class="text-gray-400">-</span>
+                }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ tx.status }}</td>
+              <td class="px-4 py-3">{{ tx.observation || '-' }}</td>
             </tr>
             }
             }

@@ -1,12 +1,12 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, catchError, map, throwError } from 'rxjs';
+import { Observable, catchError, map, of, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../../core/service/token.service';
 import {
+  ActiveAffiliateRow,
   ActiveDeactivationResponse,
   AffiliateTransactionRow,
-  DeactivateAffiliateRow,
   DeactivateAffiliatesResponse,
   DeactivationContext,
   InactivationAffiliateRow,
@@ -14,16 +14,6 @@ import {
 
 interface RawDeactivateAffiliateRow {
   id: number;
-  nombre?: string;
-  cedula?: string;
-  referencia?: string;
-  nombrePlan?: string;
-  fechaCreacion?: string;
-  fechaIngreso?: string | null;
-  asesor?: string;
-  empresa?: string;
-  agrupadora?: string;
-  profesion?: string;
   fullName?: string;
   documentNumber?: string;
   reference?: string;
@@ -41,29 +31,50 @@ interface RawActiveDeactivationResponse extends Omit<ActiveDeactivationResponse,
 }
 
 interface RawInactivationAffiliateRow {
+  id?: number;
   affiliate_id?: number;
   affiliateId?: number;
-  nombre?: string;
-  apellido?: string;
-  documento?: string;
+  full_name?: string;
+  fullName?: string;
+  first_name?: string;
+  firstName?: string;
+  last_name?: string;
+  lastName?: string;
+  document?: string;
+  document_number?: string;
   plan?: string;
-  monto_esperado?: number | string;
-  montoEsperado?: number | string;
-  monto_pagado?: number | string;
-  montoPagado?: number | string;
-  diferencia?: number | string;
-  ultimo_pago?: string | null;
-  ultimoPago?: string | null;
+  expected_amount?: number | string;
+  expectedAmount?: number | string;
+  paid_amount?: number | string;
+  paidAmount?: number | string;
+  difference?: number | string;
+  last_payment?: string | null;
+  lastPayment?: string | null;
+  amountsMatch?: boolean | string | number | null;
+  amount_match?: boolean | string | number | null;
+  amounts_match?: boolean | string | number | null;
 }
 
 interface RawAffiliateTransactionRow {
+  _id?: string;
+  id?: number;
   transaction_id?: number;
   transactionId?: number;
-  fecha?: string;
-  monto?: number | string;
-  concepto?: string;
-  estado?: string;
-  observacion?: string | null;
+  reference?: string;
+  created_at?: string;
+  createdAt?: string;
+  total_value?: number | string;
+  totalValue?: number | string;
+  amount_paid?: number | string;
+  amountPaid?: number | string;
+  amountGeneratedAI?: number | string;
+  discounted_value?: number | string | null;
+  discountedValue?: number | string | null;
+  amounts_match?: boolean | string | number | null;
+  amountsMatch?: boolean | string | number | null;
+  amount_match?: boolean | string | number | null;
+  status?: string;
+  observation?: string | null;
 }
 
 @Injectable({
@@ -73,6 +84,7 @@ export class DeactivateAffiliatesService {
   private _http = inject(HttpClient);
   private _tokenService = inject(TokenService);
   private baseUrl = environment.urlBD + '/affiliates';
+  private transactionsBaseUrl = environment.urlBD + '/transactions';
 
   private getHeaders(): HttpHeaders {
     const token = this._tokenService.getToken();
@@ -106,19 +118,19 @@ export class DeactivateAffiliatesService {
       .pipe(catchError((error) => this.handleError(error, 'Error al cargar afiliados activos')));
   }
 
-  private normalizeRow(row: RawDeactivateAffiliateRow): DeactivateAffiliateRow {
+  private normalizeRow(row: RawDeactivateAffiliateRow): ActiveAffiliateRow {
     return {
       id: row.id,
-      nombre: row.nombre ?? row.fullName ?? '',
-      cedula: row.cedula ?? row.documentNumber ?? '',
-      referencia: row.referencia ?? row.reference ?? '',
-      nombrePlan: row.nombrePlan ?? row.planName ?? '',
-      fechaCreacion: row.fechaCreacion ?? row.createdAt ?? '',
-      fechaIngreso: row.fechaIngreso ?? row.entryDate ?? null,
-      asesor: row.asesor ?? row.advisorName ?? '',
-      empresa: row.empresa ?? row.companyName ?? '',
-      agrupadora: row.agrupadora ?? row.grouperName ?? '',
-      profesion: row.profesion ?? row.profession ?? '',
+      fullName: row.fullName ?? '',
+      idNumber: row.documentNumber ?? '',
+      reference: row.reference ?? '',
+      planName: row.planName ?? '',
+      createdAt: row.createdAt ?? '',
+      entryDate: row.entryDate ?? null,
+      advisor: row.advisorName ?? '',
+      company: row.companyName ?? '',
+      grouper: row.grouperName ?? '',
+      profession: row.profession ?? '',
     };
   }
 
@@ -146,60 +158,212 @@ export class DeactivateAffiliatesService {
       .get<RawInactivationAffiliateRow[]>(`${this.baseUrl}/inactivation/underpaid`, {
         headers: this.getHeaders(),
       })
-      .pipe(map((rows) => rows.map((row) => this.normalizeInactivationRow(row, true))))
+      .pipe(
+        map((rows) => {
+          const normalizedRows = rows.map((row) => this.normalizeInactivationRow(row, true));
+          const filteredRows = normalizedRows.filter((row) => this.isUnderpaid(row));
+
+          // Fallback: if backend already filtered underpaid rows but flags are absent,
+          // do not hide all results in UI.
+          return filteredRows.length > 0 ? filteredRows : normalizedRows;
+        }),
+      )
       .pipe(catchError((error) => this.handleError(error, 'Error al cargar afiliados con pago incompleto')));
   }
 
-  getAffiliateTransactions(affiliateId: number, month?: number, year?: number): Observable<AffiliateTransactionRow[]> {
-    let params = new HttpParams();
+  getAffiliateTransactions(documentId: string): Observable<AffiliateTransactionRow[]> {
+    const rawDocument = (documentId ?? '').trim();
+    const normalizedDocument = rawDocument.replace(/\D/g, '');
 
-    if (month !== undefined) {
-      params = params.set('month', month);
+    if (!rawDocument) {
+      return of([]);
     }
 
-    if (year !== undefined) {
-      params = params.set('year', year);
+    const loadByDocument = (queryKey: string, doc: string) =>
+      this._http
+        .get<unknown>(this.transactionsBaseUrl, {
+          headers: this.getHeaders(),
+          params: new HttpParams().set(queryKey, doc),
+        })
+        .pipe(
+          map((payload) => this.extractTransactionRows(payload).map((row) => this.normalizeTransactionRow(row))),
+        );
+
+    const attempts: Array<{ key: string; value: string }> = [
+      { key: 'idNumber', value: rawDocument },
+      { key: 'document', value: rawDocument },
+      { key: 'document_number', value: rawDocument },
+      { key: 'id_number', value: rawDocument },
+    ];
+
+    if (normalizedDocument && normalizedDocument !== rawDocument) {
+      attempts.push(
+        { key: 'idNumber', value: normalizedDocument },
+        { key: 'document', value: normalizedDocument },
+        { key: 'document_number', value: normalizedDocument },
+        { key: 'id_number', value: normalizedDocument },
+      );
     }
 
-    return this._http
-      .get<RawAffiliateTransactionRow[]>(`${this.baseUrl}/${affiliateId}/transactions`, {
-        headers: this.getHeaders(),
-        params,
-      })
-      .pipe(map((rows) => rows.map((row) => this.normalizeTransactionRow(row))))
-      .pipe(catchError((error) => this.handleError(error, 'Error al cargar el detalle de transacciones')));
+    const uniqueAttempts = attempts.filter(
+      (attempt, index, all) => all.findIndex((item) => item.key === attempt.key && item.value === attempt.value) === index,
+    );
+
+    let chain = loadByDocument(uniqueAttempts[0].key, uniqueAttempts[0].value);
+
+    for (let i = 1; i < uniqueAttempts.length; i++) {
+      chain = chain.pipe(
+        switchMap((rows) => {
+          if (rows.length > 0) {
+            return of(rows);
+          }
+
+          return loadByDocument(uniqueAttempts[i].key, uniqueAttempts[i].value);
+        }),
+      );
+    }
+
+    return chain.pipe(
+      catchError((error) => this.handleError(error, 'Error al cargar el detalle de transacciones')),
+    );
   }
 
   private normalizeInactivationRow(
     row: RawInactivationAffiliateRow,
     includePaymentFields: boolean,
   ): InactivationAffiliateRow {
-    const montoEsperado = Number(row.monto_esperado ?? row.montoEsperado ?? 0);
-    const montoPagado = Number(row.monto_pagado ?? row.montoPagado ?? 0);
-    const diferencia = Number(row.diferencia ?? montoEsperado - montoPagado);
+    const expectedAmount = this.toNumber(row.expected_amount ?? row.expectedAmount);
+    const paidAmount = this.toNumber(row.paid_amount ?? row.paidAmount);
+    const difference = this.toNumber(row.difference ?? expectedAmount - paidAmount);
+    const fullName =
+      row.full_name ??
+      row.fullName ??
+      [row.first_name ?? row.firstName, row.last_name ?? row.lastName]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
 
     return {
-      affiliateId: Number(row.affiliate_id ?? row.affiliateId ?? 0),
-      nombre: row.nombre ?? '',
-      apellido: row.apellido ?? '',
-      documento: row.documento ?? '',
+      affiliateId: Number(row.affiliate_id ?? row.affiliateId ?? row.id ?? 0),
+      name: fullName,
+      document: row.document_number ?? row.document ?? '',
       plan: row.plan ?? '',
-      montoEsperado,
-      montoPagado: includePaymentFields ? montoPagado : undefined,
-      diferencia: includePaymentFields ? diferencia : undefined,
-      ultimoPago: row.ultimo_pago ?? row.ultimoPago ?? null,
+      expectedAmount,
+      paidAmount: includePaymentFields ? paidAmount : undefined,
+      difference: includePaymentFields ? difference : undefined,
+      lastPayment: row.last_payment ?? row.lastPayment ?? null,
+      amountsMatch: this.toBoolean(row.amountsMatch ?? row.amount_match ?? row.amounts_match),
     };
   }
 
+  private toNumber(value: number | string | undefined | null): number {
+    const parsed = Number(value ?? 0);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private toBoolean(value: boolean | string | number | null | undefined): boolean | undefined {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (typeof value === 'number') {
+      if (value === 1) {
+        return true;
+      }
+      if (value === 0) {
+        return false;
+      }
+      return undefined;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === 'true' || normalized === '1') {
+        return true;
+      }
+      if (normalized === 'false' || normalized === '0') {
+        return false;
+      }
+    }
+
+    return undefined;
+  }
+
+  private isUnderpaid(row: InactivationAffiliateRow): boolean {
+    const matchFromAmounts = row.amountsMatch;
+    if (matchFromAmounts !== undefined) {
+      return matchFromAmounts === false;
+    }
+
+    return (row.difference ?? 0) > 0;
+  }
+
   private normalizeTransactionRow(row: RawAffiliateTransactionRow): AffiliateTransactionRow {
+    const rawMatch = row.amounts_match ?? row.amountsMatch ?? row.amount_match;
+    const amountsMatch = this.toBoolean(rawMatch);
+    const transactionId = String(
+      row.transaction_id ??
+        row.transactionId ??
+        row.id ??
+        row._id ??
+        `${row.reference ?? 'tx'}-${row.created_at ?? row.createdAt ?? ''}`,
+    );
+
     return {
-      transactionId: Number(row.transaction_id ?? row.transactionId ?? 0),
-      fecha: row.fecha ?? '',
-      monto: Number(row.monto ?? 0),
-      concepto: row.concepto ?? '',
-      estado: row.estado ?? '',
-      observacion: row.observacion ?? null,
+      transactionId,
+      reference: row.reference ?? '',
+      createdAt: row.created_at ?? row.createdAt ?? '',
+      totalValue: this.toNumber(row.total_value ?? row.totalValue),
+      amountPaid: this.toNumber(row.amount_paid ?? row.amountPaid ?? row.amountGeneratedAI),
+      discountedValue:
+        row.discounted_value != null
+          ? this.toNumber(row.discounted_value)
+          : row.discountedValue != null
+            ? this.toNumber(row.discountedValue)
+            : null,
+      amountsMatch: amountsMatch !== undefined ? amountsMatch : null,
+      status: row.status ?? '',
+      observation: row.observation ?? null,
     };
+  }
+
+  private extractTransactionRows(payload: unknown): RawAffiliateTransactionRow[] {
+    if (Array.isArray(payload)) {
+      return payload as RawAffiliateTransactionRow[];
+    }
+
+    if (!payload || typeof payload !== 'object') {
+      return [];
+    }
+
+    const source = payload as Record<string, unknown>;
+    const directCollections = [
+      source['data'],
+      source['transactions'],
+      source['results'],
+      source['items'],
+      source['rows'],
+    ];
+
+    for (const collection of directCollections) {
+      if (Array.isArray(collection)) {
+        return collection as RawAffiliateTransactionRow[];
+      }
+    }
+
+    const nestedData = source['data'];
+    if (nestedData && typeof nestedData === 'object') {
+      const nested = nestedData as Record<string, unknown>;
+      const nestedCollections = [nested['transactions'], nested['results'], nested['items'], nested['rows']];
+
+      for (const collection of nestedCollections) {
+        if (Array.isArray(collection)) {
+          return collection as RawAffiliateTransactionRow[];
+        }
+      }
+    }
+
+    return [];
   }
 
   private handleError(error: any, fallbackMessage: string): Observable<never> {
