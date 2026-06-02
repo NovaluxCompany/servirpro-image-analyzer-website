@@ -23,7 +23,7 @@ export class TransactionsService {
   }
 
   getTransactions(filters?: TransactionFilters): Observable<Transaction[]> {
-    let params = new HttpParams();
+    let params = new HttpParams().set('isActive', 'true');
 
     if (filters) {
       if (filters.dateFrom) params = params.set('dateFrom', filters.dateFrom);
@@ -44,7 +44,8 @@ export class TransactionsService {
   getPaginatedTransactions(filters?: TransactionFilters, page: number = 1, limit: number = 10): Observable<PaginatedResponse<Transaction>> {
     let params = new HttpParams()
       .set('page', page.toString())
-      .set('limit', limit.toString());
+      .set('limit', limit.toString())
+      .set('isActive', 'true');
 
     if (filters) {
       if (filters.dateFrom) params = params.set('dateFrom', filters.dateFrom);
@@ -87,7 +88,7 @@ export class TransactionsService {
   }
 
   exportToExcel(filters?: TransactionFilters): Observable<Blob> {
-    let params = new HttpParams();
+    let params = new HttpParams().set('isActive', 'true');
 
     if (filters) {
       if (filters.dateFrom) params = params.set('dateFrom', filters.dateFrom);
