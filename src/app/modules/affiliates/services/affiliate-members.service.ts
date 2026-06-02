@@ -118,6 +118,28 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  // ── Exportar afiliados a Excel ────────────────────────────────────
+  exportToExcel(filters: AffiliateFilters = {}): Observable<Blob> {
+    let params = new HttpParams();
+    if (filters.name) params = params.set('name', filters.name);
+    if (filters.cedula) params = params.set('cedula', filters.cedula);
+    if (filters.reference) params = params.set('reference', filters.reference);
+    if (filters.advisor) params = params.set('advisor', filters.advisor);
+    if (filters.isActive !== undefined) {
+      params = params.set('isActive', String(filters.isActive));
+    } else {
+      params = params.set('isActive', 'true');
+    }
+
+    return this._http
+      .get(`${this.baseUrl}/export/excel`, {
+        headers: this.getHeaders(),
+        params,
+        responseType: 'blob',
+      })
+      .pipe(catchError(this.handleError));
+  }
+
   // ── Enviar correo vía n8n ──────────────────────────────────────────
   sendEmail(affiliationId: number): Observable<{ success: boolean; message: string }> {
     return this._http

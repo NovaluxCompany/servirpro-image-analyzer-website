@@ -24,6 +24,7 @@ export class AffiliatesListComponent implements OnInit {
   // ── Datos ─────────────────────────────────────────────────────────
   affiliates = signal<AffiliateMember[]>([]);
   isLoading = signal(false);
+  isDownloadingExcel = signal(false);
   errorMessage = signal<string | null>(null);
 
   // ── Paginación backend ────────────────────────────────────────────
@@ -37,7 +38,7 @@ export class AffiliatesListComponent implements OnInit {
   filterCedula = '';
   filterReference = '';
   filterAdvisor = '';
-  filterIsActive = '';
+  filterIsActive = 'true';
   advisorOptions = signal<SelectOption[]>([]);
   referenceOptions = signal<SelectOption[]>([]);
 
@@ -241,6 +242,46 @@ export class AffiliatesListComponent implements OnInit {
         this._toast.showError('No se pudo descargar el archivo');
         this.errorMessage.set(err.message);
       }
+    });
+  }
+
+  downloadExcel(): void {
+    if (!this._permission.check('export', undefined, 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
+    if (this.totalItems() === 0) {
+      this._toast.showError('No hay resultados para descargar con los filtros actuales.');
+      return;
+    }
+
+    this.isDownloadingExcel.set(true);
+    this.errorMessage.set(null);
+    this._toast.showInfo('Descarga en proceso...');
+
+    const exportFilters: AffiliateFilters = {
+      name: this.filterName || undefined,
+      cedula: this.filterCedula || undefined,
+      reference: this.filterReference || undefined,
+      advisor: this.filterAdvisor || undefined,
+      isActive: this.filterIsActive === '' ? true : this.filterIsActive === 'true',
+    };
+
+    this._service.exportToExcel(exportFilters).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const timestamp = new Date().toISOString().split('T')[0];
+        link.download = `afiliados_${timestamp}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        this.isDownloadingExcel.set(false);
+        this._toast.showSuccess('Excel descargado exitosamente');
+      },
+      error: (error) => {
+        this.isDownloadingExcel.set(false);
+        this._toast.showError(error?.message ?? 'Error al descargar el Excel. Intenta de nuevo.');
+      },
     });
   }
 

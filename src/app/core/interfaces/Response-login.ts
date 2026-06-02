@@ -9,6 +9,7 @@ export interface UserInfo {
   email: string;
   name: string;
   roles: string[];
+  roleIds?: number[];
   menuPaths: string[];
   menus?: UserMenu[];
 }
