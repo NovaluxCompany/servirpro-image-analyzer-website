@@ -58,6 +58,9 @@
       [transactions]="transactions()"
       [isLoading]="isLoading()"
       [canDisable]="canDisableTransactions"
+      [disableInProgress]="isDisablingTransaction()"
+      [disablingTransactionId]="disablingTransactionId()"
+      [disabledTransactionId]="disabledTransactionId()"
       (viewDetail)="onViewDetail($event)"
       (disableTransaction)="onDisableTransaction($event)"
     />

@@ -169,7 +169,7 @@
               d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
           </svg>
         </div>
-        <h3 class="text-base font-bold text-white">Inhabilitar Pago</h3>
+        <h3 class="text-base font-bold text-white">{{ title }}</h3>
       </div>
 
       <!-- Body -->
@@ -183,10 +183,7 @@
           </div>
         </div>
 
-        <p class="text-center text-sm text-gray-700 leading-relaxed">
-          ¿Está seguro de inhabilitar el pago con referencia
-          <strong>{{ pendingTransaction.reference }}</strong>?
-        </p>
+        <p class="text-center text-sm text-gray-700 leading-relaxed">{{ confirmMessage }}</p>
         <p class="mt-3 text-center text-xs text-gray-400">
           El pago quedará inactivo y no aparecerá en la bandeja ni en los reportes Excel.
         </p>
@@ -197,16 +194,26 @@
         <button
           type="button"
           (click)="cancelDisable()"
-          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          [disabled]="isPendingDisableLoading"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
           Cancelar
         </button>
         <button
           type="button"
           (click)="confirmDisable()"
-          class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+          [disabled]="isPendingDisableLoading"
+          class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Sí, inhabilitar
+          @if (isPendingDisableLoading) {
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            Procesando...
+          } @else {
+            Sí, {{ actionLabel }}
+          }
         </button>
       </div>
     </div>
