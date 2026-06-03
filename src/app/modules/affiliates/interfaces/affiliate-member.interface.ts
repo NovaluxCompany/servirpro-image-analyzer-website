@@ -1,4 +1,4 @@
-export type DocumentType = 'CC' | 'CE' | 'TI' | 'PA' | 'NIT' | 'PPT';
+export type DocumentType = 'CC' | 'CE' | 'TI' | 'NIT' | 'PPT';
 
 // ── Nueva Interfaz Relacional para Documentos ──────────────────────
 export interface AffiliateDocument {
