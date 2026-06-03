@@ -45,7 +45,7 @@ export class AffiliateFormModalComponent implements OnInit {
   section1Open = true
   section2Open = true
 
-  readonly documentTypes = ['CC', 'CE', 'TI', 'PA', 'NIT', 'PPT'];
+  readonly documentTypes = ['CC', 'CE', 'TI', 'NIT', 'PPT'];
 
   toggleSection1() {
     this.section1Open = !this.section1Open;

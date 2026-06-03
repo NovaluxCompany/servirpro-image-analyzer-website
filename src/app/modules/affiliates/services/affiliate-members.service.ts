@@ -202,8 +202,14 @@ export class AffiliateMembersService {
 
   // ── Manejo de errores ─────────────────────────────────────────────
   private handleError(error: any): Observable<never> {
+    const backendMessage = Array.isArray(error?.error?.message)
+      ? error.error.message.join(', ')
+      : error?.error?.message;
+
     let msg = 'Ha ocurrido un error inesperado';
     if (error.status === 401) msg = 'Sesión expirada. Inicia sesión nuevamente.';
+    else if (error.status === 403)
+      msg = backendMessage || 'Tu rol no tiene permiso para realizar esta acción.';
     else if (error.status === 409)
       msg = 'Ya existe una afiliación con ese número de documento.';
     else if (error.status === 400) {
