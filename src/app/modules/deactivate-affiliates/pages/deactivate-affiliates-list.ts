@@ -1,7 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
 import { ToastService } from '../../../core/service/toast.service';
+import { PermissionService } from '../../../core/service/permission.service';
+import { ConfigGeneralService } from '../../../core/service/config-general.service';
+import { TokenService } from '../../../core/service/token.service';
 import {
   AffiliateTransactionRow,
   DeactivationContext,
@@ -21,6 +24,9 @@ type InactivationTab = 'unpaid' | 'underpaid';
 export class DeactivateAffiliatesList implements OnInit {
   private readonly _deactivateAffiliatesService = inject(DeactivateAffiliatesService);
   private readonly _toastService = inject(ToastService);
+  private readonly _permissionService = inject(PermissionService);
+  private readonly _configGeneralService = inject(ConfigGeneralService);
+  private readonly _tokenService = inject(TokenService);
 
   protected readonly isLoading = signal(false);
   protected readonly isSubmitting = signal(false);
@@ -39,6 +45,23 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly selectedAffiliateForDetail = signal<InactivationAffiliateRow | null>(null);
   protected readonly affiliateTransactions = signal<AffiliateTransactionRow[]>([]);
 
+  // Verifica si el usuario puede acceder al tab "Pagos Incompletos"
+  protected readonly canViewUnderpaid = computed(() =>
+    this._permissionService.can('view', '/desactivar-afiliados/pagos-incompletos')
+  );
+
+  // Verifica si el usuario puede desactivar afiliados en el tab actual
+  protected readonly canDeactivateAffiliates = computed(() => {
+    const path = this.activeTab() === 'unpaid'
+      ? '/desactivar-afiliados/sin-pago'
+      : '/desactivar-afiliados/pagos-incompletos';
+    return this._permissionService.can('delete', path);
+  });
+
+  // Paginación
+  protected readonly currentPage = signal(1);
+  protected readonly pageSize = signal(10);
+
   protected readonly canDeactivateByDate = computed(() => {
     const context = this.context();
     if (!context) {
@@ -48,14 +71,36 @@ export class DeactivateAffiliatesList implements OnInit {
     return context.currentDay >= context.minDay && context.canDeactivateByDate;
   });
 
-  protected readonly currentAffiliates = computed(() =>
+  protected readonly allAffiliates = computed(() =>
     this.activeTab() === 'unpaid' ? this.unpaidAffiliates() : this.underpaidAffiliates(),
   );
 
-  protected readonly totalItems = computed(() => this.currentAffiliates().length);
+  protected readonly totalItems = computed(() => this.allAffiliates().length);
+
+  protected readonly totalPages = computed(() =>
+    Math.ceil(this.totalItems() / this.pageSize())
+  );
+
+  protected readonly currentAffiliates = computed(() => {
+    const all = this.allAffiliates();
+    const start = (this.currentPage() - 1) * this.pageSize();
+    const end = start + this.pageSize();
+    return all.slice(start, end);
+  });
+
+  protected get pageNumbers(): number[] {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const delta = 2;
+    const range: number[] = [];
+    for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
+      range.push(i);
+    }
+    return range;
+  }
 
   protected readonly isDeactivateButtonDisabled = computed(
-    () => this.selectedCount() === 0 || this.isLoading() || this.isSubmitting() || !this.canDeactivateByDate(),
+    () => this.selectedCount() === 0 || this.isLoading() || this.isSubmitting() || !this.canDeactivateByDate() || !this.canDeactivateAffiliates(),
   );
   protected readonly modalMessage = computed(
     () => `Se desactivarán ${this.selectedCount()} usuario(s), ¿desea continuar?`,
@@ -79,7 +124,24 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly selectedCount = computed(() => this.selectedIds().length);
 
   ngOnInit(): void {
-    this.loadData();
+    // Debug: Verificar permisos del usuario
+    const user = this._tokenService.getUser();
+
+    // Cargar la configuración de paginación desde la base de datos
+    this._configGeneralService.getValue('REGISTROS_POR_PAGINA').subscribe({
+      next: (value) => {
+        const pageSize = parseInt(value, 10);
+        if (!isNaN(pageSize) && pageSize > 0) {
+          this.pageSize.set(pageSize);
+        }
+        this.loadData();
+      },
+      error: (error) => {
+        console.error('Error al cargar configuración de paginación:', error);
+        // Si falla, continuar con el valor por defecto (10)
+        this.loadData();
+      },
+    });
   }
 
   protected loadData(): void {
@@ -87,10 +149,15 @@ export class DeactivateAffiliatesList implements OnInit {
     this.errorMessage.set(null);
     this.selectedIds.set([]);
 
+    // Solo carga underpaid si el usuario tiene permiso
+    const underpaidRequest = this.canViewUnderpaid()
+      ? this._deactivateAffiliatesService.getUnderpaidAffiliates()
+      : of([]);
+
     forkJoin({
       context: this._deactivateAffiliatesService.getContext(),
       unpaid: this._deactivateAffiliatesService.getUnpaidAffiliates(),
-      underpaid: this._deactivateAffiliatesService.getUnderpaidAffiliates(),
+      underpaid: underpaidRequest,
     }).subscribe({
       next: (response) => {
         this.context.set(response.context);
@@ -110,8 +177,36 @@ export class DeactivateAffiliatesList implements OnInit {
       return;
     }
 
+    // Verifica permisos antes de cambiar de tab
+    const path = tab === 'unpaid'
+      ? '/desactivar-afiliados/sin-pago'
+      : '/desactivar-afiliados/pagos-incompletos';
+
+    if (!this._permissionService.check('view', path, `No tienes permiso para acceder a este módulo.`)) {
+      return;
+    }
+
     this.activeTab.set(tab);
+    this.currentPage.set(1);
     this.selectedIds.set([]);
+  }
+
+  protected previousPage(): void {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  protected nextPage(): void {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  protected goToPage(page: number): void {
+    if (page > 0 && page <= this.totalPages()) {
+      this.currentPage.set(page);
+    }
   }
 
   protected toggleRow(id: number, checked: boolean): void {
@@ -142,6 +237,15 @@ export class DeactivateAffiliatesList implements OnInit {
 
   protected openConfirmationModal(): void {
     if (this.selectedCount() === 0) {
+      return;
+    }
+
+    // Verificar permisos de desactivación
+    const path = this.activeTab() === 'unpaid'
+      ? '/desactivar-afiliados/sin-pago'
+      : '/desactivar-afiliados/pagos-incompletos';
+
+    if (!this._permissionService.check('delete', path, 'Tu rol no tiene permiso para desactivar afiliados en este módulo.')) {
       return;
     }
 

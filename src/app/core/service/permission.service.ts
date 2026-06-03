@@ -32,7 +32,8 @@ export class PermissionService {
 
     return menus.some((menu) => {
       const menuPath = this.normalizePath(menu.path);
-      if (!(menuPath === targetPath || targetPath.startsWith(`${menuPath}/`))) return false;
+      // Solo considerar rutas EXACTAS, no prefijos
+      if (menuPath !== targetPath) return false;
 
       return (menu.permissions ?? []).some((perm) => targetPermissions.has(this.normalize(perm)));
     });
