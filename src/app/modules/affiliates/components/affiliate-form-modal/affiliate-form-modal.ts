@@ -111,7 +111,7 @@ export class AffiliateFormModalComponent implements OnInit {
     isActive: [true],
     entryDate: ['', Validators.required],
     observation: ['', Validators.maxLength(2000)],
-    documentFile: [{ value: <File | string | null>null, disabled: true }],
+    documentFile: [<File | string | null>null],
     // Seguridad social (sin ADRES, sin price/deposit/charge)
     arl: [<number | null>null],
   });
@@ -130,6 +130,10 @@ export class AffiliateFormModalComponent implements OnInit {
           });
           this.form.get('entryDate')?.setValue(this.todayDate());
           this.form.get('companyEntryDate')?.setValue(this.todayDate());
+          // Asegurar que el campo de archivo esté siempre habilitado en modo creación
+          this.form.get('documentFile')?.enable({ emitEvent: false });
+          this.form.get('documentFile')?.clearValidators();
+          this.form.get('documentFile')?.updateValueAndValidity({ emitEvent: false });
           this.duplicateDocument.set(false);
           this.errorMessage.set(null);
           this.selectedFile = null;
@@ -199,31 +203,31 @@ export class AffiliateFormModalComponent implements OnInit {
     const existingDoc = this.affiliate()?.documents?.[0];
     const existingDisplayName = existingDoc?.fileName?.split('/').pop() || existingDoc?.fileName || '';
 
+    // El campo de archivo siempre está habilitado sin importar la agrupadora
+    fileControl.enable({ emitEvent: false });
+
+    // Solo es obligatorio para GESTIÓN
     if (label.includes('GESTIÓN') || label.includes('GESTION')) {
-      fileControl.enable({ emitEvent: false });
       fileControl.setValidators([Validators.required]);
-      // In edit mode, restore existing document display if user hasn't changed it
-      if (this.isEdit && this.existingDocumentId && this.keepExistingDocument && !fileControl.value) {
-        if (existingDisplayName) {
-          fileControl.setValue(existingDisplayName, { emitEvent: false });
-        }
-      }
     } else {
-      // Keep previously uploaded file visible in edit mode even when disabled.
-      this.selectedFile = null;
-      if (this.fileInputRef?.nativeElement) {
-        this.fileInputRef.nativeElement.value = '';
-      }
+      // Para cualquier otra agrupadora: opcional (sin validadores)
       fileControl.clearValidators();
-      if (this.isEdit && this.existingDocumentId && this.keepExistingDocument && existingDisplayName) {
+    }
+
+    // En modo edición, restaurar documento existente si no se ha cambiado
+    if (this.isEdit && this.existingDocumentId && this.keepExistingDocument && !fileControl.value) {
+      if (existingDisplayName) {
         fileControl.setValue(existingDisplayName, { emitEvent: false });
-      } else if (!this.keepExistingDocument) {
-        fileControl.setValue('', { emitEvent: false });
       }
-      fileControl.disable({ emitEvent: false });
     }
 
     fileControl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  // Verificar si la agrupación actual es de GESTIÓN
+  get isGestionGrouper(): boolean {
+    const label = this.selectedGrouperLabel || '';
+    return label.includes('GESTIÓN') || label.includes('GESTION');
   }
 
   ngOnInit() {
