@@ -308,7 +308,9 @@ export class AffiliatesListComponent implements OnInit {
   isGestionAffiliate(affiliate: AffiliateMember): boolean {
     const name = (affiliate.grouperName ?? '').toUpperCase();
     const grouperId = Number(affiliate.grouperId);
-    return name.includes('GESTION') || grouperId === 1;
+    const isGestion = name.includes('GESTION') || grouperId === 1;
+    const hasDocument = !!(affiliate.documents && affiliate.documents.length > 0);
+    return isGestion && hasDocument;
   }
 
   sendEmail(affiliate: AffiliateMember): void {
