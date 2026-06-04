@@ -314,6 +314,10 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   sendEmail(affiliate: AffiliateMember): void {
+    if (!this._permission.check('send_email', undefined, 'Tu rol no tiene permiso para enviar correos de afiliación.')) {
+      return;
+    }
+
     const affiliationId = Number(affiliate.id);
     if (!affiliationId || this.sendingEmailId() !== null) return;
 
