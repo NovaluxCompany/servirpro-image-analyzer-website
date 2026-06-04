@@ -1,4 +1,4 @@
-import { Component, HostListener, input, output, signal } from '@angular/core';
+import { Component, HostListener, effect, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Transaction } from '../../interfaces/transaction.interface';
 import { TransactionStatusBadgeComponent } from '../transaction-status-badge/transaction-status-badge';
@@ -13,12 +13,27 @@ export class TransactionTableComponent {
   transactions = input.required<Transaction[]>();
   isLoading = input<boolean>(false);
   canDisable = input<boolean>(false);
+  disableInProgress = input<boolean>(false);
+  disablingTransactionId = input<string | null>(null);
+  disabledTransactionId = input<string | null>(null);
   viewDetail = output<string>();
   disableTransaction = output<string>();
 
   // ── Dropdown acciones ─────────────────────────────────────────────
   openDropdownId = signal<string | null>(null);
   dropdownPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
+
+  constructor() {
+    effect(() => {
+      const disabledId = this.disabledTransactionId();
+      const pendingId = this.pendingDisableId();
+
+      if (disabledId && pendingId && disabledId === pendingId) {
+        this.showConfirmModal.set(false);
+        this.pendingDisableId.set(null);
+      }
+    });
+  }
 
   toggleDropdown(id: string, buttonEl: HTMLElement): void {
     if (this.openDropdownId() === id) {
@@ -63,8 +78,6 @@ export class TransactionTableComponent {
   confirmDisable(): void {
     const id = this.pendingDisableId();
     if (!id) return;
-    this.showConfirmModal.set(false);
-    this.pendingDisableId.set(null);
     this.disableTransaction.emit(id);
   }
 
@@ -76,6 +89,24 @@ export class TransactionTableComponent {
   onDisableTransaction(id: string): void {
     this.closeDropdown();
     this.disableTransaction.emit(id);
+  }
+
+  get isPendingDisableLoading(): boolean {
+    return this.disableInProgress() && this.disablingTransactionId() === this.pendingDisableId();
+  }
+
+  get actionLabel(): string {
+    return 'deshabilitar';
+  }
+
+  get title(): string {
+    return 'Desactivar Pago';
+  }
+
+  get confirmMessage(): string {
+    const transaction = this.pendingTransaction;
+    if (!transaction) return '';
+    return `¿Está seguro de ${this.actionLabel} el pago con referencia ${transaction.reference}?`;
   }
 
   formatCurrency(amount: number): string {

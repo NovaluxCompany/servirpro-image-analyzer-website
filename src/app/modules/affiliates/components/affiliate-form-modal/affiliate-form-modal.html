@@ -310,10 +310,15 @@
               <!-- Fecha de ingreso -->
               <div>
                 <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                  Fecha de ingreso <span class="text-xs font-normal text-gray-400">(automática)</span>
+                  Fecha ingreso empresa <span class="text-red-500">*</span>
                 </label>
-                <input type="date" formControlName="entryDate" readonly [class.cursor-not-allowed]="true"
-                  class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-600">
+                <input type="date" formControlName="entryDate"
+                  class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  [class.border-red-400]="isFieldInvalid('entryDate')"
+                  [class.border-gray-300]="!isFieldInvalid('entryDate')">
+                @if (isFieldInvalid('entryDate')) {
+                  <p class="mt-1 text-xs text-red-500">Campo requerido</p>
+                }
               </div>
 
               <!-- ARL -->
@@ -364,38 +369,29 @@
               <div class="sm:col-span-2 lg:col-span-3">
                 <label class="block mb-1.5 text-xs font-semibold text-gray-700">
                   Documento de identidad
-                  @if (!form.get('documentFile')?.disabled) {
+                  @if (isGestionGrouper) {
                   <span class="text-red-500">*</span>
                   }
-                  <span class="ml-1 text-gray-400 font-normal">(Solo PDF · Requerido para Gestión)</span>
+                  <span class="ml-1 text-gray-400 font-normal">(Solo PDF · Opcional para todos, obligatorio para Gestión)</span>
                 </label>
 
                 <!-- Zona de carga -->
                 <div class="relative mt-1 flex flex-col items-center justify-center gap-1 border-2 border-dashed rounded-xl p-5 transition-colors min-h-[96px]"
-                  [class.border-blue-300]="!form.get('documentFile')?.disabled && !form.get('documentFile')?.value && !isFieldInvalid('documentFile')"
+                  [class.border-blue-300]="!form.get('documentFile')?.value && !isFieldInvalid('documentFile')"
                   [class.border-red-300]="isFieldInvalid('documentFile')"
                   [class.border-green-300]="!!form.get('documentFile')?.value"
-                  [class.border-gray-200]="!!form.get('documentFile')?.disabled"
-                  [class.bg-blue-50\/50]="!form.get('documentFile')?.disabled && !form.get('documentFile')?.value"
-                  [class.bg-green-50]="!!form.get('documentFile')?.value"
-                  [class.bg-gray-50]="!!form.get('documentFile')?.disabled"
-                  [class.opacity-50]="!!form.get('documentFile')?.disabled"
-                  [class.cursor-not-allowed]="!!form.get('documentFile')?.disabled">
+                  [class.bg-blue-50\/50]="!form.get('documentFile')?.value"
+                  [class.bg-green-50]="!!form.get('documentFile')?.value">
 
                   @if (!form.get('documentFile')?.value) {
                   <!-- Estado vacío -->
-                  <svg class="w-7 h-7"
-                    [class.text-blue-400]="!form.get('documentFile')?.disabled"
-                    [class.text-gray-300]="!!form.get('documentFile')?.disabled"
+                  <svg class="w-7 h-7 text-blue-400"
                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <p class="text-xs font-medium"
-                    [class.text-blue-600]="!form.get('documentFile')?.disabled"
-                    [class.text-gray-400]="!!form.get('documentFile')?.disabled">
-                    @if (!form.get('documentFile')?.disabled) { Haz clic para seleccionar un PDF }
-                    @else { Disponible solo para agrupadora de Gestión }
+                  <p class="text-xs font-medium text-blue-600">
+                    Haz clic para seleccionar un PDF
                   </p>
                   <p class="text-xs text-gray-400">Máximo 10 MB</p>
                   } @else {
@@ -416,10 +412,7 @@
                     #fileInput
                     accept=".pdf"
                     (change)="onFileSelected($event)"
-                    [disabled]="!!form.get('documentFile')?.disabled"
-                    class="absolute inset-0 w-full h-full opacity-0"
-                    [class.cursor-pointer]="!form.get('documentFile')?.disabled && !form.get('documentFile')?.value"
-                    [class.cursor-not-allowed]="!!form.get('documentFile')?.disabled"
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     [class.pointer-events-none]="!!form.get('documentFile')?.value" />
                 </div>
 
@@ -434,8 +427,19 @@
                 </p>
                 }
                 @if (isFieldInvalid('documentFile')) {
-                <p class="mt-1.5 text-xs text-red-500">El documento es requerido para afiliados de Gestión</p>
+                <p class="mt-1.5 text-xs text-red-500">Este campo es obligatorio para afiliados de Gestión</p>
                 }
+              </div>
+
+              <!-- Observación -->
+              <div class="sm:col-span-2 lg:col-span-3">
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Observación</label>
+                <textarea formControlName="observation" rows="3" maxlength="2000"
+                  placeholder="Escribe una observación del afiliado..."
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                <p class="mt-1 text-xs text-gray-400">
+                  Máximo 2000 caracteres. Caracteres restantes: {{ 2000 - (form.get('observation')?.value?.length || 0) }}
+                </p>
               </div>
             </div> <!-- Fin Grid -->
             }

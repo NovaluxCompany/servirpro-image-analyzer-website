@@ -3,6 +3,14 @@ import { CanActivateFn, Router, ActivatedRouteSnapshot, RouterStateSnapshot } fr
 import { TokenService } from '../service/token.service';
 import { ToastService } from '../service/toast.service';
 
+const normalizePath = (path: string): string => {
+  const cleaned = (path ?? '').split('?')[0].split('#')[0].trim();
+  if (!cleaned) return '/';
+
+  const normalized = cleaned.startsWith('/') ? cleaned.toLowerCase() : `/${cleaned.toLowerCase()}`;
+  return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
+};
+
 /**
  * Guard basado en menuPaths (control desde la base de datos).
  *
@@ -31,19 +39,15 @@ export const roleGuard: CanActivateFn = (
 
   const menuPaths: string[] = user.menuPaths ?? [];
 
-  // Sin menuPaths configurados → acceso total (bootstrap o admin sin restricciones aún)
+  // Sin menuPaths configurados → acceso total (bootstrap o perfil sin restricciones aún)
   if (menuPaths.length === 0) return true;
 
-  // Extraer el primer segmento del path de la URL actual
-  const segment = state.url.split('/')[1]?.split('?')[0] ?? '';
-  const currentBase = '/' + segment;
+  const currentPath = normalizePath(state.url);
 
   // 1º check: menuPaths de la BD
-  // Normalizamos cada path al primer segmento para comparar solo la raíz,
-  // independientemente de si la BD guarda '/afiliados', 'afiliados' o '/afiliados/lista'.
   const hasMenuAccess = menuPaths.some((p) => {
-    const pBase = '/' + p.replace(/^\//, '').split('/')[0];
-    return currentBase === pBase || currentBase.startsWith(pBase + '/');
+    const allowedPath = normalizePath(p);
+    return currentPath === allowedPath || currentPath.startsWith(allowedPath + '/');
   });
 
   if (hasMenuAccess) return true;
@@ -62,8 +66,8 @@ export const roleGuard: CanActivateFn = (
 
   // Si no hay URL anterior (primera carga), redirigir al primer menu permitido en BD
   const fallback = menuPaths
-    .map(p => '/' + p.split('/').filter(Boolean)[0])
-    .find(seg => seg !== '/') ?? '/';
+    .map((p) => normalizePath(p))
+    .find((path) => path !== '/') ?? '/';
   router.navigate([fallback]);
   return false;
 };

@@ -16,7 +16,7 @@ export interface Transaction {
   receipts: Receipt[];
   observation?: string;
   isActive?: boolean;
-  createdByUser?: { id: number; name: string } | null;
+  createdByUser?: { id: number; name: string; roles: string[] } | null;
   createdAt: string;
   updatedAt: string;
 }

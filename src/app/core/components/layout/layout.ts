@@ -29,23 +29,8 @@ export class LayoutComponent {
   canSee = (path: string): boolean => {
     const menuPaths = this.currentUser()?.menuPaths ?? [];
     if (menuPaths.length === 0) return true; // sin restricciones = mostrar todo
-
-    // 1º: verificar en menuPaths de la BD (normalizado por segmento raíz)
-    const segment = path.replace(/^\//, '').split('/')[0];
-    const hasMenuAccess = menuPaths.some(p => {
-      const pBase = '/' + p.replace(/^\//, '').split('/')[0];
-      return ('/' + segment) === pBase;
-    });
-    if (hasMenuAccess) return true;
-
-    // 2º: fallback por rol (cubre casos donde BD tiene rutas incorrectas como /usuarios en vez de /afiliados)
-    return this._permission.canAccessRoute(segment);
+    return this._permission.canAccessRoute(path);
   };
-
-  // Role-based visibility
-  isAdmin = computed(() =>
-    this.currentUser()?.roles?.some(r => r.toLowerCase() === 'administrador' || r.toLowerCase() === 'admin') ?? false
-  );
 
   constructor() {
     this.updateCurrentRoute();

@@ -17,7 +17,8 @@ export class PermissionService {
   private normalizePath(path: string): string {
     const p = (path ?? '').trim();
     if (!p) return '';
-    return p.startsWith('/') ? p.toLowerCase() : `/${p.toLowerCase()}`;
+    const normalized = p.startsWith('/') ? p.toLowerCase() : `/${p.toLowerCase()}`;
+    return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
   }
 
   private getUserMenus(): UserMenu[] {
@@ -31,7 +32,7 @@ export class PermissionService {
 
     return menus.some((menu) => {
       const menuPath = this.normalizePath(menu.path);
-      if (!(menuPath === targetPath || menuPath.startsWith(`${targetPath}/`))) return false;
+      if (!(menuPath === targetPath || targetPath.startsWith(`${menuPath}/`))) return false;
 
       return (menu.permissions ?? []).some((perm) => targetPermissions.has(this.normalize(perm)));
     });
@@ -39,9 +40,7 @@ export class PermissionService {
 
   private getPathFromCurrentRoute(): string | null {
     const currentUrl = window.location.pathname || '/';
-    const segment = currentUrl.split('/').filter(Boolean)[0];
-    if (!segment) return null;
-    return `/${segment}`;
+    return this.normalizePath(currentUrl);
   }
 
   private hasPathAccess(path: string): boolean {
@@ -49,14 +48,19 @@ export class PermissionService {
     const user = this._tokenService.getUser();
     if (!user) return false;
 
+    const menus = this.getUserMenus();
     const menuPaths = (user.menuPaths ?? []).map((p) => this.normalizePath(p));
-    if (menuPaths.some((p) => p === targetPath || p.startsWith(`${targetPath}/`))) {
+    if (menuPaths.length === 0 && menus.length === 0) {
       return true;
     }
 
-    return this.getUserMenus().some((menu) => {
+    if (menuPaths.some((p) => p === targetPath || targetPath.startsWith(`${p}/`))) {
+      return true;
+    }
+
+    return menus.some((menu) => {
       const menuPath = this.normalizePath(menu.path);
-      return menuPath === targetPath || menuPath.startsWith(`${targetPath}/`);
+      return menuPath === targetPath || targetPath.startsWith(`${menuPath}/`);
     });
   }
 

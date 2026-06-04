@@ -72,9 +72,17 @@ export class Login {
       next: () => {
         this.isLoading = false;
         const user = this._tokenService.getUser();
-        const menuPaths = (user?.menuPaths ?? [])
-          .map((p) => '/' + p.split('/').filter(Boolean)[0])
-          .filter((p) => p !== '/');
+        const menuPaths = [
+          ...((user?.menus ?? []).map((menu) => menu.path)),
+          ...(user?.menuPaths ?? []),
+        ]
+          .map((p) => {
+            const cleaned = (p ?? '').trim();
+            if (!cleaned) return '';
+            const normalized = cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
+            return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
+          })
+          .filter((p, index, array) => p !== '/' && p !== '' && array.indexOf(p) === index);
 
         const destination = menuPaths[0] ?? '/';
         this._router.navigate([destination]);

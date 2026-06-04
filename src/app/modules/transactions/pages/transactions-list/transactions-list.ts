@@ -26,6 +26,9 @@ export class TransactionsListComponent {
   transactions = signal<Transaction[]>([]);
   isLoading = signal(false);
   isDownloadingExcel = signal(false);
+  isDisablingTransaction = signal(false);
+  disablingTransactionId = signal<string | null>(null);
+  disabledTransactionId = signal<string | null>(null);
   errorMessage = signal<string | null>(null);
   currentFilters?: TransactionFilters;
 
@@ -101,8 +104,14 @@ export class TransactionsListComponent {
 
   downloadExcel(): void {
     if (!this._permission.check('export', undefined, 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
+    if (this.totalItems() === 0) {
+      this._toastService.showError('No hay resultados para descargar con los filtros actuales.');
+      return;
+    }
+
     this.isDownloadingExcel.set(true);
     this.errorMessage.set(null);
+    this._toastService.showInfo('Descarga en proceso...');
 
     this._transactionsService.exportToExcel(this.currentFilters).subscribe({
       next: (blob) => {
@@ -124,14 +133,7 @@ export class TransactionsListComponent {
       },
       error: (error) => {
         this.isDownloadingExcel.set(false);
-        if (error.status === 403) {
-          this._toastService.showError('No tienes permiso para descargar el reporte en Excel. Contacta al administrador.');
-        } else if (error.status === 401) {
-          this._toastService.showError('Tu sesión ha expirado. Inicia sesión nuevamente.');
-        } else {
-          const msg = error?.error?.message ?? error?.error?.error ?? 'Error al descargar el Excel. Intenta de nuevo.';
-          this._toastService.showError(msg);
-        }
+        this._toastService.showError(error?.message ?? 'Error al descargar el Excel. Intenta de nuevo.');
       }
     });
   }
@@ -140,17 +142,32 @@ export class TransactionsListComponent {
     this._router.navigate(['/transacciones', id]);
   }
 
-  get isAdmin(): boolean {
-    return this._permission.can('delete');
+  get canDisableTransactions(): boolean {
+    return this._permission.can('delete', '/transacciones');
   }
 
   onDisableTransaction(id: string): void {
+    if (!this.canDisableTransactions) {
+      this._toastService.showError('No tienes permiso para inhabilitar transacciones.');
+      return;
+    }
+
+    this.isDisablingTransaction.set(true);
+    this.disablingTransactionId.set(id);
+    this.disabledTransactionId.set(null);
+
     this._transactionsService.setTransactionActive(id, false).subscribe({
       next: () => {
+        this.isDisablingTransaction.set(false);
+        this.disablingTransactionId.set(null);
+        this.disabledTransactionId.set(id);
         this._toastService.showSuccess('Pago inhabilitado correctamente');
         this.loadTransactions(this.currentFilters, this.currentPage());
       },
       error: () => {
+        this.isDisablingTransaction.set(false);
+        this.disablingTransactionId.set(null);
+        this.disabledTransactionId.set(null);
         this._toastService.showError('Error al inhabilitar el pago');
       }
     });

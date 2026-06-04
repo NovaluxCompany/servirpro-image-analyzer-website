@@ -5,6 +5,8 @@ import { interval, Subscription } from 'rxjs';
 import { switchMap, takeWhile } from 'rxjs/operators';
 import { TransactionsService } from '../../services/transactions.service';
 import { Transaction } from '../../interfaces/transaction.interface';
+import { Affiliate } from '../../interfaces/affiliate.interface';
+import { Receipt } from '../../interfaces/receipt.interface';
 import { TransactionStatusBadgeComponent } from '../../components/transaction-status-badge/transaction-status-badge';
 import { ReceiptsTableComponent } from '../../components/receipts-table/receipts-table';
 
@@ -134,9 +136,35 @@ export class TransactionDetailComponent implements OnDestroy {
     this.selectedImageUrl.set(null);
   }
 
+  private toArray<T>(value: unknown): T[] {
+    return Array.isArray(value) ? (value as T[]) : [];
+  }
+
+  affiliates(): Affiliate[] {
+    return this.toArray<Affiliate>(this.transaction()?.affiliates);
+  }
+
+  receipts(): Receipt[] {
+    return this.toArray<Receipt>(this.transaction()?.receipts);
+  }
+
+  images(): string[] {
+    return this.toArray<string>(this.transaction()?.images);
+  }
+
+  affiliatesCount(): number {
+    return this.affiliates().length;
+  }
+
+  receiptsCount(): number {
+    return this.receipts().length;
+  }
+
+  imagesCount(): number {
+    return this.images().length;
+  }
+
   getTotalPrice(): number {
-    const transaction = this.transaction();
-    if (!transaction) return 0;
-    return transaction.affiliates.reduce((sum, aff) => sum + aff.price, 0);
+    return this.affiliates().reduce((sum, aff) => sum + aff.price, 0);
   }
 }
