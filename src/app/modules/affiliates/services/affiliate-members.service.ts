@@ -118,6 +118,26 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  // ── Exportar afiliados a Excel ────────────────────────────────────
+  exportToExcel(filters: AffiliateFilters = {}): Observable<Blob> {
+    let params = new HttpParams();
+    if (filters.name) params = params.set('name', filters.name);
+    if (filters.cedula) params = params.set('cedula', filters.cedula);
+    if (filters.reference) params = params.set('reference', filters.reference);
+    if (filters.advisor) params = params.set('advisor', filters.advisor);
+    if (filters.isActive !== undefined) {
+      params = params.set('isActive', String(filters.isActive));
+    }
+
+    return this._http
+      .get(`${this.baseUrl}/export/excel`, {
+        headers: this.getHeaders(),
+        params,
+        responseType: 'blob',
+      })
+      .pipe(catchError(this.handleError));
+  }
+
   // ── Enviar correo vía n8n ──────────────────────────────────────────
   sendEmail(affiliationId: number): Observable<{ success: boolean; message: string }> {
     return this._http
@@ -182,8 +202,14 @@ export class AffiliateMembersService {
 
   // ── Manejo de errores ─────────────────────────────────────────────
   private handleError(error: any): Observable<never> {
+    const backendMessage = Array.isArray(error?.error?.message)
+      ? error.error.message.join(', ')
+      : error?.error?.message;
+
     let msg = 'Ha ocurrido un error inesperado';
     if (error.status === 401) msg = 'Sesión expirada. Inicia sesión nuevamente.';
+    else if (error.status === 403)
+      msg = backendMessage || 'Tu rol no tiene permiso para realizar esta acción.';
     else if (error.status === 409)
       msg = 'Ya existe una afiliación con ese número de documento.';
     else if (error.status === 400) {

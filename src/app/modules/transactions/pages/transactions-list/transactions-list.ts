@@ -26,6 +26,9 @@ export class TransactionsListComponent {
   transactions = signal<Transaction[]>([]);
   isLoading = signal(false);
   isDownloadingExcel = signal(false);
+  isDisablingTransaction = signal(false);
+  disablingTransactionId = signal<string | null>(null);
+  disabledTransactionId = signal<string | null>(null);
   errorMessage = signal<string | null>(null);
   currentFilters?: TransactionFilters;
 
@@ -149,12 +152,22 @@ export class TransactionsListComponent {
       return;
     }
 
+    this.isDisablingTransaction.set(true);
+    this.disablingTransactionId.set(id);
+    this.disabledTransactionId.set(null);
+
     this._transactionsService.setTransactionActive(id, false).subscribe({
       next: () => {
+        this.isDisablingTransaction.set(false);
+        this.disablingTransactionId.set(null);
+        this.disabledTransactionId.set(id);
         this._toastService.showSuccess('Pago inhabilitado correctamente');
         this.loadTransactions(this.currentFilters, this.currentPage());
       },
       error: () => {
+        this.isDisablingTransaction.set(false);
+        this.disablingTransactionId.set(null);
+        this.disabledTransactionId.set(null);
         this._toastService.showError('Error al inhabilitar el pago');
       }
     });
