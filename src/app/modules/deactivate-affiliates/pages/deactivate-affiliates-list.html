@@ -5,7 +5,7 @@
     <div class="flex items-center justify-between mb-6">
       <div>
         <h1 class="text-3xl font-bold text-gray-900">Desactivar Afiliados</h1>
-        <p class="mt-1 text-sm text-gray-500">Gestion visual de afiliados activos para su desactivación</p>
+        <p class="mt-1 text-sm text-gray-500">Seguimiento de afiliados activos sin pago o con pago incompleto en el mes actual</p>
       </div>
       <button
         type="button"
@@ -18,6 +18,29 @@
       </button>
     </div>
 
+    <div class="mb-4 inline-flex rounded-xl border border-gray-200 bg-white p-1">
+      <button
+        type="button"
+        (click)="changeTab('unpaid')"
+        [class]="activeTab() === 'unpaid'
+          ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
+          : 'px-4 py-2 text-sm font-semibold rounded-lg text-gray-700 hover:bg-gray-100'"
+      >
+        Sin pago
+      </button>
+      @if (canViewUnderpaid()) {
+        <button
+          type="button"
+          (click)="changeTab('underpaid')"
+          [class]="activeTab() === 'underpaid'
+            ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
+            : 'px-4 py-2 text-sm font-semibold rounded-lg text-gray-700 hover:bg-gray-100'"
+        >
+          Pago incompleto
+        </button>
+      }
+    </div>
+
     <!-- Tabla -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
 
@@ -25,7 +48,6 @@
       <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
         <p class="text-sm text-gray-500">
           Total: <span class="font-semibold text-gray-800">{{ totalItems() }}</span> afiliados
-          &nbsp;&mdash;&nbsp; Pagina {{ currentPage() }} de {{ totalPages() }}
         </p>
       </div>
 
@@ -61,56 +83,74 @@
                   <span>Acciones</span>
                 </label>
               </th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Cedula</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre Completo</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Documento</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha Creación</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha Ingreso</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Profesion</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Monto esperado</th>
+              @if (activeTab() === 'underpaid') {
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Monto pagado</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Diferencia</th>
+              }
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Último pago</th>
+              @if (activeTab() === 'underpaid') {
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Detalle</th>
+              }
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
             @if (isLoading()) {
             <tr>
-              <td colspan="11" class="px-4 py-16 text-center text-gray-500">Cargando afiliados...</td>
+              <td [attr.colspan]="activeTab() === 'underpaid' ? 10 : 7" class="px-4 py-16 text-center text-gray-500">Cargando afiliados...</td>
             </tr>
-            } @else if (affiliates().length === 0) {
+            } @else if (currentAffiliates().length === 0) {
             <tr>
-              <td colspan="11" class="px-4 py-16 text-center">
+              <td [attr.colspan]="activeTab() === 'underpaid' ? 10 : 7" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <i class="fas fa-users text-2xl text-gray-400"></i>
                   </div>
-                  <p class="text-gray-500 font-medium">No hay afiliados activos para mostrar</p>
-                  <p class="text-gray-400 text-xs">Todos los afiliados están inactivos o no hay registros disponibles.</p>
+                  <p class="text-gray-500 font-medium">No hay afiliados para mostrar en esta vista</p>
+                  <p class="text-gray-400 text-xs">No hay resultados para el mes actual con los criterios seleccionados.</p>
                 </div>
               </td>
             </tr>
             } @else {
-            @for (affiliate of affiliates(); track trackById($index, affiliate)) {
+            @for (affiliate of currentAffiliates(); track trackById($index, affiliate)) {
             <tr class="hover:bg-gray-50 transition-colors duration-150">
               <td class="px-4 py-3">
                 <input
                   type="checkbox"
                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  [checked]="isSelected(affiliate.id)"
-                  (change)="toggleRow(affiliate.id, $any($event.target).checked)"
+                  [checked]="isSelected(affiliate.affiliateId)"
+                  (change)="toggleRow(affiliate.affiliateId, $any($event.target).checked)"
                 />
               </td>
-              <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ affiliate.nombre }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.cedula }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.referencia }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.nombrePlan }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.fechaIngreso | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.asesor }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.empresa }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.agrupadora }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.profesion }}</td>
+              <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ affiliate.name }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.document }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.plan }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.expectedAmount | number:'1.0-2' }}</td>
+              @if (activeTab() === 'underpaid') {
+              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.paidAmount ?? 0 | number:'1.0-2' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap" [class.text-red-600]="(affiliate.difference ?? 0) > 0">{{ affiliate.difference ?? 0 | number:'1.0-2' }}</td>
+              }
+              <td class="px-4 py-3 whitespace-nowrap">
+                @if (affiliate.lastPayment) {
+                  {{ affiliate.lastPayment | date: 'dd/MM/yyyy HH:mm' }}
+                } @else {
+                  <span class="text-gray-400">Sin pagos</span>
+                }
+              </td>
+              @if (activeTab() === 'underpaid') {
+              <td class="px-4 py-3 whitespace-nowrap">
+                <button
+                  type="button"
+                  (click)="openTransactionsModal(affiliate)"
+                  class="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100"
+                >
+                  Ver pagos
+                </button>
+              </td>
+              }
             </tr>
             }
             }
@@ -118,41 +158,27 @@
         </table>
       </div>
 
-      <!-- Pagination -->
+      <!-- Paginacion -->
       @if (totalPages() > 1) {
-      <div class="flex items-center justify-between mt-4 px-5 py-4 border-t border-gray-100 bg-white">
+      <div class="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50">
         <p class="text-sm text-gray-600">
-          {{ totalItems() }} registros &mdash; Página {{ currentPage() }} de {{ totalPages() }}
+          {{ totalItems() }} registros &mdash; Pagina {{ currentPage() }} de {{ totalPages() }}
         </p>
-
-        <nav class="inline-flex items-center gap-1" aria-label="Paginación">
-          <button
-            type="button"
-            (click)="goToPage(currentPage() - 1)"
-            [disabled]="currentPage() === 1"
-            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
+        <nav class="inline-flex items-center gap-1" aria-label="Paginacion">
+          <button type="button" (click)="previousPage()" [disabled]="currentPage() === 1"
+            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
             Anterior
           </button>
-
-          @for (page of pageNumbers(); track page) {
-          <button
-            type="button"
-            (click)="goToPage(page)"
+          @for (page of pageNumbers; track page) {
+          <button type="button" (click)="goToPage(page)"
             [class]="page === currentPage()
-              ? 'px-3 py-1.5 text-sm font-semibold text-white bg-blue-700 border border-blue-700 rounded-lg'
-              : 'px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'"
-          >
+                  ? 'px-3 py-1.5 text-sm font-semibold text-white bg-blue-700 border border-blue-700 rounded-lg'
+                  : 'px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'">
             {{ page }}
           </button>
           }
-
-          <button
-            type="button"
-            (click)="goToPage(currentPage() + 1)"
-            [disabled]="currentPage() === totalPages()"
-            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
+          <button type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()"
+            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
             Siguiente
           </button>
         </nav>
@@ -218,6 +244,91 @@
         Confirmar
         }
       </button>
+    </div>
+  </div>
+</div>
+}
+
+@if (isTransactionsModalOpen()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+  <div class="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-4 bg-blue-700">
+      <div>
+        <h3 class="text-base font-bold text-white">Detalle de transacciones</h3>
+        <p class="text-xs text-blue-100 mt-0.5">
+          {{ selectedAffiliateForDetail()?.name }}
+        </p>
+      </div>
+      <button
+        type="button"
+        (click)="closeTransactionsModal()"
+        class="text-white/90 hover:text-white text-sm font-semibold"
+      >
+        Cerrar
+      </button>
+    </div>
+
+    <div class="px-6 py-5">
+      @if (transactionsError()) {
+      <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        {{ transactionsError() }}
+      </div>
+      }
+
+      <div class="overflow-x-auto max-h-[60vh] overflow-y-auto border border-gray-100 rounded-xl">
+        <table class="w-full text-sm text-left text-gray-600">
+          <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+            <tr>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor total</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor pagado</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Descuento</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Coincidencia</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Observación</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            @if (isLoadingTransactions()) {
+            <tr>
+              <td colspan="8" class="px-4 py-10 text-center text-gray-500">Cargando transacciones...</td>
+            </tr>
+            } @else if (affiliateTransactions().length === 0) {
+            <tr>
+              <td colspan="8" class="px-4 py-10 text-center text-gray-500">No hay transacciones activas para este afiliado.</td>
+            </tr>
+            } @else {
+            @for (tx of affiliateTransactions(); track trackByTransactionId($index, tx)) {
+            <tr>
+              <td class="px-4 py-3 whitespace-nowrap">{{ tx.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ tx.reference || '-' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ tx.totalValue | number:'1.0-2' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ tx.amountPaid | number:'1.0-2' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                @if (tx.discountedValue) {
+                  <span class="text-orange-600">{{ tx.discountedValue | number:'1.0-2' }}</span>
+                } @else {
+                  <span class="text-gray-400">-</span>
+                }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-center">
+                @if (tx.amountsMatch === true) {
+                  <span class="text-green-600 text-lg font-bold">✓</span>
+                } @else if (tx.amountsMatch === false) {
+                  <span class="text-red-600 text-lg font-bold">✗</span>
+                } @else {
+                  <span class="text-gray-400">-</span>
+                }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ tx.status }}</td>
+              <td class="px-4 py-3">{{ tx.observation || '-' }}</td>
+            </tr>
+            }
+            }
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
