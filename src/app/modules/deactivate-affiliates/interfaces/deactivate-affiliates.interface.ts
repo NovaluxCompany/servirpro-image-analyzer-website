@@ -39,12 +39,21 @@ export interface InactivationAffiliateRow {
   affiliateId: number;
   name: string;
   document: string;
+  reference: string;
   plan: string;
-  expectedAmount: number;
+  planValue?: number;
+  totalTransactions?: number;
+  entryDate: string | null;
+  advisor: string;
+  company: string;
+  grouper: string;
+  expectedAmount?: number;
   paidAmount?: number;
+  amountGeneratedAI?: number;
   difference?: number;
-  lastPayment: string | null;
+  lastPayment?: string | null;
   amountsMatch?: boolean;
+  pension?: string;
 }
 
 export interface AffiliateTransactionRow {
