@@ -88,6 +88,13 @@ interface RawAffiliateTransactionRow {
   amount_match?: boolean | string | number | null;
   status?: string;
   observation?: string | null;
+  n8n_last_error?: string | null;
+  n8nLastError?: string | null;
+  created_by_user?: { name?: string; id?: number } | null;
+  createdByUser?: { name?: string; id?: number } | null;
+  createdBy?: { name?: string; id?: number } | null;
+  advisor?: string | null;
+  advisorName?: string | null;
 }
 
 @Injectable({
@@ -189,7 +196,7 @@ export class DeactivateAffiliatesService {
     const normalizedDocument = rawDocument.replace(/\D/g, '');
 
     if (!rawDocument) {
-      return of([]);
+      return of<AffiliateTransactionRow[]>([]);
     }
 
     const loadByDocument = (queryKey: string, doc: string) =>
@@ -199,7 +206,7 @@ export class DeactivateAffiliatesService {
           params: new HttpParams().set(queryKey, doc),
         })
         .pipe(
-          map((payload) => this.extractTransactionRows(payload).map((row) => this.normalizeTransactionRow(row))),
+          map((payload): AffiliateTransactionRow[] => this.extractTransactionRows(payload).map((row) => this.normalizeTransactionRow(row))),
         );
 
     const attempts: Array<{ key: string; value: string }> = [
@@ -334,6 +341,15 @@ export class DeactivateAffiliatesService {
         `${row.reference ?? 'tx'}-${row.created_at ?? row.createdAt ?? ''}`,
     );
 
+    // Extraer nombre del asesor del objeto createdBy
+    let advisorName: string | null = null;
+    const createdByUser = row.created_by_user ?? row.createdByUser ?? row.createdBy;
+    if (createdByUser && typeof createdByUser === 'object' && createdByUser.name) {
+      advisorName = createdByUser.name;
+    } else if (row.advisor || row.advisorName) {
+      advisorName = (row.advisor ?? row.advisorName) as string;
+    }
+
     return {
       transactionId,
       reference: row.reference ?? '',
@@ -349,6 +365,8 @@ export class DeactivateAffiliatesService {
       amountsMatch: amountsMatch !== undefined ? amountsMatch : null,
       status: row.status ?? '',
       observation: row.observation ?? null,
+      errorReason: row.n8n_last_error ?? row.n8nLastError ?? null,
+      advisorName: advisorName,
     };
   }
 

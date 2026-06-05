@@ -82,7 +82,6 @@
                       [indeterminate]="someVisibleSelected()"
                       (change)="toggleVisibleRows($any($event.target).checked)"
                     />
-                    <span>CheckBox</span>
                   </label>
                 </th>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre</th>
@@ -107,7 +106,6 @@
                       [indeterminate]="someVisibleSelected()"
                       (change)="toggleVisibleRows($any($event.target).checked)"
                     />
-                    <span>Acción</span>
                   </label>
                 </th>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre</th>
@@ -161,7 +159,7 @@
                 <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.totalTransactions | number:'1.0-2' }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">
                   @if (affiliate.entryDate) {
-                    {{ affiliate.entryDate | date: 'dd/MM/yyyy' }}
+                    {{ formatDateOnlyColumbia(affiliate.entryDate) }}
                   } @else {
                     <span class="text-gray-400">-</span>
                   }
@@ -182,7 +180,7 @@
                 <!-- Fila Sin Pago -->
                 <td class="px-4 py-3 whitespace-nowrap">
                   @if (affiliate.entryDate) {
-                    {{ affiliate.entryDate | date: 'dd/MM/yyyy' }}
+                    {{ formatDateOnlyColumbia(affiliate.entryDate) }}
                   } @else {
                     <span class="text-gray-400">-</span>
                   }
@@ -320,49 +318,80 @@
         <table class="w-full text-sm text-left text-gray-600">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha Pago</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Monto Pagado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor total</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor pagado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Descuento</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Coincidencia</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Motivo de error</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Coincidencia</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Observación</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
             @if (isLoadingTransactions()) {
             <tr>
-              <td colspan="8" class="px-4 py-10 text-center text-gray-500">Cargando transacciones...</td>
+              <td colspan="10" class="px-4 py-10 text-center text-gray-500">Cargando transacciones...</td>
             </tr>
             } @else if (affiliateTransactions().length === 0) {
             <tr>
-              <td colspan="8" class="px-4 py-10 text-center text-gray-500">No hay transacciones activas para este afiliado.</td>
+              <td colspan="10" class="px-4 py-10 text-center text-gray-500">No hay transacciones activas para este afiliado.</td>
             </tr>
             } @else {
             @for (tx of affiliateTransactions(); track trackByTransactionId($index, tx)) {
             <tr>
-              <td class="px-4 py-3 whitespace-nowrap">{{ tx.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-xs">{{ formatDateColombia(tx.createdAt) }}</td>
               <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ tx.reference || '-' }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ tx.totalValue | number:'1.0-2' }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ tx.amountPaid | number:'1.0-2' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap font-medium text-green-700">{{ formatCurrency(tx.amountPaid) }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ formatCurrency(tx.totalValue) }}</td>
               <td class="px-4 py-3 whitespace-nowrap">
-                @if (tx.discountedValue) {
-                  <span class="text-orange-600">{{ tx.discountedValue | number:'1.0-2' }}</span>
+                @if (tx.discountedValue && tx.discountedValue > 0) {
+                  <span class="text-orange-600">{{ formatCurrency(tx.discountedValue) }}</span>
+                } @else {
+                  <span class="text-gray-400">-</span>
+                }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                <span class="px-2 py-1 text-xs font-semibold rounded-full"
+                  [class.bg-green-100]="tx.status === 'completed'"
+                  [class.text-green-800]="tx.status === 'completed'"
+                  [class.bg-yellow-100]="tx.status === 'pending'"
+                  [class.text-yellow-800]="tx.status === 'pending'"
+                  [class.bg-red-100]="tx.status === 'failed' || tx.status === 'error'"
+                  [class.text-red-800]="tx.status === 'failed' || tx.status === 'error'"
+                  [class.bg-gray-100]="tx.status !== 'completed' && tx.status !== 'pending' && tx.status !== 'failed' && tx.status !== 'error'"
+                  [class.text-gray-800]="tx.status !== 'completed' && tx.status !== 'pending' && tx.status !== 'failed' && tx.status !== 'error'"
+                >
+                  {{ tx.status || '-' }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                @if (tx.errorReason) {
+                  <div class="max-w-xs text-red-700 text-xs bg-red-50 p-2 rounded border border-red-200" [title]="tx.errorReason">
+                    {{ tx.errorReason.substring(0, 50) }}{{ tx.errorReason.length > 50 ? '...' : '' }}
+                  </div>
+                } @else {
+                  <span class="text-gray-400">-</span>
+                }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                @if (tx.advisorName) {
+                  <span class="text-sm font-medium text-blue-700">{{ tx.advisorName }}</span>
                 } @else {
                   <span class="text-gray-400">-</span>
                 }
               </td>
               <td class="px-4 py-3 whitespace-nowrap text-center">
                 @if (tx.amountsMatch === true) {
-                  <span class="text-green-600 text-lg font-bold">✓</span>
+                  <span class="text-green-600 text-lg font-bold" title="Los montos coinciden">✓</span>
                 } @else if (tx.amountsMatch === false) {
-                  <span class="text-red-600 text-lg font-bold">✗</span>
+                  <span class="text-red-600 text-lg font-bold" title="Los montos no coinciden">✗</span>
                 } @else {
                   <span class="text-gray-400">-</span>
                 }
               </td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ tx.status }}</td>
               <td class="px-4 py-3">{{ tx.observation || '-' }}</td>
             </tr>
             }

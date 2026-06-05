@@ -66,4 +66,6 @@ export interface AffiliateTransactionRow {
   amountsMatch: boolean | null;
   status: string;
   observation: string | null;
+  errorReason: string | null;
+  advisorName: string | null;
 }
