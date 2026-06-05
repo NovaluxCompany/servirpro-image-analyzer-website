@@ -8,11 +8,17 @@ import { TransactionsListComponent } from './pages/transactions-list/transaction
 import { TransactionCreateComponent } from './pages/transaction-create/transaction-create';
 import { TransactionDetailComponent } from './pages/transaction-detail/transaction-detail';
 
-const canCreateTransaction = () => {
+/**
+ * Guard que valida que el usuario tenga permiso 'create' sobre el módulo de transacciones.
+ * Usa el path '/transacciones' hardcodeado para evitar problemas de timing con window.location.
+ */
+const canCreateTransactionGuard = () => {
   const permission = inject(PermissionService);
   const router = inject(Router);
   const toast = inject(ToastService);
-  if (permission.can('create')) return true;
+
+  if (permission.can('create', '/transacciones')) return true;
+
   toast.showError('Tu rol no tiene permiso para crear transacciones.');
   router.navigate(['/transacciones']);
   return false;
@@ -27,7 +33,7 @@ export const routes: Routes = [
   {
     path: 'crear',
     component: TransactionCreateComponent,
-    canActivate: [LoginGuardian, roleGuard, canCreateTransaction]
+    canActivate: [LoginGuardian, roleGuard, canCreateTransactionGuard]
   },
   {
     path: ':id',
