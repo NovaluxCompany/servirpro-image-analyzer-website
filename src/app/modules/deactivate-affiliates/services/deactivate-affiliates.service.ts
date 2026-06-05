@@ -42,11 +42,24 @@ interface RawInactivationAffiliateRow {
   lastName?: string;
   document?: string;
   document_number?: string;
+  reference?: string;
   plan?: string;
+  plan_value?: number | string;
+  planValue?: number | string;
+  total_transactions?: number | string;
+  totalTransactions?: number | string;
+  entry_date?: string | null;
+  entryDate?: string | null;
+  advisor?: string;
+  company?: string;
+  grouper?: string;
+  pension?: string;
   expected_amount?: number | string;
   expectedAmount?: number | string;
   paid_amount?: number | string;
   paidAmount?: number | string;
+  amount_generated_ai?: number | string;
+  amountGeneratedAI?: number | string;
   difference?: number | string;
   last_payment?: string | null;
   lastPayment?: string | null;
@@ -234,6 +247,9 @@ export class DeactivateAffiliatesService {
   ): InactivationAffiliateRow {
     const expectedAmount = this.toNumber(row.expected_amount ?? row.expectedAmount);
     const paidAmount = this.toNumber(row.paid_amount ?? row.paidAmount);
+    const amountGeneratedAI = this.toNumber(row.amount_generated_ai ?? row.amountGeneratedAI);
+    const planValue = this.toNumber(row.plan_value ?? row.planValue);
+    const totalTransactions = this.toNumber(row.total_transactions ?? row.totalTransactions);
     const difference = this.toNumber(row.difference ?? expectedAmount - paidAmount);
     const fullName =
       row.full_name ??
@@ -247,12 +263,21 @@ export class DeactivateAffiliatesService {
       affiliateId: Number(row.affiliate_id ?? row.affiliateId ?? row.id ?? 0),
       name: fullName,
       document: row.document_number ?? row.document ?? '',
+      reference: row.reference ?? '',
       plan: row.plan ?? '',
-      expectedAmount,
+      planValue: includePaymentFields ? planValue : undefined,
+      totalTransactions: includePaymentFields ? totalTransactions : undefined,
+      entryDate: row.entry_date ?? row.entryDate ?? null,
+      advisor: row.advisor ?? '',
+      company: row.company ?? '',
+      grouper: row.grouper ?? '',
+      expectedAmount: expectedAmount || undefined,
       paidAmount: includePaymentFields ? paidAmount : undefined,
+      amountGeneratedAI: includePaymentFields ? amountGeneratedAI : undefined,
       difference: includePaymentFields ? difference : undefined,
       lastPayment: row.last_payment ?? row.lastPayment ?? null,
       amountsMatch: this.toBoolean(row.amountsMatch ?? row.amount_match ?? row.amounts_match),
+      pension: row.pension ?? undefined,
     };
   }
 

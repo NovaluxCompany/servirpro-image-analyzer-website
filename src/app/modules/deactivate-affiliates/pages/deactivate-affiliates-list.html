@@ -71,40 +71,65 @@
         <table class="w-full text-sm text-left text-gray-600">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">
-                <label class="inline-flex items-center gap-3 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    [checked]="allVisibleSelected()"
-                    [indeterminate]="someVisibleSelected()"
-                    (change)="toggleVisibleRows($any($event.target).checked)"
-                  />
-                  <span>Acciones</span>
-                </label>
-              </th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre Completo</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Documento</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Monto esperado</th>
               @if (activeTab() === 'underpaid') {
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Monto pagado</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Diferencia</th>
-              }
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Último pago</th>
-              @if (activeTab() === 'underpaid') {
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Detalle</th>
+                <!-- Headers para Pago Incompleto (12 columnas) -->
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">
+                  <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      [checked]="allVisibleSelected()"
+                      [indeterminate]="someVisibleSelected()"
+                      (change)="toggleVisibleRows($any($event.target).checked)"
+                    />
+                    <span>CheckBox</span>
+                  </label>
+                </th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Cedula</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor del plan</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Total transacciones</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha ingreso</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Acciones</th>
+              } @else {
+                <!-- Headers para Sin Pago (10 columnas) -->
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">
+                  <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      [checked]="allVisibleSelected()"
+                      [indeterminate]="someVisibleSelected()"
+                      (change)="toggleVisibleRows($any($event.target).checked)"
+                    />
+                    <span>Acción</span>
+                  </label>
+                </th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Cedula</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha ingreso</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Profesión</th>
               }
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
             @if (isLoading()) {
             <tr>
-              <td [attr.colspan]="activeTab() === 'underpaid' ? 10 : 7" class="px-4 py-16 text-center text-gray-500">Cargando afiliados...</td>
+              <td [attr.colspan]="activeTab() === 'underpaid' ? 12 : 10" class="px-4 py-16 text-center text-gray-500">Cargando afiliados...</td>
             </tr>
             } @else if (currentAffiliates().length === 0) {
             <tr>
-              <td [attr.colspan]="activeTab() === 'underpaid' ? 10 : 7" class="px-4 py-16 text-center">
+              <td [attr.colspan]="activeTab() === 'underpaid' ? 12 : 10" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <i class="fas fa-users text-2xl text-gray-400"></i>
@@ -127,29 +152,45 @@
               </td>
               <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ affiliate.name }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.document }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.reference }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.plan }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.expectedAmount | number:'1.0-2' }}</td>
+
               @if (activeTab() === 'underpaid') {
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.paidAmount ?? 0 | number:'1.0-2' }}</td>
-              <td class="px-4 py-3 whitespace-nowrap" [class.text-red-600]="(affiliate.difference ?? 0) > 0">{{ affiliate.difference ?? 0 | number:'1.0-2' }}</td>
-              }
-              <td class="px-4 py-3 whitespace-nowrap">
-                @if (affiliate.lastPayment) {
-                  {{ affiliate.lastPayment | date: 'dd/MM/yyyy HH:mm' }}
-                } @else {
-                  <span class="text-gray-400">Sin pagos</span>
-                }
-              </td>
-              @if (activeTab() === 'underpaid') {
-              <td class="px-4 py-3 whitespace-nowrap">
-                <button
-                  type="button"
-                  (click)="openTransactionsModal(affiliate)"
-                  class="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100"
-                >
-                  Ver pagos
-                </button>
-              </td>
+                <!-- Fila Pago Incompleto -->
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.planValue | number:'1.0-2' }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.totalTransactions | number:'1.0-2' }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  @if (affiliate.entryDate) {
+                    {{ affiliate.entryDate | date: 'dd/MM/yyyy' }}
+                  } @else {
+                    <span class="text-gray-400">-</span>
+                  }
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.advisor }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.company }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.grouper }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <button
+                    type="button"
+                    (click)="openTransactionsModal(affiliate)"
+                    class="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100"
+                  >
+                    Ver pagos
+                  </button>
+                </td>
+              } @else {
+                <!-- Fila Sin Pago -->
+                <td class="px-4 py-3 whitespace-nowrap">
+                  @if (affiliate.entryDate) {
+                    {{ affiliate.entryDate | date: 'dd/MM/yyyy' }}
+                  } @else {
+                    <span class="text-gray-400">-</span>
+                  }
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.advisor }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.company }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.grouper }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.pension }}</td>
               }
             </tr>
             }
