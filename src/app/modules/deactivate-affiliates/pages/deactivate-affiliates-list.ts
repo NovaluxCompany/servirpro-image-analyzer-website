@@ -326,4 +326,70 @@ export class DeactivateAffiliatesList implements OnInit {
   protected trackByTransactionId(_: number, item: AffiliateTransactionRow): string {
     return item.transactionId;
   }
+
+  protected formatDateColombia(dateString: string): string {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+
+      const formatter = new Intl.DateTimeFormat('es-CO', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'America/Bogota'
+      });
+
+      return formatter.format(date);
+    } catch {
+      return dateString || '-';
+    }
+  }
+
+  protected formatDateOnlyColumbia(dateString: string): string {
+    if (!dateString) return '-';
+    try {
+      // Si es solo una fecha sin hora (ej: "2026-06-04"), no convertir timezone
+      const isSomethingDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateString.trim());
+      if (isSomethingDateOnly) {
+        const [year, month, day] = dateString.trim().split('-');
+        return `${day}/${month}/${year}`;
+      }
+
+      // Si es medianoche UTC (T00:00:00.000Z), extraer solo la fecha sin aplicar timezone
+      // porque es una "fecha de día" que el backend envía a medianoche UTC
+      const isMidnightUTC = /T00:00:00/.test(dateString);
+      if (isMidnightUTC) {
+        const datePart = dateString.split('T')[0]; // "2026-06-04"
+        const [year, month, day] = datePart.split('-');
+        return `${day}/${month}/${year}`;
+      }
+
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+
+      const formatter = new Intl.DateTimeFormat('es-CO', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: 'America/Bogota'
+      });
+
+      return formatter.format(date);
+    } catch {
+      return dateString || '-';
+    }
+  }
+
+  protected formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount);
+  }
 }
