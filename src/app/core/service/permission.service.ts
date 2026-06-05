@@ -77,9 +77,11 @@ export class PermissionService {
     if (!targetPath) return false;
 
     const codes = Array.isArray(permission) ? permission : [permission];
+    const menus = this.getUserMenus();
 
     // Si backend ya envia menus con permissions, ese es el source of truth.
-    if (this.getUserMenus().length > 0) {
+    // Se usa verificación granular estricta: solo pasa si tiene el permiso específico.
+    if (menus.length > 0) {
       return this.hasPermissionOnPath(targetPath, codes);
     }
 
