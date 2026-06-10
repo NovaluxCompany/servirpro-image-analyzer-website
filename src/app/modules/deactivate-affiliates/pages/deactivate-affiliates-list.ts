@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { forkJoin, of } from 'rxjs';
 import { ToastService } from '../../../core/service/toast.service';
 import { PermissionService } from '../../../core/service/permission.service';
@@ -7,6 +8,8 @@ import { ConfigGeneralService } from '../../../core/service/config-general.servi
 import { TokenService } from '../../../core/service/token.service';
 import {
   AffiliateTransactionRow,
+  DeactivateAffiliateFilters,
+  DeactivateAffiliatesResponse,
   DeactivationContext,
   InactivationAffiliateRow,
 } from '../interfaces/deactivate-affiliates.interface';
@@ -17,20 +20,24 @@ type InactivationTab = 'unpaid' | 'underpaid';
 @Component({
   selector: 'app-deactivate-affiliates-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './deactivate-affiliates-list.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DeactivateAffiliatesList implements OnInit {
   private readonly _deactivateAffiliatesService = inject(DeactivateAffiliatesService);
   private readonly _toastService = inject(ToastService);
-  private readonly _permissionService = inject(PermissionService);
   private readonly _configGeneralService = inject(ConfigGeneralService);
   private readonly _tokenService = inject(TokenService);
+  private _permission = inject(PermissionService);
+  private _toast = inject(ToastService);
 
   protected readonly isLoading = signal(false);
   protected readonly isSubmitting = signal(false);
   protected readonly showConfirmationModal = signal(false);
+  protected readonly isDeactivatingAll = signal(false);
+  protected readonly showApprovePaymentModal = signal(false);
+  protected readonly pendingApproveAffiliate = signal<InactivationAffiliateRow | null>(null);
   protected readonly selectedIds = signal<number[]>([]);
   protected readonly context = signal<DeactivationContext | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
@@ -45,9 +52,12 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly selectedAffiliateForDetail = signal<InactivationAffiliateRow | null>(null);
   protected readonly affiliateTransactions = signal<AffiliateTransactionRow[]>([]);
 
+  protected readonly showResultsModal = signal(false);
+  protected readonly deactivationResult = signal<DeactivateAffiliatesResponse | null>(null);
+
   // Verifica si el usuario puede acceder al tab "Pagos Incompletos"
   protected readonly canViewUnderpaid = computed(() =>
-    this._permissionService.can('view', '/desactivar-afiliados/pagos-incompletos')
+    this._permission.can('view', '/desactivar-afiliados/pagos-incompletos')
   );
 
   // Verifica si el usuario puede desactivar afiliados en el tab actual
@@ -55,8 +65,23 @@ export class DeactivateAffiliatesList implements OnInit {
     const path = this.activeTab() === 'unpaid'
       ? '/desactivar-afiliados/sin-pago'
       : '/desactivar-afiliados/pagos-incompletos';
-    return this._permissionService.can('delete', path);
+    return this._permission.can('delete', path);
   });
+
+  // ── Filtros (señales reactivas) ───────────────────────────────────
+  protected readonly filterName = signal('');
+  protected readonly filterDocument = signal('');
+  protected readonly filterReference = signal('');
+  protected readonly filterAdviser = signal('');
+  protected readonly filterCompany = signal('');
+  protected readonly filterGrouper = signal('');
+
+  // ── Datos ───────────────────────────────────
+  isDownloadingExcel = signal(false);
+  readonly approvingPaymentId = signal<number | null>(null);
+  readonly approvingTransactionId = signal<string | null>(null);
+  readonly openDropdownId = signal<number | null>(null);
+  readonly dropdownPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
 
   // Paginación
   protected readonly currentPage = signal(1);
@@ -64,10 +89,7 @@ export class DeactivateAffiliatesList implements OnInit {
 
   protected readonly canDeactivateByDate = computed(() => {
     const context = this.context();
-    if (!context) {
-      return false;
-    }
-
+    if (!context) return false;
     return context.currentDay >= context.minDay && context.canDeactivateByDate;
   });
 
@@ -75,14 +97,38 @@ export class DeactivateAffiliatesList implements OnInit {
     this.activeTab() === 'unpaid' ? this.unpaidAffiliates() : this.underpaidAffiliates(),
   );
 
-  protected readonly totalItems = computed(() => this.allAffiliates().length);
+  // ── Afiliados filtrados (filtro client-side reactivo) ─────────────
+  protected readonly filteredAffiliates = computed(() => {
+    const all = this.allAffiliates();
+    const name = this.filterName().toLowerCase().trim();
+    const document = this.filterDocument().toLowerCase().trim();
+    const reference = this.filterReference().toLowerCase().trim();
+    const adviser = this.filterAdviser().toLowerCase().trim();
+    const company = this.filterCompany().toLowerCase().trim();
+    const grouper = this.filterGrouper().toLowerCase().trim();
 
+    if (!name && !document && !reference && !adviser && !company && !grouper) {
+      return all;
+    }
+
+    return all.filter((a) => {
+      if (name && !a.name?.toLowerCase().includes(name)) return false;
+      if (document && !a.document?.toLowerCase().includes(document)) return false;
+      if (reference && !a.reference?.toLowerCase().includes(reference)) return false;
+      if (adviser && !a.advisor?.toLowerCase().includes(adviser)) return false;
+      if (company && !a.company?.toLowerCase().includes(company)) return false;
+      if (grouper && !a.grouper?.toLowerCase().includes(grouper)) return false;
+      return true;
+    });
+  });
+
+  protected readonly totalItems = computed(() => this.filteredAffiliates().length);
   protected readonly totalPages = computed(() =>
-    Math.ceil(this.totalItems() / this.pageSize())
+    Math.ceil((this.totalItems() || 1) / (this.pageSize() || 1))
   );
 
   protected readonly currentAffiliates = computed(() => {
-    const all = this.allAffiliates();
+    const all = this.filteredAffiliates();
     const start = (this.currentPage() - 1) * this.pageSize();
     const end = start + this.pageSize();
     return all.slice(start, end);
@@ -102,8 +148,11 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly isDeactivateButtonDisabled = computed(
     () => this.selectedCount() === 0 || this.isLoading() || this.isSubmitting() || !this.canDeactivateByDate() || !this.canDeactivateAffiliates(),
   );
-  protected readonly modalMessage = computed(
-    () => `Se desactivarán ${this.selectedCount()} usuario(s), ¿desea continuar?`,
+
+  protected readonly modalMessage = computed(() =>
+    this.isDeactivatingAll()
+      ? `Se van a inhabilitar <strong>${this.totalItems()}</strong> afiliado(s) sin pago${this.hasActiveFilters() ? ' según los filtros activos' : ' del mes actual'}. ¿Desea continuar?`
+      : `Se desactivarán <strong>${this.selectedCount()}</strong> afiliado(s) seleccionado(s). ¿Desea continuar?`
   );
 
   protected readonly selectedVisibleCount = computed(() =>
@@ -123,11 +172,12 @@ export class DeactivateAffiliatesList implements OnInit {
 
   protected readonly selectedCount = computed(() => this.selectedIds().length);
 
-  ngOnInit(): void {
-    // Debug: Verificar permisos del usuario
-    const user = this._tokenService.getUser();
+  protected readonly hasActiveFilters = computed(() =>
+    !!(this.filterName() || this.filterDocument() || this.filterReference() || this.filterAdviser() || this.filterCompany() || this.filterGrouper())
+  );
 
-    // Cargar la configuración de paginación desde la base de datos
+
+  ngOnInit(): void {
     this._configGeneralService.getValue('REGISTROS_POR_PAGINA').subscribe({
       next: (value) => {
         const pageSize = parseInt(value, 10);
@@ -136,20 +186,59 @@ export class DeactivateAffiliatesList implements OnInit {
         }
         this.loadData();
       },
-      error: (error) => {
-        console.error('Error al cargar configuración de paginación:', error);
-        // Si falla, continuar con el valor por defecto (10)
+      error: () => {
         this.loadData();
       },
     });
   }
 
+  // ── Setters de filtros ────────────────────────────────────────────
+  protected setFilterName(value: string): void {
+    this.filterName.set(value);
+    this.currentPage.set(1);
+  }
+
+  protected setFilterDocument(value: string): void {
+    this.filterDocument.set(value);
+    this.currentPage.set(1);
+  }
+
+  protected setFilterReference(value: string): void {
+    this.filterReference.set(value);
+    this.currentPage.set(1);
+  }
+
+  protected setFilterAdviser(value: string): void {
+    this.filterAdviser.set(value);
+    this.currentPage.set(1);
+  }
+
+  protected setFilterCompany(value: string): void {
+    this.filterCompany.set(value);
+    this.currentPage.set(1);
+  }
+
+  protected setFilterGrouper(value: string): void {
+    this.filterGrouper.set(value);
+    this.currentPage.set(1);
+  }
+
+  clearFilters(): void {
+    this.filterName.set('');
+    this.filterDocument.set('');
+    this.filterReference.set('');
+    this.filterAdviser.set('');
+    this.filterCompany.set('');
+    this.filterGrouper.set('');
+    this.currentPage.set(1);
+  }
+
+  // ── Carga de datos ────────────────────────────────────────────────
   protected loadData(): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
     this.selectedIds.set([]);
 
-    // Solo carga underpaid si el usuario tiene permiso
     const underpaidRequest = this.canViewUnderpaid()
       ? this._deactivateAffiliatesService.getUnderpaidAffiliates()
       : of([]);
@@ -172,61 +261,48 @@ export class DeactivateAffiliatesList implements OnInit {
     });
   }
 
+  // ── Tabs ──────────────────────────────────────────────────────────
   protected changeTab(tab: InactivationTab): void {
-    if (this.activeTab() === tab) {
-      return;
-    }
+    if (this.activeTab() === tab) return;
 
-    // Verifica permisos antes de cambiar de tab
     const path = tab === 'unpaid'
       ? '/desactivar-afiliados/sin-pago'
       : '/desactivar-afiliados/pagos-incompletos';
 
-    if (!this._permissionService.check('view', path, `No tienes permiso para acceder a este módulo.`)) {
+    if (!this._permission.check('view', path, 'No tienes permiso para acceder a este módulo.')) {
       return;
     }
 
     this.activeTab.set(tab);
     this.currentPage.set(1);
     this.selectedIds.set([]);
+    this.clearFilters();
   }
 
+  // ── Paginación ────────────────────────────────────────────────────
   protected previousPage(): void {
-    if (this.currentPage() > 1) {
-      this.currentPage.update(p => p - 1);
-    }
+    if (this.currentPage() > 1) this.currentPage.update(p => p - 1);
   }
 
   protected nextPage(): void {
-    if (this.currentPage() < this.totalPages()) {
-      this.currentPage.update(p => p + 1);
-    }
+    if (this.currentPage() < this.totalPages()) this.currentPage.update(p => p + 1);
   }
 
   protected goToPage(page: number): void {
-    if (page > 0 && page <= this.totalPages()) {
-      this.currentPage.set(page);
-    }
+    if (page > 0 && page <= this.totalPages()) this.currentPage.set(page);
   }
 
+  // ── Selección ─────────────────────────────────────────────────────
   protected toggleRow(id: number, checked: boolean): void {
     const next = new Set(this.selectedIds());
-    if (checked) {
-      next.add(id);
-    } else {
-      next.delete(id);
-    }
+    checked ? next.add(id) : next.delete(id);
     this.selectedIds.set(Array.from(next));
   }
 
   protected toggleVisibleRows(checked: boolean): void {
     const next = new Set(this.selectedIds());
     this.currentAffiliates().forEach((affiliate) => {
-      if (checked) {
-        next.add(affiliate.affiliateId);
-      } else {
-        next.delete(affiliate.affiliateId);
-      }
+      checked ? next.add(affiliate.affiliateId) : next.delete(affiliate.affiliateId);
     });
     this.selectedIds.set(Array.from(next));
   }
@@ -235,17 +311,15 @@ export class DeactivateAffiliatesList implements OnInit {
     return this.selectedIds().includes(id);
   }
 
+  // ── Modal desactivación ───────────────────────────────────────────
   protected openConfirmationModal(): void {
-    if (this.selectedCount() === 0) {
-      return;
-    }
+    if (this.selectedCount() === 0) return;
 
-    // Verificar permisos de desactivación
     const path = this.activeTab() === 'unpaid'
       ? '/desactivar-afiliados/sin-pago'
       : '/desactivar-afiliados/pagos-incompletos';
 
-    if (!this._permissionService.check('delete', path, 'Tu rol no tiene permiso para desactivar afiliados en este módulo.')) {
+    if (!this._permission.check('delete', path, 'Tu rol no tiene permiso para desactivar afiliados en este módulo.')) {
       return;
     }
 
@@ -264,35 +338,133 @@ export class DeactivateAffiliatesList implements OnInit {
 
   protected cancelDeactivation(): void {
     this.showConfirmationModal.set(false);
+    this.isDeactivatingAll.set(false);
+  }
+
+  protected deactivateAll(): void {
+    if (!this._permission.check('delete', '/desactivar-afiliados/sin-pago', 'Tu rol no tiene permiso para desactivar afiliados.')) return;
+    if (!this.canDeactivateByDate()) {
+      const minDay = this.context()?.minDay;
+      this._toastService.showError(
+        minDay
+          ? `La desactivación está habilitada únicamente si la fecha actual es mayor o igual al día ${minDay} de cada mes.`
+          : 'La desactivación no está habilitada para la fecha actual.',
+      );
+      return;
+    }
+    if (this.unpaidAffiliates().length === 0) {
+      this._toastService.showInfo('No hay afiliados sin pago para inhabilitar.');
+      return;
+    }
+    this.isDeactivatingAll.set(true);
+    this.showConfirmationModal.set(true);
+  }
+
+  protected openApprovePaymentModal(affiliate: InactivationAffiliateRow): void {
+    this.pendingApproveAffiliate.set(affiliate);
+    this.showApprovePaymentModal.set(true);
+  }
+
+  protected cancelApprovePayment(): void {
+    this.showApprovePaymentModal.set(false);
+    this.pendingApproveAffiliate.set(null);
+  }
+
+  protected confirmApprovePayment(): void {
+    const affiliate = this.pendingApproveAffiliate();
+    if (!affiliate || this.approvingPaymentId() !== null) return;
+
+    this.approvingPaymentId.set(affiliate.affiliateId);
+    this.showApprovePaymentModal.set(false);
+
+    this._deactivateAffiliatesService.approvePayment(affiliate.affiliateId, true).subscribe({
+      next: () => {
+        this.approvingPaymentId.set(null);
+        this.pendingApproveAffiliate.set(null);
+        this._toast.showSuccess('Pago aceptado');
+        this.loadData();
+      },
+      error: (error: Error) => {
+        this.approvingPaymentId.set(null);
+        this.pendingApproveAffiliate.set(null);
+        this._toast.showError(error.message || 'Error al aceptar el pago.');
+      },
+    });
   }
 
   protected confirmDeactivation(): void {
-    const ids = [...this.selectedIds()];
-    const selectedAtConfirmation = ids.length;
+    if (this.isSubmitting()) return;
 
-    if (selectedAtConfirmation === 0 || this.isSubmitting()) {
+    this.isSubmitting.set(true);
+
+    if (this.isDeactivatingAll()) {
+      const filters = {
+        name: this.filterName() || undefined,
+        document: this.filterDocument() || undefined,
+        reference: this.filterReference() || undefined,
+        advisor: this.filterAdviser() || undefined,
+        company: this.filterCompany() || undefined,
+        grouper: this.filterGrouper() || undefined,
+      };
+
+      this._deactivateAffiliatesService.deactivateAllAffiliates(filters).subscribe({
+        next: (response) => {
+          this.showConfirmationModal.set(false);
+          this.isDeactivatingAll.set(false);
+          this.isSubmitting.set(false);
+          this.handleDeactivationResponse(response);
+        },
+        error: (error: Error) => {
+          this.isSubmitting.set(false);
+          this.showConfirmationModal.set(false);
+          this.isDeactivatingAll.set(false);
+          this._toastService.showError(error.message || 'No fue posible inhabilitar los afiliados.');
+        },
+      });
       return;
     }
 
-    this.isSubmitting.set(true);
+    const ids = [...this.selectedIds()];
+    const selectedAtConfirmation = ids.length;
+
+    if (selectedAtConfirmation === 0) {
+      this.isSubmitting.set(false);
+      return;
+    }
 
     this._deactivateAffiliatesService.deactivateAffiliates(ids).subscribe({
       next: (response) => {
         this.showConfirmationModal.set(false);
+        this.isDeactivatingAll.set(false);
         this.isSubmitting.set(false);
-        this._toastService.showSuccess(
-          response?.message || `${selectedAtConfirmation} usuarios fueron desactivados exitosamente.`,
-        );
-        this.loadData();
+        this.handleDeactivationResponse(response);
       },
       error: (error: Error) => {
         this.isSubmitting.set(false);
         this.showConfirmationModal.set(false);
+        this.isDeactivatingAll.set(false);
         this._toastService.showError(error.message || 'No fue posible desactivar los afiliados seleccionados.');
       },
     });
   }
 
+  protected handleDeactivationResponse(response: DeactivateAffiliatesResponse): void {
+    this.loadData();
+    if (response.failed?.length > 0) {
+      this.deactivationResult.set(response);
+      this.showResultsModal.set(true);
+    } else {
+      this._toastService.showSuccess(response.message || 'Afiliados inhabilitados exitosamente.');
+    }
+  }
+
+  protected closeResultsModal(): void {
+    this.showResultsModal.set(false);
+    this.deactivationResult.set(null);
+    this.selectedIds.set([]);
+  }
+
+  // ── Modal transacciones ───────────────────────────────────────────
   protected openTransactionsModal(affiliate: InactivationAffiliateRow): void {
     this.selectedAffiliateForDetail.set(affiliate);
     this.isTransactionsModalOpen.set(true);
@@ -319,6 +491,51 @@ export class DeactivateAffiliatesList implements OnInit {
     this.transactionsError.set(null);
   }
 
+  protected toggleTransactionApproved(tx: AffiliateTransactionRow): void {
+    if (this.approvingTransactionId() !== null) return;
+
+    const newValue = !tx.isApproved;
+    this.approvingTransactionId.set(tx.transactionId);
+
+    this._deactivateAffiliatesService.approveTransaction(tx.transactionId, newValue).subscribe({
+      next: () => {
+        this.affiliateTransactions.update((rows) =>
+          rows.map((r) => r.transactionId === tx.transactionId ? { ...r, isApproved: newValue } : r),
+        );
+        this.approvingTransactionId.set(null);
+        this._toast.showSuccess(newValue ? 'Transacción aprobada' : 'Aprobación revertida');
+        if (newValue) {
+          this.loadData();
+        }
+      },
+      error: (error: Error) => {
+        this.approvingTransactionId.set(null);
+        this._toast.showError(error.message || 'Error al actualizar el estado de la transacción.');
+      },
+    });
+  }
+
+  // ── Menú de acciones ─────────────────────────────────────────────
+  protected toggleDropdown(id: number, buttonEl: HTMLElement): void {
+    if (this.openDropdownId() === id) {
+      this.openDropdownId.set(null);
+      return;
+    }
+    const rect = buttonEl.getBoundingClientRect();
+    this.dropdownPos.set({ top: rect.bottom + 4, left: rect.left });
+    this.openDropdownId.set(id);
+  }
+
+  protected closeDropdown(): void {
+    this.openDropdownId.set(null);
+  }
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.openDropdownId.set(null);
+  }
+
+  // ── Utilidades ────────────────────────────────────────────────────
   protected trackById(_: number, item: InactivationAffiliateRow): number {
     return item.affiliateId;
   }
@@ -332,18 +549,11 @@ export class DeactivateAffiliatesList implements OnInit {
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return dateString;
-
-      const formatter = new Intl.DateTimeFormat('es-CO', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZone: 'America/Bogota'
-      });
-
-      return formatter.format(date);
+      return new Intl.DateTimeFormat('es-CO', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        timeZone: 'America/Bogota',
+      }).format(date);
     } catch {
       return dateString || '-';
     }
@@ -352,33 +562,20 @@ export class DeactivateAffiliatesList implements OnInit {
   protected formatDateOnlyColumbia(dateString: string): string {
     if (!dateString) return '-';
     try {
-      // Si es solo una fecha sin hora (ej: "2026-06-04"), no convertir timezone
-      const isSomethingDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateString.trim());
-      if (isSomethingDateOnly) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString.trim())) {
         const [year, month, day] = dateString.trim().split('-');
         return `${day}/${month}/${year}`;
       }
-
-      // Si es medianoche UTC (T00:00:00.000Z), extraer solo la fecha sin aplicar timezone
-      // porque es una "fecha de día" que el backend envía a medianoche UTC
-      const isMidnightUTC = /T00:00:00/.test(dateString);
-      if (isMidnightUTC) {
-        const datePart = dateString.split('T')[0]; // "2026-06-04"
-        const [year, month, day] = datePart.split('-');
+      if (/T00:00:00/.test(dateString)) {
+        const [year, month, day] = dateString.split('T')[0].split('-');
         return `${day}/${month}/${year}`;
       }
-
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return dateString;
-
-      const formatter = new Intl.DateTimeFormat('es-CO', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        timeZone: 'America/Bogota'
-      });
-
-      return formatter.format(date);
+      return new Intl.DateTimeFormat('es-CO', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        timeZone: 'America/Bogota',
+      }).format(date);
     } catch {
       return dateString || '-';
     }
@@ -389,7 +586,51 @@ export class DeactivateAffiliatesList implements OnInit {
       style: 'currency',
       currency: 'COP',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     }).format(amount);
+  }
+
+  // ── Descargar Excel (solo tab sin pago) ──────────────────────────
+  downloadExcel(): void {
+    if (this.activeTab() !== 'unpaid') return;
+    if (!this._permission.check('export', '/desactivar-afiliados/sin-pago', 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
+    if (this.totalItems() === 0) {
+      this._toastService.showInfo('No hay resultados para descargar con los filtros actuales.');
+      return;
+    }
+
+    this.isDownloadingExcel.set(true);
+    this.errorMessage.set(null);
+    this._toast.showInfo('Descarga en proceso...');
+
+    const exportFilters: DeactivateAffiliateFilters = {
+      name: this.filterName() || undefined,
+      document: this.filterDocument() || undefined,
+      reference: this.filterReference() || undefined,
+      advisor: this.filterAdviser() || undefined,
+      company: this.filterCompany() || undefined,
+      grouper: this.filterGrouper() || undefined,
+    };
+
+    this._deactivateAffiliatesService.exportToExcel(this.activeTab(), exportFilters).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const timestamp = new Date().toISOString().split('T')[0];
+        const tabName = this.activeTab() === 'unpaid' ? 'sin_pago' : 'pago_incompleto';
+        link.download = `afiliados_${tabName}_${timestamp}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        this.isDownloadingExcel.set(false);
+        this._toast.showSuccess('Excel descargado exitosamente');
+      },
+      error: (error) => {
+        this.isDownloadingExcel.set(false);
+        this._toast.showError(error?.message ?? 'Error al descargar el Excel. Intenta de nuevo.');
+      },
+    });
   }
 }

@@ -1,3 +1,15 @@
+export interface DeactivateAffiliateFilters {
+  page?: number;
+  limit?: number;
+  name?: string;
+  document?: string;
+  reference?: string;
+  advisor?: string;
+  company?: string;
+  grouper?: string;
+}
+
+
 export interface ActiveAffiliateRow {
   id: number;
   fullName: string;
@@ -32,6 +44,8 @@ export interface ActiveDeactivationResponse {
 export interface DeactivateAffiliatesResponse {
   success: boolean;
   affected: number;
+  succeeded: number;
+  failed: { affiliateId: number; name: string; reason: string }[];
   message: string;
 }
 
@@ -64,6 +78,7 @@ export interface AffiliateTransactionRow {
   amountPaid: number;
   discountedValue: number | null;
   amountsMatch: boolean | null;
+  isApproved: boolean | null;
   status: string;
   observation: string | null;
   errorReason: string | null;

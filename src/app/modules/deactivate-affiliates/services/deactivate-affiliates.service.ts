@@ -7,95 +7,13 @@ import {
   ActiveAffiliateRow,
   ActiveDeactivationResponse,
   AffiliateTransactionRow,
+  DeactivateAffiliateFilters,
   DeactivateAffiliatesResponse,
   DeactivationContext,
   InactivationAffiliateRow,
 } from '../interfaces/deactivate-affiliates.interface';
+import { RawActiveDeactivationResponse, RawAffiliateTransactionRow, RawDeactivateAffiliateRow, RawInactivationAffiliateRow } from '../interfaces/raw-affiliate-row.interface';
 
-interface RawDeactivateAffiliateRow {
-  id: number;
-  fullName?: string;
-  documentNumber?: string;
-  reference?: string;
-  planName?: string;
-  createdAt?: string;
-  entryDate?: string | null;
-  advisorName?: string;
-  companyName?: string;
-  grouperName?: string;
-  profession?: string;
-}
-
-interface RawActiveDeactivationResponse extends Omit<ActiveDeactivationResponse, 'data'> {
-  data: RawDeactivateAffiliateRow[];
-}
-
-interface RawInactivationAffiliateRow {
-  id?: number;
-  affiliate_id?: number;
-  affiliateId?: number;
-  full_name?: string;
-  fullName?: string;
-  first_name?: string;
-  firstName?: string;
-  last_name?: string;
-  lastName?: string;
-  document?: string;
-  document_number?: string;
-  reference?: string;
-  plan?: string;
-  plan_value?: number | string;
-  planValue?: number | string;
-  total_transactions?: number | string;
-  totalTransactions?: number | string;
-  entry_date?: string | null;
-  entryDate?: string | null;
-  advisor?: string;
-  company?: string;
-  grouper?: string;
-  pension?: string;
-  expected_amount?: number | string;
-  expectedAmount?: number | string;
-  paid_amount?: number | string;
-  paidAmount?: number | string;
-  amount_generated_ai?: number | string;
-  amountGeneratedAI?: number | string;
-  difference?: number | string;
-  last_payment?: string | null;
-  lastPayment?: string | null;
-  amountsMatch?: boolean | string | number | null;
-  amount_match?: boolean | string | number | null;
-  amounts_match?: boolean | string | number | null;
-}
-
-interface RawAffiliateTransactionRow {
-  _id?: string;
-  id?: number;
-  transaction_id?: number;
-  transactionId?: number;
-  reference?: string;
-  created_at?: string;
-  createdAt?: string;
-  total_value?: number | string;
-  totalValue?: number | string;
-  amount_paid?: number | string;
-  amountPaid?: number | string;
-  amountGeneratedAI?: number | string;
-  discounted_value?: number | string | null;
-  discountedValue?: number | string | null;
-  amounts_match?: boolean | string | number | null;
-  amountsMatch?: boolean | string | number | null;
-  amount_match?: boolean | string | number | null;
-  status?: string;
-  observation?: string | null;
-  n8n_last_error?: string | null;
-  n8nLastError?: string | null;
-  created_by_user?: { name?: string; id?: number } | null;
-  createdByUser?: { name?: string; id?: number } | null;
-  createdBy?: { name?: string; id?: number } | null;
-  advisor?: string | null;
-  advisorName?: string | null;
-}
 
 @Injectable({
   providedIn: 'root',
@@ -164,6 +82,23 @@ export class DeactivateAffiliatesService {
       .pipe(catchError((error) => this.handleError(error, 'Error al desactivar afiliados')));
   }
 
+  deactivateAllAffiliates(filters: DeactivateAffiliateFilters = {}): Observable<DeactivateAffiliatesResponse> {
+    return this._http
+      .post<DeactivateAffiliatesResponse>(
+        `${this.baseUrl}/inactivation/deactivate-all`,
+        {
+          name: filters.name || undefined,
+          document: filters.document || undefined,
+          reference: filters.reference || undefined,
+          advisor: filters.advisor || undefined,
+          company: filters.company || undefined,
+          grouper: filters.grouper || undefined,
+        },
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError((error) => this.handleError(error, 'Error al inhabilitar todos los afiliados')));
+  }
+
   getUnpaidAffiliates(): Observable<InactivationAffiliateRow[]> {
     return this._http
       .get<RawInactivationAffiliateRow[]>(`${this.baseUrl}/inactivation/unpaid`, {
@@ -189,6 +124,47 @@ export class DeactivateAffiliatesService {
         }),
       )
       .pipe(catchError((error) => this.handleError(error, 'Error al cargar afiliados con pago incompleto')));
+  }
+
+  // ── Aceptar / rechazar pago (afiliación) ─────────────────────────
+  approvePayment(affiliateId: number, accepted: boolean): Observable<{ success: boolean }> {
+    return this._http
+      .patch<{ success: boolean }>(
+        `${this.baseUrl}/${affiliateId}/approve-payment`,
+        { accepted },
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError((error) => this.handleError(error, 'Error al actualizar el estado de pago')));
+  }
+
+  // ── Aprobar transacción individual ────────────────────────────────
+  approveTransaction(transactionId: string, approved: boolean): Observable<{ id: number; isApproved: boolean }> {
+    return this._http
+      .patch<{ id: number; isApproved: boolean }>(
+        `${this.transactionsBaseUrl}/${transactionId}/approve`,
+        { approved },
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError((error) => this.handleError(error, 'Error al aprobar la transacción')));
+  }
+
+  // ── Exportar a Excel ──────────────────────────────────────────────
+  exportToExcel(tab: 'unpaid' | 'underpaid', filters: DeactivateAffiliateFilters = {}): Observable<Blob> {
+    let params = new HttpParams().set('type', tab);
+    if (filters.name) params = params.set('name', filters.name);
+    if (filters.document) params = params.set('document', filters.document);
+    if (filters.reference) params = params.set('reference', filters.reference);
+    if (filters.advisor) params = params.set('adviser', filters.advisor);
+    if (filters.company) params = params.set('company', filters.company);
+    if (filters.grouper) params = params.set('grouper', filters.grouper);
+
+    return this._http
+      .get(`${this.baseUrl}/inactivation/export/excel`, {
+        headers: this.getHeaders(),
+        params,
+        responseType: 'blob',
+      })
+      .pipe(catchError((error) => this.handleError(error, 'Error al exportar Excel')));
   }
 
   getAffiliateTransactions(documentId: string): Observable<AffiliateTransactionRow[]> {
@@ -350,12 +326,15 @@ export class DeactivateAffiliatesService {
       advisorName = (row.advisor ?? row.advisorName) as string;
     }
 
+    const rawIsApproved = row.is_approved ?? row.isApproved;
+    const isApproved = this.toBoolean(rawIsApproved);
+
     return {
       transactionId,
       reference: row.reference ?? '',
       createdAt: row.created_at ?? row.createdAt ?? '',
       totalValue: this.toNumber(row.total_value ?? row.totalValue),
-      amountPaid: this.toNumber(row.amount_paid ?? row.amountPaid ?? row.amountGeneratedAI),
+      amountPaid: this.toNumber(row.amountGeneratedAI ?? row.amount_paid ?? row.amountPaid),
       discountedValue:
         row.discounted_value != null
           ? this.toNumber(row.discounted_value)
@@ -363,6 +342,7 @@ export class DeactivateAffiliatesService {
             ? this.toNumber(row.discountedValue)
             : null,
       amountsMatch: amountsMatch !== undefined ? amountsMatch : null,
+      isApproved: isApproved !== undefined ? isApproved : null,
       status: row.status ?? '',
       observation: row.observation ?? null,
       errorReason: row.n8n_last_error ?? row.n8nLastError ?? null,

@@ -10,6 +10,7 @@ export interface Transaction {
   discountedValue?: number;
   amountGeneratedAI?: number;
   amountsMatch?: boolean;
+  isApproved?: boolean | null;
   status: 'pending' | 'processed';
   affiliates: Affiliate[];
   images: string[];
