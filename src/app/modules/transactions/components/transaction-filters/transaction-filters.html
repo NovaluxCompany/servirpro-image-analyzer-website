@@ -55,6 +55,32 @@
       >
     </div>
 
+    <div>
+      <label for="uploadedBy" class="block mb-2 text-sm font-medium text-gray-900">Usuario que creó</label>
+      <input
+        type="text"
+        id="uploadedBy"
+        formControlName="uploadedBy"
+        placeholder="Buscar por usuario"
+        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+      >
+    </div>
+
+    <div>
+      <label for="status" class="block mb-2 text-sm font-medium text-gray-900">Estado</label>
+      <select
+        id="status"
+        formControlName="status"
+        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+      >
+        <option value="">Todos</option>
+        <option value="pending">Pendiente</option>
+        <option value="processed">Procesado</option>
+        <option value="failed">Fallido</option>
+        <option value="error">Error</option>
+      </select>
+    </div>
+
     <div class="flex items-end gap-2">
       <button
         type="submit"

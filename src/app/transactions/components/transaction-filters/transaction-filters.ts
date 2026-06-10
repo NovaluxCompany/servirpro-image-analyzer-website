@@ -14,12 +14,22 @@ export class TransactionFiltersComponent {
   
   private _fb = new FormBuilder();
 
+  readonly statusOptions = [
+    { value: '', label: 'Todos' },
+    { value: 'pending', label: 'Pendiente' },
+    { value: 'processed', label: 'Procesado' },
+    { value: 'failed', label: 'Fallido' },
+    { value: 'error', label: 'Error' },
+  ];
+
   form = this._fb.group({
     dateFrom: [''],
     dateTo: [''],
     reference: [''],
     affiliate: [''],
-    idNumber: ['']
+    idNumber: [''],
+    status: [''],
+    uploadedBy: [''],
   });
 
   onSearch(): void {
@@ -31,6 +41,8 @@ export class TransactionFiltersComponent {
     if (values.reference) filters.reference = values.reference;
     if (values.affiliate) filters.affiliate = values.affiliate;
     if (values.idNumber) filters.idNumber = values.idNumber;
+    if (values.status) filters.status = values.status;
+    if (values.uploadedBy) filters.uploadedBy = values.uploadedBy;
 
     this.filterApplied.emit(filters);
   }
