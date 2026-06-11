@@ -37,6 +37,11 @@ export const routes: Routes = [
                 path: 'desactivar-afiliados',
                 canActivate: [roleGuard],
                 loadChildren: () => import('./modules/deactivate-affiliates/deactivate-affiliates.routes').then(m => m.deactivateAffiliatesRoutes)
+            },
+            {
+                path: 'actualizar-compania',
+                canActivate: [roleGuard],
+                loadChildren: () => import('./modules/update-company/update-company.routes').then(m => m.updateCompanyRoutes)
             }
         ]
     },
