@@ -99,7 +99,7 @@ export class AffiliateFormModalComponent implements OnInit {
     reference: ['', Validators.required],
     profession: ['', Validators.maxLength(255)],
     //Fecha whatsapp
-    companyEntryDate: [{ value: '', disabled: true }, Validators.required],
+    companyEntryDate: [{ value: '', disabled: false }, Validators.required],
     // Datos de afiliación
     planId: ['', Validators.required],
     companyId: [''],
@@ -109,7 +109,7 @@ export class AffiliateFormModalComponent implements OnInit {
     pensionId: [''],
     compensationBoxId: [''],
     isActive: [true],
-    entryDate: ['', Validators.required],
+    entryDate: [{ value: '', disabled: true }],
     observation: ['', Validators.maxLength(2000)],
     documentFile: [<File | string | null>null],
     // Seguridad social (sin ADRES, sin price/deposit/charge)
@@ -130,6 +130,9 @@ export class AffiliateFormModalComponent implements OnInit {
           });
           this.form.get('entryDate')?.setValue(this.todayDate());
           this.form.get('companyEntryDate')?.setValue(this.todayDate());
+          // In create mode: entryDate is automatic (disabled), companyEntryDate is freely editable
+          this.form.get('entryDate')?.disable({ emitEvent: false });
+          this.form.get('companyEntryDate')?.enable({ emitEvent: false });
           // Asegurar que el campo de archivo esté siempre habilitado en modo creación
           this.form.get('documentFile')?.enable({ emitEvent: false });
           this.form.get('documentFile')?.clearValidators();
@@ -280,8 +283,11 @@ export class AffiliateFormModalComponent implements OnInit {
   private toLocalDateStr(value: string | Date | null | undefined): string {
     if (!value) return '';
     const str = typeof value === 'string' ? value : value.toISOString();
+    // Handle DD-MM-YYYY or DD/MM/YYYY format
     const ddmmyyyy = str.match(/^(\d{2})[-/](\d{2})[-/](\d{4})/);
     if (ddmmyyyy) return `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`;
+    // Take the first 10 chars (YYYY-MM-DD). Date fields from the backend come as pure date strings
+    // or as UTC-midnight timestamps; both yield the correct Colombia calendar date via substring.
     return str.substring(0, 10);
   }
 
@@ -352,14 +358,18 @@ export class AffiliateFormModalComponent implements OnInit {
       advisorId: a.advisorId ? String(a.advisorId) : '',
       epsId: a.epsId ? String(a.epsId) : '',
       isActive: a.isActive ?? true,
-      companyEntryDate: this.toLocalDateStr(a.companyEntryDate ?? a.entryDate ?? this.todayDate()),
-      entryDate: this.toLocalDateStr(a.entryDate ?? a.companyEntryDate ?? this.todayDate()),
+      companyEntryDate: this.toLocalDateStr(a.companyEntryDate ?? this.todayDate()),
+      entryDate: this.toLocalDateStr(a.entryDate),
       arl: a.arl ?? null,
       pensionId: a.pensionId ? String(a.pensionId) : '',
       compensationBoxId: a.compensationBoxId ? String(a.compensationBoxId) : '',
       observation: a.observation ?? '',
 
     });
+
+    // In edit mode: entryDate is fixed (disable to prevent editing), companyEntryDate is editable (enable)
+    this.form.get('entryDate')?.disable({ emitEvent: false });
+    this.form.get('companyEntryDate')?.enable({ emitEvent: false });
 
     const existingDoc = a.documents?.[0];
     if (existingDoc) {
@@ -487,8 +497,10 @@ export class AffiliateFormModalComponent implements OnInit {
       pensionId: toNumberOrNull(raw.pensionId),
       compensationBoxId: toNumberOrNull(raw.compensationBoxId),
       isActive: raw.isActive ?? true,
-      companyEntryDate: raw.entryDate || this.toLocalDateStr(this.todayDate()),
-      entryDate: raw.entryDate || this.toLocalDateStr(this.todayDate()),
+      // companyEntryDate comes from its own form control (disabled), NOT from entryDate
+      companyEntryDate: raw.companyEntryDate || this.toLocalDateStr(this.todayDate()),
+      // entryDate only sent on create; in edit mode the backend ignores it (only set on create/enable)
+      entryDate: this.isEdit ? undefined : (raw.entryDate || this.toLocalDateStr(this.todayDate())),
       arl: raw.arl ?? undefined,
       observation: raw.observation?.trim() || undefined,
     };

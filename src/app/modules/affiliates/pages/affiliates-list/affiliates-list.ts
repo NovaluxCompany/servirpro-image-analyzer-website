@@ -290,10 +290,10 @@ export class AffiliatesListComponent implements OnInit {
     if (!date) return '—';
     const d = new Date(date);
     if (isNaN(d.getTime())) return String(date);
-    return d.toLocaleDateString('es-CO', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      timeZone: 'America/Bogota',
-    });
+    // Extract date from UTC ISO string directly — the DB session (America/Bogota) stores
+    // timestamp-without-tz values as Colombia-local time, so the UTC date portion IS the correct Colombia date.
+    const [y, m, day] = d.toISOString().substring(0, 10).split('-');
+    return `${day}/${m}/${y}`;
   }
 
   get allAffiliatesForModal(): AffiliateMember[] {
