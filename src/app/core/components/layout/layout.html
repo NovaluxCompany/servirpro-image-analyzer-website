@@ -115,7 +115,7 @@
         </a>
         }
 
-        @if (true) {
+        @if (canSee('/actualizar-compania')) {
         <a routerLink="/actualizar-compania" routerLinkActive="bg-white/20 shadow-lg"
           [routerLinkActiveOptions]="{exact: false}"
           class="flex items-center px-3 py-3 text-white rounded-lg hover:bg-white/10 transition-all duration-200 group">
