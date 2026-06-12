@@ -583,9 +583,13 @@ export class DeactivateAffiliatesList implements OnInit {
 
   protected formatDateOnlyColumbia(dateString: string): string {
     if (!dateString) return '-';
-    // Date-only strings (YYYY-MM-DD) are already in Colombia time from the backend
+    // Pure date strings (YYYY-MM-DD)
     const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString);
     if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`;
+    // ISO timestamps (date columns from TypeORM return UTC midnight; timestamp columns with Bogota
+    // session store Colombia-local time). Extract the date prefix directly — it is the correct Colombia date.
+    const isoPrefix = /^(\d{4})-(\d{2})-(\d{2})T/.exec(String(dateString));
+    if (isoPrefix) return `${isoPrefix[3]}/${isoPrefix[2]}/${isoPrefix[1]}`;
     try {
       // For full timestamps, normalize to explicit UTC before converting
       const normalized = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(dateString) && !dateString.match(/[Z+]/)
