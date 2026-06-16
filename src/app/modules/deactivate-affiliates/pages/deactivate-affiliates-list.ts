@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { SearchableSelectComponent, SelectOption } from '../../../shared/components/searchable-select/searchable-select';
 import { forkJoin, of } from 'rxjs';
 import { ToastService } from '../../../core/service/toast.service';
 import { PermissionService } from '../../../core/service/permission.service';
@@ -20,7 +21,7 @@ type InactivationTab = 'unpaid' | 'underpaid';
 @Component({
   selector: 'app-deactivate-affiliates-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SearchableSelectComponent],
   templateUrl: './deactivate-affiliates-list.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -114,10 +115,10 @@ export class DeactivateAffiliatesList implements OnInit {
     return all.filter((a) => {
       if (name && !a.name?.toLowerCase().includes(name)) return false;
       if (document && !a.document?.toLowerCase().includes(document)) return false;
-      if (reference && !a.reference?.toLowerCase().includes(reference)) return false;
-      if (adviser && !a.advisor?.toLowerCase().includes(adviser)) return false;
-      if (company && !a.company?.toLowerCase().includes(company)) return false;
-      if (grouper && !a.grouper?.toLowerCase().includes(grouper)) return false;
+      if (reference && a.reference?.toLowerCase() !== reference) return false;
+      if (adviser && a.advisor?.toLowerCase() !== adviser) return false;
+      if (company && a.company?.toLowerCase() !== company) return false;
+      if (grouper && a.grouper?.toLowerCase() !== grouper) return false;
       return true;
     });
   });
@@ -175,6 +176,27 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly hasActiveFilters = computed(() =>
     !!(this.filterName() || this.filterDocument() || this.filterReference() || this.filterAdviser() || this.filterCompany() || this.filterGrouper())
   );
+
+  // ── Opciones para filtros desplegables (derivadas de los datos cargados) ──
+  protected readonly referenceOptions = computed((): SelectOption[] => {
+    const unique = [...new Set(this.allAffiliates().map(a => a.reference).filter(Boolean))].sort();
+    return unique.map(v => ({ value: v, label: v }));
+  });
+
+  protected readonly adviserOptions = computed((): SelectOption[] => {
+    const unique = [...new Set(this.allAffiliates().map(a => a.advisor).filter(Boolean))].sort();
+    return unique.map(v => ({ value: v, label: v }));
+  });
+
+  protected readonly companyOptions = computed((): SelectOption[] => {
+    const unique = [...new Set(this.allAffiliates().map(a => a.company).filter(Boolean))].sort();
+    return unique.map(v => ({ value: v, label: v }));
+  });
+
+  protected readonly grouperOptions = computed((): SelectOption[] => {
+    const unique = [...new Set(this.allAffiliates().map(a => a.grouper).filter(Boolean))].sort();
+    return unique.map(v => ({ value: v, label: v }));
+  });
 
 
   ngOnInit(): void {
@@ -561,16 +583,19 @@ export class DeactivateAffiliatesList implements OnInit {
 
   protected formatDateOnlyColumbia(dateString: string): string {
     if (!dateString) return '-';
+    // Pure date strings (YYYY-MM-DD)
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString);
+    if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`;
+    // ISO timestamps (date columns from TypeORM return UTC midnight; timestamp columns with Bogota
+    // session store Colombia-local time). Extract the date prefix directly — it is the correct Colombia date.
+    const isoPrefix = /^(\d{4})-(\d{2})-(\d{2})T/.exec(String(dateString));
+    if (isoPrefix) return `${isoPrefix[3]}/${isoPrefix[2]}/${isoPrefix[1]}`;
     try {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString.trim())) {
-        const [year, month, day] = dateString.trim().split('-');
-        return `${day}/${month}/${year}`;
-      }
-      if (/T00:00:00/.test(dateString)) {
-        const [year, month, day] = dateString.split('T')[0].split('-');
-        return `${day}/${month}/${year}`;
-      }
-      const date = new Date(dateString);
+      // For full timestamps, normalize to explicit UTC before converting
+      const normalized = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(dateString) && !dateString.match(/[Z+]/)
+        ? dateString.replace(' ', 'T') + 'Z'
+        : dateString;
+      const date = new Date(normalized);
       if (isNaN(date.getTime())) return dateString;
       return new Intl.DateTimeFormat('es-CO', {
         year: 'numeric', month: '2-digit', day: '2-digit',

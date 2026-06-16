@@ -288,17 +288,12 @@ export class AffiliatesListComponent implements OnInit {
   // ── Utilidades ────────────────────────────────────────────────────
   formatDate(date?: string | Date): string {
     if (!date) return '—';
-    if (typeof date === 'string') {
-      const datePart = date.split('T')[0];
-      const parts = datePart.split('-');
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-    }
-    return new Date(date).toLocaleDateString('es-CO', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      timeZone: 'America/Bogota',
-    });
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return String(date);
+    // Extract date from UTC ISO string directly — the DB session (America/Bogota) stores
+    // timestamp-without-tz values as Colombia-local time, so the UTC date portion IS the correct Colombia date.
+    const [y, m, day] = d.toISOString().substring(0, 10).split('-');
+    return `${day}/${m}/${y}`;
   }
 
   get allAffiliatesForModal(): AffiliateMember[] {
