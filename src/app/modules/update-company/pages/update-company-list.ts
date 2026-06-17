@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../../core/service/toast.service';
@@ -21,6 +21,11 @@ export class UpdateCompanyList implements OnInit {
   private readonly _service = inject(UpdateCompanyService);
   private readonly _toast = inject(ToastService);
   private readonly _permission = inject(PermissionService);
+
+  // Referencia al input de archivo nativo (vive dentro de un bloque @if,
+  // por lo que el modal de confirmación —en otro bloque @if— no puede ver
+  // la variable de plantilla #fileInput directamente).
+  @ViewChild('fileInput') private fileInputRef?: ElementRef<HTMLInputElement>;
 
   // Estados generales
   protected readonly isLoading = signal(false);
@@ -201,8 +206,9 @@ export class UpdateCompanyList implements OnInit {
         this.executionResult.set(res);
         this.isSubmitting.set(false);
         this.selectedFile.set(null);
-        if (inputEl) {
-          inputEl.value = '';
+        const targetInput = inputEl ?? this.fileInputRef?.nativeElement;
+        if (targetInput) {
+          targetInput.value = '';
         }
         
         const total = res.exitosos + res.fallidos + res.no_encontrados + res.inactivos_omitidos + res.ordinarios_omitidos;
