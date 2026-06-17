@@ -115,6 +115,28 @@
         </a>
         }
 
+        @if (canSee('/actualizar-compania')) {
+        <a routerLink="/actualizar-compania" routerLinkActive="bg-white/20 shadow-lg"
+          [routerLinkActiveOptions]="{exact: false}"
+          class="flex items-center px-3 py-3 text-white rounded-lg hover:bg-white/10 transition-all duration-200 group">
+          <div class="flex items-center gap-3 flex-1">
+            <div
+              class="w-10 h-10 flex items-center justify-center rounded-lg bg-white/10 group-hover:bg-white/20 group-hover:scale-110 transition-all duration-200">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            @if (isSidebarOpen()) {
+            <span class="font-medium">Actualizar Empresa</span>
+            }
+          </div>
+          @if (isSidebarOpen() && isActiveRoute('/actualizar-compania')) {
+          <div class="w-1 h-8 bg-white rounded-full"></div>
+          }
+        </a>
+        }
+
         <!-- More menu items can be added here -->
       </nav>
 
