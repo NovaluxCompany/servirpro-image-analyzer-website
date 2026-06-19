@@ -28,6 +28,7 @@ export interface AffiliateMember {
   whatsappEntryDate?: string;
   companyEntryDate?: string;
   profession?: string;
+  gender?: string;
   // Datos de afiliación
   planId?: string;
   planName?: string;
@@ -81,6 +82,7 @@ export interface CreateAffiliateMemberDto {
   municipality?: string;
   reference: string;        // required
   profession?: string;
+  gender?: string;
   whatsappEntryDate?: string;
   companyEntryDate?: string;
   planId: number | null;
