@@ -7,6 +7,7 @@ import {
   ValidationResponse,
   ExecutionResponse,
   HistoryResponse,
+  UpdateCompanyContext,
 } from '../interfaces/update-company.interface';
 
 @Injectable({
@@ -21,6 +22,12 @@ export class UpdateCompanyService {
     const token = this._tokenService.getToken();
     return new HttpHeaders({
       Authorization: `Bearer ${token}`,
+    });
+  }
+
+  getContext(): Observable<UpdateCompanyContext> {
+    return this._http.get<UpdateCompanyContext>(`${this.baseUrl}/contexto`, {
+      headers: this.getHeaders(),
     });
   }
 

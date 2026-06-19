@@ -61,6 +61,12 @@ export interface AffiliateMember {
   updatedAt?: string;
   createdBy?: string;
 
+  // Certificados de seguridad social
+  certArl?: boolean;
+  certEps?: boolean;
+  certPension?: boolean;
+  certCcf?: boolean;
+
   // Modificado: Ahora mapea el array relacional que viene del Backend
   documents?: AffiliateDocument[];
 
@@ -97,6 +103,10 @@ export interface CreateAffiliateMemberDto {
   arl?: number;
   compensationFund?: string;
   observation?: string;
+  certArl?: boolean;
+  certEps?: boolean;
+  certPension?: boolean;
+  certCcf?: boolean;
 }
 
 export interface UpdateAffiliateMemberDto extends Partial<CreateAffiliateMemberDto> {}

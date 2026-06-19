@@ -50,3 +50,11 @@ export interface HistoryResponse {
   limit: number;
   totalPages: number;
 }
+
+export interface UpdateCompanyContext {
+  canUpdate: boolean;
+  currentDay: number;
+  minDay: number;
+  maxDay: number;
+  serverDate: string;
+}

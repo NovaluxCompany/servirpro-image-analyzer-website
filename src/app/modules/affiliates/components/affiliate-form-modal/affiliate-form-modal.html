@@ -455,6 +455,121 @@
           }
         </div>
 
+        <!-- SECCION 3: DATOS DE DOCUMENTACIÓN (solo en modo edición) -->
+        @if (isEdit) {
+        <div class="border border-gray-200 rounded-xl overflow-hidden mt-6 bg-white shadow-sm">
+
+          <button type="button" (click)="toggleSection3()"
+            class="w-full flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors border-b border-blue-100 focus:outline-none">
+            <div class="flex items-center gap-3">
+              <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                <span class="text-xs font-bold text-white">3</span>
+              </div>
+              <h3 class="font-semibold text-blue-800 text-sm">Datos de Documentación</h3>
+            </div>
+            <svg class="w-5 h-5 text-blue-600 transition-transform duration-300" [class.rotate-180]="section3Open"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          @if (section3Open) {
+          <div class="p-4">
+            <p class="text-xs text-gray-500 mb-4">
+              Marca los certificados recibidos. Solo están disponibles los servicios incluidos en el plan del afiliado.
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+              <!-- Certificado ARL -->
+              <label class="flex items-center gap-3 p-3 rounded-lg border transition-colors"
+                [class.border-blue-200]="selectedPlanLabel.includes('ARL')"
+                [class.bg-blue-50]="selectedPlanLabel.includes('ARL')"
+                [class.border-gray-200]="!selectedPlanLabel.includes('ARL')"
+                [class.bg-gray-50]="!selectedPlanLabel.includes('ARL')"
+                [class.opacity-50]="!selectedPlanLabel.includes('ARL')"
+                [class.cursor-not-allowed]="!selectedPlanLabel.includes('ARL')"
+                [class.cursor-pointer]="selectedPlanLabel.includes('ARL')">
+                <input type="checkbox" formControlName="certArl"
+                  class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  [class.cursor-not-allowed]="!selectedPlanLabel.includes('ARL')">
+                <div>
+                  <p class="text-sm font-medium text-gray-800">Certificado de ARL</p>
+                  <p class="text-xs text-gray-500">
+                    @if (selectedPlanLabel.includes('ARL')) { Disponible según el plan }
+                    @else { No aplica para este plan }
+                  </p>
+                </div>
+              </label>
+
+              <!-- Certificado EPS -->
+              <label class="flex items-center gap-3 p-3 rounded-lg border transition-colors"
+                [class.border-blue-200]="selectedPlanLabel.includes('EPS')"
+                [class.bg-blue-50]="selectedPlanLabel.includes('EPS')"
+                [class.border-gray-200]="!selectedPlanLabel.includes('EPS')"
+                [class.bg-gray-50]="!selectedPlanLabel.includes('EPS')"
+                [class.opacity-50]="!selectedPlanLabel.includes('EPS')"
+                [class.cursor-not-allowed]="!selectedPlanLabel.includes('EPS')"
+                [class.cursor-pointer]="selectedPlanLabel.includes('EPS')">
+                <input type="checkbox" formControlName="certEps"
+                  class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  [class.cursor-not-allowed]="!selectedPlanLabel.includes('EPS')">
+                <div>
+                  <p class="text-sm font-medium text-gray-800">Certificado de EPS</p>
+                  <p class="text-xs text-gray-500">
+                    @if (selectedPlanLabel.includes('EPS')) { Disponible según el plan }
+                    @else { No aplica para este plan }
+                  </p>
+                </div>
+              </label>
+
+              <!-- Certificado de Pensión -->
+              <label class="flex items-center gap-3 p-3 rounded-lg border transition-colors"
+                [class.border-blue-200]="selectedPlanLabel.includes('AFP')"
+                [class.bg-blue-50]="selectedPlanLabel.includes('AFP')"
+                [class.border-gray-200]="!selectedPlanLabel.includes('AFP')"
+                [class.bg-gray-50]="!selectedPlanLabel.includes('AFP')"
+                [class.opacity-50]="!selectedPlanLabel.includes('AFP')"
+                [class.cursor-not-allowed]="!selectedPlanLabel.includes('AFP')"
+                [class.cursor-pointer]="selectedPlanLabel.includes('AFP')">
+                <input type="checkbox" formControlName="certPension"
+                  class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  [class.cursor-not-allowed]="!selectedPlanLabel.includes('AFP')">
+                <div>
+                  <p class="text-sm font-medium text-gray-800">Certificado de Pensión</p>
+                  <p class="text-xs text-gray-500">
+                    @if (selectedPlanLabel.includes('AFP')) { Disponible según el plan }
+                    @else { No aplica para este plan }
+                  </p>
+                </div>
+              </label>
+
+              <!-- Certificado Caja de Compensación -->
+              <label class="flex items-center gap-3 p-3 rounded-lg border transition-colors"
+                [class.border-blue-200]="selectedPlanLabel.includes('CCF')"
+                [class.bg-blue-50]="selectedPlanLabel.includes('CCF')"
+                [class.border-gray-200]="!selectedPlanLabel.includes('CCF')"
+                [class.bg-gray-50]="!selectedPlanLabel.includes('CCF')"
+                [class.opacity-50]="!selectedPlanLabel.includes('CCF')"
+                [class.cursor-not-allowed]="!selectedPlanLabel.includes('CCF')"
+                [class.cursor-pointer]="selectedPlanLabel.includes('CCF')">
+                <input type="checkbox" formControlName="certCcf"
+                  class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  [class.cursor-not-allowed]="!selectedPlanLabel.includes('CCF')">
+                <div>
+                  <p class="text-sm font-medium text-gray-800">Certificado de Caja de Compensación</p>
+                  <p class="text-xs text-gray-500">
+                    @if (selectedPlanLabel.includes('CCF')) { Disponible según el plan }
+                    @else { No aplica para este plan }
+                  </p>
+                </div>
+              </label>
+
+            </div>
+          </div>
+          }
+        </div>
+        }
+
         <!-- Footer -->
         <div
           class="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
