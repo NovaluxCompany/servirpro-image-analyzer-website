@@ -39,6 +39,7 @@ export class AffiliatesListComponent implements OnInit {
   filterReference = '';
   filterAdvisor = '';
   filterIsActive = '';
+  filterGrupo = '';
   advisorOptions = signal<SelectOption[]>([]);
   referenceOptions = signal<SelectOption[]>([]);
 
@@ -95,6 +96,7 @@ export class AffiliatesListComponent implements OnInit {
       reference: this.filterReference || undefined,
       advisor: this.filterAdvisor || undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
+      grupo: this.filterGrupo || undefined,
     };
   }
 
@@ -141,12 +143,13 @@ export class AffiliatesListComponent implements OnInit {
     this.filterReference = '';
     this.filterAdvisor = '';
     this.filterIsActive = '';
+    this.filterGrupo = '';
     this.currentPage.set(1);
     this.loadAffiliates();
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterIsActive);
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterIsActive || this.filterGrupo);
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -262,6 +265,7 @@ export class AffiliatesListComponent implements OnInit {
       reference: this.filterReference || undefined,
       advisor: this.filterAdvisor || undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
+      grupo: this.filterGrupo || undefined,
     };
 
     this._service.exportToExcel(exportFilters).subscribe({
