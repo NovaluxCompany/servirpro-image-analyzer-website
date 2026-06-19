@@ -33,9 +33,9 @@
           (drop)="onDrop($event)"
           (click)="triggerFileInput(fileInput)"
           [class]="isDragging()
-            ? 'flex flex-col items-center justify-center gap-2 px-6 py-10 border-2 border-dashed border-blue-500 bg-blue-50 rounded-xl cursor-pointer transition-colors'
-            : 'flex flex-col items-center justify-center gap-2 px-6 py-10 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-gray-50 rounded-xl cursor-pointer transition-colors'">
-          <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            ? 'flex flex-col items-center justify-center gap-1.5 px-6 py-4 border-2 border-dashed border-blue-500 bg-blue-50 rounded-xl cursor-pointer transition-colors'
+            : 'flex flex-col items-center justify-center gap-1.5 px-6 py-4 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-gray-50 rounded-xl cursor-pointer transition-colors'">
+          <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
@@ -98,7 +98,7 @@
           </div>
 
           @if (result.preview.length > 0) {
-          <div class="mt-3 overflow-x-auto border border-gray-100 rounded-xl">
+          <div class="mt-3 overflow-x-auto overflow-y-auto max-h-40 border border-gray-100 rounded-xl">
             <table class="w-full text-sm text-left text-gray-600">
               <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -137,25 +137,25 @@
             }
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <div class="bg-green-50 border border-green-200 rounded-xl px-3 py-3 text-center">
-              <p class="text-xl font-bold text-green-700">{{ result.exitosos }}</p>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <div class="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-center">
+              <p class="text-base font-bold text-green-700">{{ result.exitosos }}</p>
               <p class="text-xs text-green-600">Exitosos</p>
             </div>
-            <div class="bg-amber-50 border border-amber-200 rounded-xl px-3 py-3 text-center">
-              <p class="text-xl font-bold text-amber-700">{{ result.no_encontrados }}</p>
+            <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
+              <p class="text-base font-bold text-amber-700">{{ result.no_encontrados }}</p>
               <p class="text-xs text-amber-600">No encontrados</p>
             </div>
-            <div class="bg-gray-100 border border-gray-200 rounded-xl px-3 py-3 text-center">
-              <p class="text-xl font-bold text-gray-700">{{ result.inactivos_omitidos }}</p>
+            <div class="bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-center">
+              <p class="text-base font-bold text-gray-700">{{ result.inactivos_omitidos }}</p>
               <p class="text-xs text-gray-600">Inactivos omitidos</p>
             </div>
-            <div class="bg-gray-100 border border-gray-200 rounded-xl px-3 py-3 text-center">
-              <p class="text-xl font-bold text-gray-700">{{ result.ordinarios_omitidos }}</p>
+            <div class="bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-center">
+              <p class="text-base font-bold text-gray-700">{{ result.ordinarios_omitidos }}</p>
               <p class="text-xs text-gray-600">Ordinarios omitidos</p>
             </div>
-            <div class="bg-red-50 border border-red-200 rounded-xl px-3 py-3 text-center">
-              <p class="text-xl font-bold text-red-700">{{ result.fallidos }}</p>
+            <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-center">
+              <p class="text-base font-bold text-red-700">{{ result.fallidos }}</p>
               <p class="text-xs text-red-600">Fallidos</p>
             </div>
           </div>
@@ -175,7 +175,7 @@
         </p>
       </div>
 
-      <div class="overflow-x-auto overflow-y-auto max-h-[calc(100vh-30rem)]">
+      <div class="overflow-x-auto overflow-y-auto max-h-[calc(100vh-22rem)]">
         <table class="w-full text-sm text-left text-gray-600">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>

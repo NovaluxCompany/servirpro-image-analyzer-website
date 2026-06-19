@@ -15,6 +15,7 @@ export interface AffiliateFilters {
   reference?: string;
   advisor?: string;
   isActive?: boolean;
+  grupo?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,6 +39,7 @@ export class AffiliateMembersService {
     if (filters.reference) params = params.set('reference', filters.reference);
     if (filters.advisor) params = params.set('advisor', filters.advisor);
     if (filters.isActive !== undefined) params = params.set('isActive', String(filters.isActive));
+    if (filters.grupo) params = params.set('grupo', filters.grupo);
 
     return this._http
       .get<PaginatedAffiliatesResponse>(`${this.baseUrl}`, {
@@ -128,6 +130,7 @@ export class AffiliateMembersService {
     if (filters.isActive !== undefined) {
       params = params.set('isActive', String(filters.isActive));
     }
+    if (filters.grupo) params = params.set('grupo', filters.grupo);
 
     return this._http
       .get(`${this.baseUrl}/export/excel`, {
