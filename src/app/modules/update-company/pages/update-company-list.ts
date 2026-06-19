@@ -8,6 +8,7 @@ import {
   ValidationResponse,
   ExecutionResponse,
   HistoryRow,
+  UpdateCompanyContext,
 } from '../interfaces/update-company.interface';
 
 @Component({
@@ -26,6 +27,16 @@ export class UpdateCompanyList implements OnInit {
   // por lo que el modal de confirmación —en otro bloque @if— no puede ver
   // la variable de plantilla #fileInput directamente).
   @ViewChild('fileInput') private fileInputRef?: ElementRef<HTMLInputElement>;
+
+  // Contexto de ventana de fechas
+  protected readonly updateContext = signal<UpdateCompanyContext | null>(null);
+  protected readonly contextLoading = signal(false);
+
+  protected readonly isDateAllowed = computed(() => {
+    const ctx = this.updateContext();
+    if (!ctx) return true;
+    return ctx.canUpdate;
+  });
 
   // Estados generales
   protected readonly isLoading = signal(false);
@@ -89,9 +100,23 @@ export class UpdateCompanyList implements OnInit {
   }
 
   ngOnInit(): void {
+    this.loadContext();
     if (this.canViewHistory()) {
       this.loadHistory();
     }
+  }
+
+  loadContext(): void {
+    this.contextLoading.set(true);
+    this._service.getContext().subscribe({
+      next: (ctx) => {
+        this.updateContext.set(ctx);
+        this.contextLoading.set(false);
+      },
+      error: () => {
+        this.contextLoading.set(false);
+      },
+    });
   }
 
   // ── Drag & Drop ───────────────────────────────────────────────────
@@ -116,6 +141,14 @@ export class UpdateCompanyList implements OnInit {
 
     if (!this.canUpload()) {
       this._toast.showError('No tienes permisos para subir archivos.');
+      return;
+    }
+
+    if (!this.isDateAllowed()) {
+      const ctx = this.updateContext();
+      this._toast.showError(
+        `El módulo de Actualizar Empresa solo está habilitado del día ${ctx?.minDay} al ${ctx?.maxDay} de cada mes.`
+      );
       return;
     }
 
@@ -148,6 +181,13 @@ export class UpdateCompanyList implements OnInit {
   triggerFileInput(inputEl: HTMLInputElement): void {
     if (!this.canUpload()) {
       this._toast.showError('No tienes permisos para realizar esta acción.');
+      return;
+    }
+    if (!this.isDateAllowed()) {
+      const ctx = this.updateContext();
+      this._toast.showError(
+        `El módulo de Actualizar Empresa solo está habilitado del día ${ctx?.minDay} al ${ctx?.maxDay} de cada mes.`
+      );
       return;
     }
     inputEl.click();

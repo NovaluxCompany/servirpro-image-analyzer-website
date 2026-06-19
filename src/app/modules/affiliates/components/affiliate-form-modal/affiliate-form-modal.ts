@@ -44,6 +44,7 @@ export class AffiliateFormModalComponent implements OnInit {
 
   section1Open = true
   section2Open = true
+  section3Open = true
 
   readonly documentTypes = ['CC', 'CE', 'TI', 'NIT', 'PPT'];
 
@@ -53,6 +54,10 @@ export class AffiliateFormModalComponent implements OnInit {
 
   toggleSection2() {
     this.section2Open = !this.section2Open;
+  }
+
+  toggleSection3() {
+    this.section3Open = !this.section3Open;
   }
 
   // SelectOption arrays for searchable dropdowns
@@ -115,6 +120,11 @@ export class AffiliateFormModalComponent implements OnInit {
     documentFile: [<File | string | null>null],
     // Seguridad social (sin ADRES, sin price/deposit/charge)
     arl: [<number | null>null],
+    // Certificados de documentación (solo en edición)
+    certArl: [{ value: false, disabled: true }],
+    certEps: [{ value: false, disabled: true }],
+    certPension: [{ value: false, disabled: true }],
+    certCcf: [{ value: false, disabled: true }],
   });
 
   constructor() {
@@ -266,6 +276,45 @@ export class AffiliateFormModalComponent implements OnInit {
     this.validateArl(this.form.get('arl'));
     this.validateCcf(this.form.get('compensationBoxId'));
     this.validateEps(this.form.get('epsId'));
+
+    this.updateCertControls();
+  }
+
+  private updateCertControls(): void {
+    const label = this.selectedPlanLabel;
+
+    const certArl = this.form.get('certArl');
+    const certEps = this.form.get('certEps');
+    const certPension = this.form.get('certPension');
+    const certCcf = this.form.get('certCcf');
+
+    if (label.includes('ARL')) {
+      certArl?.enable({ emitEvent: false });
+    } else {
+      certArl?.setValue(false, { emitEvent: false });
+      certArl?.disable({ emitEvent: false });
+    }
+
+    if (label.includes('EPS')) {
+      certEps?.enable({ emitEvent: false });
+    } else {
+      certEps?.setValue(false, { emitEvent: false });
+      certEps?.disable({ emitEvent: false });
+    }
+
+    if (label.includes('AFP')) {
+      certPension?.enable({ emitEvent: false });
+    } else {
+      certPension?.setValue(false, { emitEvent: false });
+      certPension?.disable({ emitEvent: false });
+    }
+
+    if (label.includes('CCF')) {
+      certCcf?.enable({ emitEvent: false });
+    } else {
+      certCcf?.setValue(false, { emitEvent: false });
+      certCcf?.disable({ emitEvent: false });
+    }
   }
 
   get isEdit(): boolean {
@@ -366,7 +415,10 @@ export class AffiliateFormModalComponent implements OnInit {
       pensionId: a.pensionId ? String(a.pensionId) : '',
       compensationBoxId: a.compensationBoxId ? String(a.compensationBoxId) : '',
       observation: a.observation ?? '',
-
+      certArl: a.certArl ?? false,
+      certEps: a.certEps ?? false,
+      certPension: a.certPension ?? false,
+      certCcf: a.certCcf ?? false,
     });
 
     // In edit mode: entryDate is fixed (disable to prevent editing), companyEntryDate is editable (enable)
@@ -506,6 +558,12 @@ export class AffiliateFormModalComponent implements OnInit {
       entryDate: this.isEdit ? undefined : (raw.entryDate || this.toLocalDateStr(this.todayDate())),
       arl: raw.arl ?? undefined,
       observation: raw.observation?.trim() || undefined,
+      ...(this.isEdit ? {
+        certArl: raw.certArl ?? false,
+        certEps: raw.certEps ?? false,
+        certPension: raw.certPension ?? false,
+        certCcf: raw.certCcf ?? false,
+      } : {}),
     };
 
     const obs =
