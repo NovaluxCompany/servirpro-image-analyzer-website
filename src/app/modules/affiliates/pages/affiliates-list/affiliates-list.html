@@ -150,6 +150,7 @@
           <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Acción</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado de correo</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Tipo de documento</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
@@ -171,6 +172,9 @@
             <tr class="animate-pulse">
               <td class="px-4 py-3">
                 <div class="h-7 w-28 bg-gray-200 rounded-lg"></div>
+              </td>
+              <td class="px-4 py-3">
+                <div class="h-5 w-20 bg-gray-200 rounded-full"></div>
               </td>
               <td class="px-4 py-3">
                 <div class="h-5 w-16 bg-gray-200 rounded-full"></div>
@@ -212,7 +216,7 @@
             }
             } @else if (affiliates().length === 0) {
             <tr>
-              <td colspan="13" class="px-4 py-16 text-center">
+              <td colspan="14" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -317,6 +321,19 @@
                   </div>
                   }
                 </div>
+              </td>
+
+              <!-- Estado (habilitado / deshabilitado) -->
+              <td class="px-4 py-3 whitespace-nowrap">
+                @if (affiliate.isActive) {
+                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded-full">
+                  Habilitado
+                </span>
+                } @else {
+                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full">
+                  Deshabilitado
+                </span>
+                }
               </td>
 
               <!-- Estado de correo -->
