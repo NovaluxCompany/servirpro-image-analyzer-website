@@ -384,7 +384,7 @@
                 </label>
 
                 <!-- Zona de carga -->
-                <div class="relative mt-1 flex flex-col items-center justify-center gap-1 border-2 border-dashed rounded-xl p-5 transition-colors min-h-[96px]"
+                <div class="relative mt-1 flex flex-col items-center justify-center gap-1.5 border-2 border-dashed rounded-xl px-6 py-4 transition-colors"
                   [class.border-blue-300]="!form.get('documentFile')?.value && !isFieldInvalid('documentFile')"
                   [class.border-red-300]="isFieldInvalid('documentFile')"
                   [class.border-green-300]="!!form.get('documentFile')?.value"
@@ -398,10 +398,10 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <p class="text-xs font-medium text-blue-600">
-                    Haz clic para seleccionar un PDF
+                  <p class="text-xs font-semibold text-blue-600">
+                    Haz clic para seleccionar un PDF o arrástralo aquí
                   </p>
-                  <p class="text-xs text-gray-400">Máximo 10 MB</p>
+                  <p class="text-xs text-gray-400">Máximo 10 MB (Solo PDF)</p>
                   } @else {
                   <!-- Archivo seleccionado -->
                   <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
