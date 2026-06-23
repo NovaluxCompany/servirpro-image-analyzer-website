@@ -300,6 +300,12 @@ export class AffiliatesListComponent implements OnInit {
     return `${day}/${m}/${y}`;
   }
 
+  isEmptyValue(value: any): boolean {
+    if (value === null || value === undefined) return true;
+    const str = String(value).trim().toUpperCase();
+    return str === '' || str === '-' || str === 'N/A' || str === 'NO APLICA';
+  }
+
   get allAffiliatesForModal(): AffiliateMember[] {
     return this.affiliates();
   }

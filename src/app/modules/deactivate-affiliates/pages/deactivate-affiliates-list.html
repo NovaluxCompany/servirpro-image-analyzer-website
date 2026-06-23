@@ -6,6 +6,35 @@
         <h1 class="text-3xl font-bold text-gray-900">Desactivar Afiliados</h1>
         <p class="mt-1 text-sm text-gray-500">Seguimiento de afiliados activos sin pago o con pago incompleto en el mes actual</p>
       </div>
+    </div>
+
+    <!-- Tabs y Botones de acción alineados -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+      <!-- Tabs (Sin pago / Pago incompleto) -->
+      <div class="inline-flex rounded-xl border border-gray-200 bg-white p-1">
+        <button
+          type="button"
+          (click)="changeTab('unpaid')"
+          [class]="activeTab() === 'unpaid'
+            ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
+            : 'px-4 py-2 text-sm font-semibold rounded-lg text-gray-700 hover:bg-gray-100'"
+        >
+          Sin pago
+        </button>
+        @if (canViewUnderpaid()) {
+          <button
+            type="button"
+            (click)="changeTab('underpaid')"
+            [class]="activeTab() === 'underpaid'
+              ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
+              : 'px-4 py-2 text-sm font-semibold rounded-lg text-gray-700 hover:bg-gray-100'"
+          >
+            Pago incompleto
+          </button>
+        }
+      </div>
+
+      <!-- Botones de Acción -->
       <div class="flex items-center gap-3">
         <!-- Botón Exportar Excel (solo tab Sin Pago) -->
         @if (activeTab() === 'unpaid') {
@@ -50,29 +79,6 @@
           Desactivar seleccionados
         </button>
       </div>
-    </div>
-
-    <div class="mb-4 inline-flex rounded-xl border border-gray-200 bg-white p-1">
-      <button
-        type="button"
-        (click)="changeTab('unpaid')"
-        [class]="activeTab() === 'unpaid'
-          ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
-          : 'px-4 py-2 text-sm font-semibold rounded-lg text-gray-700 hover:bg-gray-100'"
-      >
-        Sin pago
-      </button>
-      @if (canViewUnderpaid()) {
-        <button
-          type="button"
-          (click)="changeTab('underpaid')"
-          [class]="activeTab() === 'underpaid'
-            ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
-            : 'px-4 py-2 text-sm font-semibold rounded-lg text-gray-700 hover:bg-gray-100'"
-        >
-          Pago incompleto
-        </button>
-      }
     </div>
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -127,7 +133,7 @@
           <div>
             <label class="block mb-1 text-xs font-medium text-gray-600">Nombre</label>
             <div class="relative">
-              <svg class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor"
+              <svg class="absolute left-2.5 top-[12px] w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor"
                 viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -137,7 +143,7 @@
                 placeholder="Buscar por nombre..."
                 [value]="filterName()"
                 (input)="setFilterName($any($event.target).value)"
-                class="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                class="w-full pl-8 pr-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-[38px]"
               />
             </div>
           </div>
@@ -146,7 +152,7 @@
           <div>
             <label class="block mb-1 text-xs font-medium text-gray-600">Cédula</label>
             <div class="relative">
-              <svg class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor"
+              <svg class="absolute left-2.5 top-[12px] w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor"
                 viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0" />
@@ -156,7 +162,7 @@
                 placeholder="Buscar por cédula..."
                 [value]="filterDocument()"
                 (input)="setFilterDocument($any($event.target).value)"
-                class="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                class="w-full pl-8 pr-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-[38px]"
               />
             </div>
           </div>
