@@ -98,7 +98,7 @@ export class TransactionsListComponent {
   }
 
   onCreateTransaction(): void {
-    if (!this._permission.check('create', undefined, 'Tu rol no tiene permiso para crear transacciones.')) return;
+    if (!this._permission.check('create', '/transacciones', 'Tu rol no tiene permiso para crear transacciones.')) return;
     this._router.navigate(['/transacciones/crear']);
   }
 

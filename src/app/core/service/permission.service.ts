@@ -32,7 +32,8 @@ export class PermissionService {
 
     return menus.some((menu) => {
       const menuPath = this.normalizePath(menu.path);
-      if (!(menuPath === targetPath || targetPath.startsWith(`${menuPath}/`))) return false;
+      // Solo considerar rutas EXACTAS, no prefijos
+      if (menuPath !== targetPath) return false;
 
       return (menu.permissions ?? []).some((perm) => targetPermissions.has(this.normalize(perm)));
     });
@@ -76,9 +77,11 @@ export class PermissionService {
     if (!targetPath) return false;
 
     const codes = Array.isArray(permission) ? permission : [permission];
+    const menus = this.getUserMenus();
 
     // Si backend ya envia menus con permissions, ese es el source of truth.
-    if (this.getUserMenus().length > 0) {
+    // Se usa verificación granular estricta: solo pasa si tiene el permiso específico.
+    if (menus.length > 0) {
       return this.hasPermissionOnPath(targetPath, codes);
     }
 

@@ -39,6 +39,7 @@ export class AffiliatesListComponent implements OnInit {
   filterReference = '';
   filterAdvisor = '';
   filterIsActive = '';
+  filterGrupo = '';
   advisorOptions = signal<SelectOption[]>([]);
   referenceOptions = signal<SelectOption[]>([]);
 
@@ -95,6 +96,7 @@ export class AffiliatesListComponent implements OnInit {
       reference: this.filterReference || undefined,
       advisor: this.filterAdvisor || undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
+      grupo: this.filterGrupo || undefined,
     };
   }
 
@@ -141,12 +143,13 @@ export class AffiliatesListComponent implements OnInit {
     this.filterReference = '';
     this.filterAdvisor = '';
     this.filterIsActive = '';
+    this.filterGrupo = '';
     this.currentPage.set(1);
     this.loadAffiliates();
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterIsActive);
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterIsActive || this.filterGrupo);
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -262,6 +265,7 @@ export class AffiliatesListComponent implements OnInit {
       reference: this.filterReference || undefined,
       advisor: this.filterAdvisor || undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
+      grupo: this.filterGrupo || undefined,
     };
 
     this._service.exportToExcel(exportFilters).subscribe({
@@ -288,17 +292,18 @@ export class AffiliatesListComponent implements OnInit {
   // ── Utilidades ────────────────────────────────────────────────────
   formatDate(date?: string | Date): string {
     if (!date) return '—';
-    if (typeof date === 'string') {
-      const datePart = date.split('T')[0];
-      const parts = datePart.split('-');
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-    }
-    return new Date(date).toLocaleDateString('es-CO', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      timeZone: 'America/Bogota',
-    });
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return String(date);
+    // Extract date from UTC ISO string directly — the DB session (America/Bogota) stores
+    // timestamp-without-tz values as Colombia-local time, so the UTC date portion IS the correct Colombia date.
+    const [y, m, day] = d.toISOString().substring(0, 10).split('-');
+    return `${day}/${m}/${y}`;
+  }
+
+  isEmptyValue(value: any): boolean {
+    if (value === null || value === undefined) return true;
+    const str = String(value).trim().toUpperCase();
+    return str === '' || str === '-' || str === 'N/A' || str === 'NO APLICA';
   }
 
   get allAffiliatesForModal(): AffiliateMember[] {

@@ -115,7 +115,7 @@ export class TransactionDetailComponent implements OnDestroy {
   }
 
   formatDate(date: string): string {
-    return new Date(date).toLocaleDateString('es-CO', {
+    return new Date(date).toLocaleString('es-CO', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

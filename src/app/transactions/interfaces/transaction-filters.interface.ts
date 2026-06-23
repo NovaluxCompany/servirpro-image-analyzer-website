@@ -4,4 +4,6 @@ export interface TransactionFilters {
   affiliate?: string;
   idNumber?: string;
   reference?: string;
+  status?: string;
+  uploadedBy?: string;
 }

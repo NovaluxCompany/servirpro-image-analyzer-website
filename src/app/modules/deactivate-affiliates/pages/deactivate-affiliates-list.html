@@ -1,31 +1,94 @@
 <div class="min-h-screen p-6 bg-gray-50">
   <div class="max-w-full mx-auto">
 
-    <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
         <h1 class="text-3xl font-bold text-gray-900">Desactivar Afiliados</h1>
-        <p class="mt-1 text-sm text-gray-500">Gestion visual de afiliados activos para su desactivación</p>
+        <p class="mt-1 text-sm text-gray-500">Seguimiento de afiliados activos sin pago o con pago incompleto en el mes actual</p>
       </div>
-      <button
-        type="button"
-        (click)="openConfirmationModal()"
-        [disabled]="isDeactivateButtonDisabled()"
-        [title]="!canDeactivateByDate() ? 'La desactivación solo está habilitada cuando la fecha actual es mayor o igual al día ' + (context()?.minDay ?? 26) + ' del mes' : ''"
-        class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Desactivar seleccionados
-      </button>
     </div>
 
-    <!-- Tabla -->
+    <!-- Tabs y Botones de acción alineados -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+      <!-- Tabs (Sin pago / Pago incompleto) -->
+      <div class="inline-flex rounded-xl border border-gray-200 bg-white p-1">
+        <button
+          type="button"
+          (click)="changeTab('unpaid')"
+          [class]="activeTab() === 'unpaid'
+            ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
+            : 'px-4 py-2 text-sm font-semibold rounded-lg text-gray-700 hover:bg-gray-100'"
+        >
+          Sin pago
+        </button>
+        @if (canViewUnderpaid()) {
+          <button
+            type="button"
+            (click)="changeTab('underpaid')"
+            [class]="activeTab() === 'underpaid'
+              ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
+              : 'px-4 py-2 text-sm font-semibold rounded-lg text-gray-700 hover:bg-gray-100'"
+          >
+            Pago incompleto
+          </button>
+        }
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="flex items-center gap-3">
+        <!-- Botón Exportar Excel (solo tab Sin Pago) -->
+        @if (activeTab() === 'unpaid') {
+          <button type="button" (click)="downloadExcel()" [disabled]="isDownloadingExcel() || isLoading()"
+            class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+            @if (isDownloadingExcel()) {
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Descargando...
+            } @else {
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Descargar Excel
+            }
+          </button>
+
+          <!-- Botón Inhabilitar Todo (solo tab Sin Pago) -->
+          <button
+            type="button"
+            (click)="deactivateAll()"
+            [disabled]="isLoading() || isSubmitting() || !canDeactivateByDate()"
+            [title]="!canDeactivateByDate() ? 'La desactivación solo está habilitada cuando la fecha actual es mayor o igual al día ' + (context()?.minDay ?? 26) + ' del mes' : 'Inhabilitar todos los afiliados sin pago'"
+            class="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Inhabilitar todo
+          </button>
+        }
+
+        <!-- Botón Desactivar seleccionados -->
+        <button
+          type="button"
+          (click)="openConfirmationModal()"
+          [disabled]="isDeactivateButtonDisabled()"
+          [title]="!canDeactivateByDate() ? 'La desactivación solo está habilitada cuando la fecha actual es mayor o igual al día ' + (context()?.minDay ?? 26) + ' del mes' : ''"
+          class="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Desactivar seleccionados
+        </button>
+      </div>
+    </div>
+
     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
 
-      <!-- Table header info -->
       <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
         <p class="text-sm text-gray-500">
           Total: <span class="font-semibold text-gray-800">{{ totalItems() }}</span> afiliados
-          &nbsp;&mdash;&nbsp; Pagina {{ currentPage() }} de {{ totalPages() }}
+          @if (hasActiveFilters()) {
+            <span class="ml-2 text-xs text-blue-600 font-medium">(filtrado)</span>
+          }
         </p>
       </div>
 
@@ -45,72 +108,287 @@
       </div>
       }
 
+      <!-- ── Panel de Filtros ─────────────────────────────────────────── -->
+      <div class="bg-white border-b border-gray-100 p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+          </svg>
+          <span class="text-sm font-semibold text-gray-700">Filtros de búsqueda</span>
+          @if (hasActiveFilters()) {
+          <button type="button" (click)="clearFilters()"
+            class="ml-auto text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Limpiar filtros
+          </button>
+          }
+        </div>
+
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+
+          <!-- Nombre -->
+          <div>
+            <label class="block mb-1 text-xs font-medium text-gray-600">Nombre</label>
+            <div class="relative">
+              <svg class="absolute left-2.5 top-[12px] w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Buscar por nombre..."
+                [value]="filterName()"
+                (input)="setFilterName($any($event.target).value)"
+                class="w-full pl-8 pr-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-[38px]"
+              />
+            </div>
+          </div>
+
+          <!-- Cédula -->
+          <div>
+            <label class="block mb-1 text-xs font-medium text-gray-600">Cédula</label>
+            <div class="relative">
+              <svg class="absolute left-2.5 top-[12px] w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Buscar por cédula..."
+                [value]="filterDocument()"
+                (input)="setFilterDocument($any($event.target).value)"
+                class="w-full pl-8 pr-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-[38px]"
+              />
+            </div>
+          </div>
+
+          <!-- Referencia -->
+          <div>
+            <label class="block mb-1 text-xs font-medium text-gray-600">Referencia</label>
+            <app-searchable-select
+              [options]="referenceOptions()"
+              [ngModel]="filterReference()"
+              (ngModelChange)="setFilterReference($event)"
+              placeholder="Todas las referencias...">
+            </app-searchable-select>
+          </div>
+
+          <!-- Asesor -->
+          <div>
+            <label class="block mb-1 text-xs font-medium text-gray-600">Asesor</label>
+            <app-searchable-select
+              [options]="adviserOptions()"
+              [ngModel]="filterAdviser()"
+              (ngModelChange)="setFilterAdviser($event)"
+              placeholder="Todos los asesores...">
+            </app-searchable-select>
+          </div>
+
+          <!-- Empresa -->
+          <div>
+            <label class="block mb-1 text-xs font-medium text-gray-600">Empresa</label>
+            <app-searchable-select
+              [options]="companyOptions()"
+              [ngModel]="filterCompany()"
+              (ngModelChange)="setFilterCompany($event)"
+              placeholder="Todas las empresas...">
+            </app-searchable-select>
+          </div>
+
+          <!-- Agrupadora -->
+          <div>
+            <label class="block mb-1 text-xs font-medium text-gray-600">Agrupadora</label>
+            <app-searchable-select
+              [options]="grouperOptions()"
+              [ngModel]="filterGrouper()"
+              (ngModelChange)="setFilterGrouper($event)"
+              placeholder="Todas las agrupadora...">
+            </app-searchable-select>
+          </div>
+
+        </div>
+      </div>
+      <!-- ── Fin Panel de Filtros ─────────────────────────────────────── -->
+
       <div class="overflow-x-auto overflow-y-auto max-h-[calc(100vh-22rem)]">
         <table class="w-full text-sm text-left text-gray-600">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">
-                <label class="inline-flex items-center gap-3 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    [checked]="allVisibleSelected()"
-                    [indeterminate]="someVisibleSelected()"
-                    (change)="toggleVisibleRows($any($event.target).checked)"
-                  />
-                  <span>Acciones</span>
-                </label>
-              </th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Cedula</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha Creación</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha Ingreso</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Profesion</th>
+              @if (activeTab() === 'underpaid') {
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Acciones</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">
+                  <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      [checked]="allVisibleSelected()"
+                      [indeterminate]="someVisibleSelected()"
+                      (change)="toggleVisibleRows($any($event.target).checked)"
+                    />
+                  </label>
+                </th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Cédula</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor del plan</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Total pagado (IA)</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha ingreso</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
+              } @else {
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">
+                  <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      [checked]="allVisibleSelected()"
+                      [indeterminate]="someVisibleSelected()"
+                      (change)="toggleVisibleRows($any($event.target).checked)"
+                    />
+                  </label>
+                </th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Cédula</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha ingreso</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
+                <th class="px-4 py-3 font-semibold whitespace-nowrap">Profesión</th>
+              }
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
             @if (isLoading()) {
             <tr>
-              <td colspan="11" class="px-4 py-16 text-center text-gray-500">Cargando afiliados...</td>
+              <td [attr.colspan]="activeTab() === 'underpaid' ? 12 : 10" class="px-4 py-16 text-center text-gray-500">Cargando afiliados...</td>
             </tr>
-            } @else if (affiliates().length === 0) {
+            } @else if (currentAffiliates().length === 0) {
             <tr>
-              <td colspan="11" class="px-4 py-16 text-center">
+              <td [attr.colspan]="activeTab() === 'underpaid' ? 12 : 10" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-users text-2xl text-gray-400"></i>
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
                   </div>
-                  <p class="text-gray-500 font-medium">No hay afiliados activos para mostrar</p>
-                  <p class="text-gray-400 text-xs">Todos los afiliados están inactivos o no hay registros disponibles.</p>
+                  @if (hasActiveFilters()) {
+                    <p class="text-gray-500 font-medium">No hay resultados para los filtros aplicados</p>
+                    <button type="button" (click)="clearFilters()" class="text-sm text-blue-600 hover:underline">Limpiar filtros</button>
+                  } @else {
+                    <p class="text-gray-500 font-medium">No hay afiliados para mostrar en esta vista</p>
+                    <p class="text-gray-400 text-xs">No hay resultados para el mes actual con los criterios seleccionados.</p>
+                  }
                 </div>
               </td>
             </tr>
             } @else {
-            @for (affiliate of affiliates(); track trackById($index, affiliate)) {
+            @for (affiliate of currentAffiliates(); track trackById($index, affiliate)) {
             <tr class="hover:bg-gray-50 transition-colors duration-150">
-              <td class="px-4 py-3">
-                <input
-                  type="checkbox"
-                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  [checked]="isSelected(affiliate.id)"
-                  (change)="toggleRow(affiliate.id, $any($event.target).checked)"
-                />
-              </td>
-              <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ affiliate.nombre }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.cedula }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.referencia }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.nombrePlan }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.fechaIngreso | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.asesor }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.empresa }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.agrupadora }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.profesion }}</td>
+              @if (activeTab() === 'underpaid') {
+                <!-- Acciones: botón 3 puntos -->
+                <td class="px-4 py-3">
+                  <div>
+                    <button type="button" #actionBtn
+                      (click)="toggleDropdown(affiliate.affiliateId, actionBtn); $event.stopPropagation()"
+                      class="inline-flex items-center justify-center w-8 h-8 text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                      title="Acciones">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
+                      </svg>
+                    </button>
+
+                    @if (openDropdownId() === affiliate.affiliateId) {
+                    <div class="fixed z-50 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1"
+                      [style.top.px]="dropdownPos().top"
+                      [style.left.px]="dropdownPos().left">
+
+                      <!-- Ver detalles -->
+                      <button type="button" (click)="openTransactionsModal(affiliate); closeDropdown()"
+                        class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        Ver detalles
+                      </button>
+
+                      <!-- Aceptar pago -->
+                      <button type="button"
+                        [disabled]="approvingPaymentId() === affiliate.affiliateId"
+                        (click)="openApprovePaymentModal(affiliate); closeDropdown()"
+                        class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        @if (approvingPaymentId() === affiliate.affiliateId) {
+                          <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                          </svg>
+                          Procesando...
+                        } @else {
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Aceptar pago
+                        }
+                      </button>
+                    </div>
+                    }
+                  </div>
+                </td>
+                <!-- Checkbox -->
+                <td class="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    [checked]="isSelected(affiliate.affiliateId)"
+                    (change)="toggleRow(affiliate.affiliateId, $any($event.target).checked)"
+                  />
+                </td>
+                <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ affiliate.name }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.document }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.reference }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.plan }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ formatCurrency(affiliate.planValue || 0) }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ formatCurrency(affiliate.totalTransactions || 0) }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  {{ affiliate.entryDate ? formatDateOnlyColumbia(affiliate.entryDate) : '-' }}
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.advisor }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.company }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.grouper }}</td>
+              } @else {
+                <td class="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    [checked]="isSelected(affiliate.affiliateId)"
+                    (change)="toggleRow(affiliate.affiliateId, $any($event.target).checked)"
+                  />
+                </td>
+                <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ affiliate.name }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.document }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.reference }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.plan }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  {{ affiliate.entryDate ? formatDateOnlyColumbia(affiliate.entryDate) : '-' }}
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.advisor }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.company }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.grouper }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.pension || '-' }}</td>
+              }
             </tr>
             }
             }
@@ -118,41 +396,26 @@
         </table>
       </div>
 
-      <!-- Pagination -->
       @if (totalPages() > 1) {
-      <div class="flex items-center justify-between mt-4 px-5 py-4 border-t border-gray-100 bg-white">
+      <div class="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50">
         <p class="text-sm text-gray-600">
           {{ totalItems() }} registros &mdash; Página {{ currentPage() }} de {{ totalPages() }}
         </p>
-
         <nav class="inline-flex items-center gap-1" aria-label="Paginación">
-          <button
-            type="button"
-            (click)="goToPage(currentPage() - 1)"
-            [disabled]="currentPage() === 1"
-            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
+          <button type="button" (click)="previousPage()" [disabled]="currentPage() === 1"
+            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
             Anterior
           </button>
-
-          @for (page of pageNumbers(); track page) {
-          <button
-            type="button"
-            (click)="goToPage(page)"
+          @for (page of pageNumbers; track page) {
+          <button type="button" (click)="goToPage(page)"
             [class]="page === currentPage()
-              ? 'px-3 py-1.5 text-sm font-semibold text-white bg-blue-700 border border-blue-700 rounded-lg'
-              : 'px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'"
-          >
+                  ? 'px-3 py-1.5 text-sm font-semibold text-white bg-blue-700 border border-blue-700 rounded-lg'
+                  : 'px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'">
             {{ page }}
           </button>
           }
-
-          <button
-            type="button"
-            (click)="goToPage(currentPage() + 1)"
-            [disabled]="currentPage() === totalPages()"
-            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
+          <button type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()"
+            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
             Siguiente
           </button>
         </nav>
@@ -165,14 +428,17 @@
 @if (showConfirmationModal()) {
 <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
   <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-    <div class="flex items-center gap-3 px-6 py-4 bg-linear-to-r from-red-600 to-red-700">
+
+    <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-red-600 to-red-700">
       <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
         </svg>
       </div>
-      <h3 class="text-base font-bold text-white">Desactivar Afiliados</h3>
+      <h3 class="text-base font-bold text-white">
+        {{ isDeactivatingAll() ? 'Inhabilitar todos los afiliados' : 'Desactivar afiliados' }}
+      </h3>
     </div>
 
     <div class="px-6 py-5">
@@ -184,41 +450,259 @@
           </svg>
         </div>
       </div>
-
-      <p class="text-center text-sm text-gray-700 leading-relaxed">{{ modalMessage() }}</p>
-
+      <p class="text-center text-sm text-gray-700 leading-relaxed" [innerHTML]="modalMessage()"></p>
       <p class="mt-3 text-center text-xs text-gray-400">
-        Los afiliados seleccionados quedarán inactivos y saldrán del listado de desactivación.
+        {{ isDeactivatingAll() ? 'Todos los afiliados sin pago del mes actual quedarán inactivos.' : 'Los afiliados seleccionados quedarán inactivos.' }}
       </p>
     </div>
 
     <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
-      <button
-        type="button"
-        (click)="cancelDeactivation()"
-        [disabled]="isSubmitting()"
-        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-      >
+      <button type="button" (click)="cancelDeactivation()" [disabled]="isSubmitting()"
+        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
         Cancelar
       </button>
-
-      <button
-        type="button"
-        (click)="confirmDeactivation()"
-        [disabled]="isSubmitting()"
-        class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-      >
+      <button type="button" (click)="confirmDeactivation()" [disabled]="isSubmitting()"
+        class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
         @if (isSubmitting()) {
-        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-        </svg>
-        Procesando...
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          Procesando...
         } @else {
-        Confirmar
+          Sí, {{ isDeactivatingAll() ? 'inhabilitar todos' : 'desactivar' }}
         }
       </button>
     </div>
   </div>
 </div>
+}
+
+@if (showApprovePaymentModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+  <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+    <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-emerald-600 to-emerald-700">
+      <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h3 class="text-base font-bold text-white">Aceptar pago</h3>
+    </div>
+
+    <div class="px-6 py-5">
+      <div class="flex items-center justify-center mb-4">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center bg-emerald-100">
+          <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
+      </div>
+      <p class="text-center text-sm text-gray-700 leading-relaxed">
+        ¿Confirma que desea aceptar el pago de
+        <strong class="text-gray-900">{{ pendingApproveAffiliate()?.name }}</strong>?
+      </p>
+      <p class="mt-3 text-center text-xs text-gray-400">
+        Las transacciones con pago incompleto del afiliado serán marcadas como aprobadas.
+      </p>
+    </div>
+
+    <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+      <button type="button" (click)="cancelApprovePayment()"
+        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+        Cancelar
+      </button>
+      <button type="button" (click)="confirmApprovePayment()"
+        class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 rounded-lg transition-all">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        Sí, aceptar pago
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+@if (isTransactionsModalOpen()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+  <div class="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-4 bg-blue-700">
+      <div>
+        <h3 class="text-base font-bold text-white">Detalle de transacciones</h3>
+        <p class="text-xs text-blue-100 mt-0.5">{{ selectedAffiliateForDetail()?.name }}</p>
+      </div>
+      <button type="button" (click)="closeTransactionsModal()" class="text-white text-sm font-semibold">Cerrar</button>
+    </div>
+
+    <div class="px-6 py-5">
+      @if (transactionsError()) {
+      <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        {{ transactionsError() }}
+      </div>
+      }
+
+      <div class="overflow-x-auto max-h-[60vh] overflow-y-auto border border-gray-100 rounded-xl">
+        <table class="w-full text-sm text-left text-gray-600">
+          <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+            <tr>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Aprobar</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha Pago</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Monto Pagado</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor total</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Descuento</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Motivo de error</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Coincidencia</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Observación</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            @if (isLoadingTransactions()) {
+            <tr><td colspan="11" class="px-4 py-10 text-center text-gray-500">Cargando transacciones...</td></tr>
+            } @else if (affiliateTransactions().length === 0) {
+            <tr><td colspan="11" class="px-4 py-10 text-center text-gray-500">No hay transacciones activas para este afiliado.</td></tr>
+            } @else {
+            @for (tx of affiliateTransactions(); track trackByTransactionId($index, tx)) {
+            <tr>
+              <!-- Botón aprobar transacción -->
+              <td class="px-4 py-3 whitespace-nowrap text-center">
+                <button
+                  type="button"
+                  [disabled]="approvingTransactionId() === tx.transactionId"
+                  (click)="toggleTransactionApproved(tx)"
+                  [class]="tx.isApproved
+                    ? 'px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-100 rounded-lg hover:bg-green-200 disabled:opacity-50'
+                    : 'px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50'"
+                  [title]="tx.isApproved ? 'Revertir aprobación' : 'Aprobar transacción'"
+                >
+                  @if (approvingTransactionId() === tx.transactionId) {
+                    <svg class="w-3.5 h-3.5 animate-spin inline" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                  } @else if (tx.isApproved) {
+                    ✓ Aprobada
+                  } @else {
+                    Aprobar
+                  }
+                </button>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-xs">{{ formatDateColombia(tx.createdAt) }}</td>
+              <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ tx.reference || '-' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap font-medium text-green-700">{{ formatCurrency(tx.amountPaid) }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ formatCurrency(tx.totalValue) }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                <span [class.text-orange-600]="tx.discountedValue">{{ tx.discountedValue ? formatCurrency(tx.discountedValue) : '-' }}</span>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                <span class="px-2 py-1 text-xs font-semibold rounded-full"
+                  [class.bg-green-100]="tx.status === 'completed'" [class.text-green-800]="tx.status === 'completed'"
+                  [class.bg-yellow-100]="tx.status === 'pending'" [class.text-yellow-800]="tx.status === 'pending'"
+                  [class.bg-red-100]="tx.status === 'failed' || tx.status === 'error'" [class.text-red-800]="tx.status === 'failed' || tx.status === 'error'">
+                  {{ tx.status || '-' }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                @if (tx.errorReason) {
+                  <div class="max-w-xs text-red-700 text-xs bg-red-50 p-2 rounded border border-red-200" [title]="tx.errorReason">
+                    {{ tx.errorReason.substring(0, 50) }}...
+                  </div>
+                } @else { - }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-blue-700 font-medium">{{ tx.advisorName || '-' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center">
+                <span [class.text-green-600]="tx.amountsMatch" [class.text-red-600]="tx.amountsMatch === false" class="text-lg font-bold">
+                  {{ tx.amountsMatch === true ? '✓' : (tx.amountsMatch === false ? '✗' : '-') }}
+                </span>
+              </td>
+              <td class="px-4 py-3">{{ tx.observation || '-' }}</td>
+            </tr>
+            }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+@if (showResultsModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+  <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+    <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-amber-500 to-orange-500">
+      <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h3 class="text-base font-bold text-white">Resumen de inhabilitación</h3>
+    </div>
+
+    @if (deactivationResult(); as result) {
+      <div class="px-6 py-5 space-y-4">
+
+        <div class="flex gap-3">
+          @if (result.succeeded > 0) {
+            <div class="flex-1 flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+              <svg class="w-5 h-5 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <div>
+                <p class="text-2xl font-bold text-green-700">{{ result.succeeded }}</p>
+                <p class="text-xs text-green-600">Inhabilitado(s)</p>
+              </div>
+            </div>
+          }
+          @if (result.failed.length > 0) {
+            <div class="flex-1 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <svg class="w-5 h-5 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <div>
+                <p class="text-2xl font-bold text-red-700">{{ result.failed.length }}</p>
+                <p class="text-xs text-red-600">Fallido(s)</p>
+              </div>
+            </div>
+          }
+        </div>
+
+        @if (result.failed.length > 0) {
+          <div>
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Afiliados con error</p>
+            <div class="max-h-52 overflow-y-auto space-y-2 pr-1">
+              @for (item of result.failed; track item.affiliateId) {
+                <div class="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                  <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-gray-800 truncate">{{ item.name }}</p>
+                    <p class="text-xs text-red-600 break-words">{{ item.reason }}</p>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <div class="flex items-center justify-end px-6 py-4 bg-gray-50 border-t border-gray-200">
+      <button type="button" (click)="closeResultsModal()"
+        class="px-5 py-2 text-sm font-medium text-white bg-gray-700 hover:bg-gray-800 rounded-lg transition-colors">
+        Cerrar
+      </button>
+    </div>
+  </div>
+</div>
+}
 }

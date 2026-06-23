@@ -19,7 +19,9 @@ export class TransactionFiltersComponent {
     dateTo: [''],
     reference: [''],
     affiliate: [''],
-    idNumber: ['']
+    idNumber: [''],
+    uploadedBy: [''],
+    status: [''],
   });
 
   onSearch(): void {
@@ -31,6 +33,8 @@ export class TransactionFiltersComponent {
     if (values.reference) filters.reference = values.reference;
     if (values.affiliate) filters.affiliate = values.affiliate;
     if (values.idNumber) filters.idNumber = values.idNumber;
+    if (values.uploadedBy) filters.uploadedBy = values.uploadedBy;
+    if (values.status) filters.status = values.status;
 
     this.filterApplied.emit(filters);
   }

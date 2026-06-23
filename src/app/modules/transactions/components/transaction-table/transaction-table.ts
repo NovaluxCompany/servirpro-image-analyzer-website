@@ -118,13 +118,13 @@ export class TransactionTableComponent {
   }
 
   formatDate(date: string): string {
-    return new Date(date).toLocaleDateString('es-CO', {
+    return new Date(date).toLocaleString('es-CO', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      timeZone: 'America/Bogota'
+      timeZone: 'America/Bogota',
     });
   }
 

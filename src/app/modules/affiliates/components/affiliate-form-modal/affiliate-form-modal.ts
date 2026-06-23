@@ -44,6 +44,7 @@ export class AffiliateFormModalComponent implements OnInit {
 
   section1Open = true
   section2Open = true
+  section3Open = true
 
   readonly documentTypes = ['CC', 'CE', 'TI', 'NIT', 'PPT'];
 
@@ -53,6 +54,10 @@ export class AffiliateFormModalComponent implements OnInit {
 
   toggleSection2() {
     this.section2Open = !this.section2Open;
+  }
+
+  toggleSection3() {
+    this.section3Open = !this.section3Open;
   }
 
   // SelectOption arrays for searchable dropdowns
@@ -92,6 +97,7 @@ export class AffiliateFormModalComponent implements OnInit {
     lastName: ['', [Validators.required, Validators.maxLength(255)]],
     birthDate: [''],
     documentExpDate: [''],
+    gender: [''],
     phone: ['', Validators.maxLength(50)],
     email: ['', [Validators.required, Validators.email]],
     address: ['', Validators.maxLength(500)],
@@ -99,7 +105,7 @@ export class AffiliateFormModalComponent implements OnInit {
     reference: ['', Validators.required],
     profession: ['', Validators.maxLength(255)],
     //Fecha whatsapp
-    companyEntryDate: [{ value: '', disabled: true }, Validators.required],
+    companyEntryDate: [{ value: '', disabled: false }, Validators.required],
     // Datos de afiliación
     planId: ['', Validators.required],
     companyId: [''],
@@ -109,11 +115,16 @@ export class AffiliateFormModalComponent implements OnInit {
     pensionId: [''],
     compensationBoxId: [''],
     isActive: [true],
-    entryDate: ['', Validators.required],
+    entryDate: [{ value: '', disabled: true }],
     observation: ['', Validators.maxLength(2000)],
     documentFile: [<File | string | null>null],
     // Seguridad social (sin ADRES, sin price/deposit/charge)
     arl: [<number | null>null],
+    // Certificados de documentación (solo en edición)
+    certArl: [{ value: false, disabled: true }],
+    certEps: [{ value: false, disabled: true }],
+    certPension: [{ value: false, disabled: true }],
+    certCcf: [{ value: false, disabled: true }],
   });
 
   constructor() {
@@ -130,6 +141,9 @@ export class AffiliateFormModalComponent implements OnInit {
           });
           this.form.get('entryDate')?.setValue(this.todayDate());
           this.form.get('companyEntryDate')?.setValue(this.todayDate());
+          // In create mode: entryDate is automatic (disabled), companyEntryDate is freely editable
+          this.form.get('entryDate')?.disable({ emitEvent: false });
+          this.form.get('companyEntryDate')?.enable({ emitEvent: false });
           // Asegurar que el campo de archivo esté siempre habilitado en modo creación
           this.form.get('documentFile')?.enable({ emitEvent: false });
           this.form.get('documentFile')?.clearValidators();
@@ -262,6 +276,45 @@ export class AffiliateFormModalComponent implements OnInit {
     this.validateArl(this.form.get('arl'));
     this.validateCcf(this.form.get('compensationBoxId'));
     this.validateEps(this.form.get('epsId'));
+
+    this.updateCertControls();
+  }
+
+  private updateCertControls(): void {
+    const label = this.selectedPlanLabel;
+
+    const certArl = this.form.get('certArl');
+    const certEps = this.form.get('certEps');
+    const certPension = this.form.get('certPension');
+    const certCcf = this.form.get('certCcf');
+
+    if (label.includes('ARL')) {
+      certArl?.enable({ emitEvent: false });
+    } else {
+      certArl?.setValue(false, { emitEvent: false });
+      certArl?.disable({ emitEvent: false });
+    }
+
+    if (label.includes('EPS')) {
+      certEps?.enable({ emitEvent: false });
+    } else {
+      certEps?.setValue(false, { emitEvent: false });
+      certEps?.disable({ emitEvent: false });
+    }
+
+    if (label.includes('AFP')) {
+      certPension?.enable({ emitEvent: false });
+    } else {
+      certPension?.setValue(false, { emitEvent: false });
+      certPension?.disable({ emitEvent: false });
+    }
+
+    if (label.includes('CCF')) {
+      certCcf?.enable({ emitEvent: false });
+    } else {
+      certCcf?.setValue(false, { emitEvent: false });
+      certCcf?.disable({ emitEvent: false });
+    }
   }
 
   get isEdit(): boolean {
@@ -280,8 +333,11 @@ export class AffiliateFormModalComponent implements OnInit {
   private toLocalDateStr(value: string | Date | null | undefined): string {
     if (!value) return '';
     const str = typeof value === 'string' ? value : value.toISOString();
+    // Handle DD-MM-YYYY or DD/MM/YYYY format
     const ddmmyyyy = str.match(/^(\d{2})[-/](\d{2})[-/](\d{4})/);
     if (ddmmyyyy) return `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`;
+    // Take the first 10 chars (YYYY-MM-DD). Date fields from the backend come as pure date strings
+    // or as UTC-midnight timestamps; both yield the correct Colombia calendar date via substring.
     return str.substring(0, 10);
   }
 
@@ -339,6 +395,7 @@ export class AffiliateFormModalComponent implements OnInit {
       lastName: a.lastName ?? '',
       birthDate: this.toLocalDateStr(a.birthDate),
       documentExpDate: this.toLocalDateStr(a.documentExpDate),
+      gender: a.gender ?? '',
       phone: a.phone ?? '',
       email: a.email ?? '',
       address: a.address ?? '',
@@ -352,14 +409,21 @@ export class AffiliateFormModalComponent implements OnInit {
       advisorId: a.advisorId ? String(a.advisorId) : '',
       epsId: a.epsId ? String(a.epsId) : '',
       isActive: a.isActive ?? true,
-      companyEntryDate: this.toLocalDateStr(a.companyEntryDate ?? a.entryDate ?? this.todayDate()),
-      entryDate: this.toLocalDateStr(a.entryDate ?? a.companyEntryDate ?? this.todayDate()),
+      companyEntryDate: this.toLocalDateStr(a.companyEntryDate ?? this.todayDate()),
+      entryDate: this.toLocalDateStr(a.entryDate),
       arl: a.arl ?? null,
       pensionId: a.pensionId ? String(a.pensionId) : '',
       compensationBoxId: a.compensationBoxId ? String(a.compensationBoxId) : '',
       observation: a.observation ?? '',
-
+      certArl: a.certArl ?? false,
+      certEps: a.certEps ?? false,
+      certPension: a.certPension ?? false,
+      certCcf: a.certCcf ?? false,
     });
+
+    // In edit mode: entryDate is fixed (disable to prevent editing), companyEntryDate is editable (enable)
+    this.form.get('entryDate')?.disable({ emitEvent: false });
+    this.form.get('companyEntryDate')?.enable({ emitEvent: false });
 
     const existingDoc = a.documents?.[0];
     if (existingDoc) {
@@ -478,6 +542,7 @@ export class AffiliateFormModalComponent implements OnInit {
       municipality: raw.municipality || undefined,
       reference: raw.reference!,
       profession: raw.profession || undefined,
+      gender: raw.gender || undefined,
       whatsappEntryDate: this.todayDate(),
       planId: toNumberOrNull(raw.planId),
       companyId: toNumberOrNull(raw.companyId),
@@ -487,10 +552,18 @@ export class AffiliateFormModalComponent implements OnInit {
       pensionId: toNumberOrNull(raw.pensionId),
       compensationBoxId: toNumberOrNull(raw.compensationBoxId),
       isActive: raw.isActive ?? true,
-      companyEntryDate: raw.entryDate || this.toLocalDateStr(this.todayDate()),
-      entryDate: raw.entryDate || this.toLocalDateStr(this.todayDate()),
+      // companyEntryDate comes from its own form control (disabled), NOT from entryDate
+      companyEntryDate: raw.companyEntryDate || this.toLocalDateStr(this.todayDate()),
+      // entryDate only sent on create; in edit mode the backend ignores it (only set on create/enable)
+      entryDate: this.isEdit ? undefined : (raw.entryDate || this.toLocalDateStr(this.todayDate())),
       arl: raw.arl ?? undefined,
       observation: raw.observation?.trim() || undefined,
+      ...(this.isEdit ? {
+        certArl: raw.certArl ?? false,
+        certEps: raw.certEps ?? false,
+        certPension: raw.certPension ?? false,
+        certCcf: raw.certCcf ?? false,
+      } : {}),
     };
 
     const obs =

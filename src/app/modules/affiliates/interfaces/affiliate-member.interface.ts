@@ -28,6 +28,7 @@ export interface AffiliateMember {
   whatsappEntryDate?: string;
   companyEntryDate?: string;
   profession?: string;
+  gender?: string;
   // Datos de afiliación
   planId?: string;
   planName?: string;
@@ -60,6 +61,12 @@ export interface AffiliateMember {
   updatedAt?: string;
   createdBy?: string;
 
+  // Certificados de seguridad social
+  certArl?: boolean;
+  certEps?: boolean;
+  certPension?: boolean;
+  certCcf?: boolean;
+
   // Modificado: Ahora mapea el array relacional que viene del Backend
   documents?: AffiliateDocument[];
 
@@ -81,6 +88,7 @@ export interface CreateAffiliateMemberDto {
   municipality?: string;
   reference: string;        // required
   profession?: string;
+  gender?: string;
   whatsappEntryDate?: string;
   companyEntryDate?: string;
   planId: number | null;
@@ -95,6 +103,10 @@ export interface CreateAffiliateMemberDto {
   arl?: number;
   compensationFund?: string;
   observation?: string;
+  certArl?: boolean;
+  certEps?: boolean;
+  certPension?: boolean;
+  certCcf?: boolean;
 }
 
 export interface UpdateAffiliateMemberDto extends Partial<CreateAffiliateMemberDto> {}
