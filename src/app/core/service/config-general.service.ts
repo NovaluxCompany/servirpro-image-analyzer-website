@@ -46,6 +46,15 @@ export class ConfigGeneralService {
       );
   }
 
+  getAppVersion(): Observable<string> {
+    return this._http
+      .get<{ value: string }>(`${environment.urlBD}/param-config-general/app-version`)
+      .pipe(
+        map((response) => response.value),
+        catchError(this.handleError)
+      );
+  }
+
   private handleError(error: any): Observable<never> {
     console.error('Error en ConfigGeneralService:', error);
     return throwError(() => error);
