@@ -42,6 +42,11 @@ export const routes: Routes = [
                 path: 'actualizar-compania',
                 canActivate: [roleGuard],
                 loadChildren: () => import('./modules/update-company/update-company.routes').then(m => m.updateCompanyRoutes)
+            },
+            {
+                path: 'usuarios',
+                canActivate: [roleGuard],
+                loadChildren: () => import('./modules/users/users.routes').then(m => m.usersRoutes)
             }
         ]
     },

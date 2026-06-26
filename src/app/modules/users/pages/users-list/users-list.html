@@ -1,0 +1,673 @@
+<div class="min-h-screen p-6 bg-gray-50">
+  <div class="max-w-full mx-auto">
+
+    <!-- Encabezado -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Gestión de Usuarios</h1>
+        <p class="mt-1 text-sm text-gray-500">Administración de usuarios y asignación de roles del sistema</p>
+      </div>
+    </div>
+
+    <!-- Acceso denegado -->
+    @if (!isAdmin()) {
+      <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <svg class="w-12 h-12 text-red-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+        <h3 class="text-lg font-semibold text-red-700 mb-1">Acceso Restringido</h3>
+        <p class="text-sm text-red-600">Solo los Administradores pueden acceder a este módulo.</p>
+      </div>
+    }
+
+    @if (isAdmin()) {
+
+      <!-- Tabs + botón crear -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+        <div class="inline-flex rounded-xl border border-gray-200 bg-white p-1">
+          <button type="button" (click)="changeTab('usuarios')"
+            [class]="activeTab() === 'usuarios'
+              ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
+              : 'px-4 py-2 text-sm font-semibold rounded-lg text-gray-700 hover:bg-gray-100'">
+            Usuarios
+          </button>
+          <button type="button" (click)="changeTab('asignar-rol')"
+            [class]="activeTab() === 'asignar-rol'
+              ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
+              : 'px-4 py-2 text-sm font-semibold rounded-lg text-gray-700 hover:bg-gray-100'">
+            Asignar Rol
+          </button>
+        </div>
+
+        @if (activeTab() === 'usuarios') {
+          <button type="button" (click)="openCreateModal()"
+            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 transition-all duration-200">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Crear Usuario
+          </button>
+        }
+      </div>
+
+      <!-- Tabla principal -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+
+        <!-- Filtros -->
+        <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap gap-3">
+          <input
+            type="text"
+            placeholder="Buscar por nombre..."
+            [value]="filterName()"
+            (input)="setFilterName($any($event.target).value)"
+            class="w-48 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+          <input
+            type="text"
+            placeholder="Buscar por email..."
+            [value]="filterEmail()"
+            (input)="setFilterEmail($any($event.target).value)"
+            class="w-56 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+          <span class="ml-auto text-sm text-gray-500 self-center">
+            Total: <strong class="text-gray-800">{{ totalItems() }}</strong> usuario(s)
+          </span>
+        </div>
+
+        <!-- Loading -->
+        @if (isLoading()) {
+          <div class="flex items-center justify-center py-16">
+            <svg class="w-8 h-8 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="ml-3 text-gray-500 text-sm">Cargando usuarios...</span>
+          </div>
+        }
+
+        <!-- Error -->
+        @if (!isLoading() && errorMessage()) {
+          <div class="px-5 py-4 bg-red-50 border-b border-red-100 text-sm text-red-700">
+            {{ errorMessage() }}
+          </div>
+        }
+
+        <!-- ═══════════════════════════════════════════════════ TAB USUARIOS ══ -->
+        @if (!isLoading() && activeTab() === 'usuarios') {
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-700">
+              <thead class="bg-gray-50 text-xs uppercase text-gray-500 border-b border-gray-200">
+                <tr>
+                  <th class="px-4 py-3">Acciones</th>
+                  <th class="px-4 py-3">ID</th>
+                  <th class="px-4 py-3">Nombre</th>
+                  <th class="px-4 py-3">Email</th>
+                  <th class="px-4 py-3">Documento</th>
+                  <th class="px-4 py-3">Rol</th>
+                  <th class="px-4 py-3">Estado</th>
+                  <th class="px-4 py-3">Creado</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                @for (user of currentUsers(); track trackById($index, user)) {
+                  <tr class="hover:bg-gray-50 transition-colors">
+                    <!-- Acciones dropdown -->
+                    <td class="px-4 py-3">
+                      <div class="relative inline-block">
+                        <button
+                          type="button"
+                          (click)="$event.stopPropagation(); toggleDropdown(user.id, $any($event.currentTarget))"
+                          class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                          Acciones
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 text-gray-500 font-mono text-xs">{{ user.id }}</td>
+                    <td class="px-4 py-3 font-medium text-gray-900">{{ user.name ?? '-' }}</td>
+                    <td class="px-4 py-3 text-gray-600">{{ user.email ?? '-' }}</td>
+                    <td class="px-4 py-3 text-gray-500">{{ user.documentNumber ?? '-' }}</td>
+                    <td class="px-4 py-3">
+                      @if (user.roleName) {
+                        <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">{{ user.roleName }}</span>
+                      } @else {
+                        <span class="text-gray-400 text-xs">Sin rol</span>
+                      }
+                    </td>
+                    <td class="px-4 py-3">
+                      @if (user.isActive) {
+                        <span class="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">Activo</span>
+                      } @else {
+                        <span class="px-2 py-1 text-xs font-semibold bg-red-100 text-red-600 rounded-full">Inactivo</span>
+                      }
+                    </td>
+                    <td class="px-4 py-3 text-gray-400 text-xs">
+                      {{ user.createdAt | date:'dd/MM/yyyy' }}
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="8" class="px-4 py-12 text-center text-gray-400 text-sm">
+                      No hay usuarios registrados.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <!-- ═══════════════════════════════════════════════ TAB ASIGNAR ROL ══ -->
+        @if (!isLoading() && activeTab() === 'asignar-rol') {
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-700">
+              <thead class="bg-gray-50 text-xs uppercase text-gray-500 border-b border-gray-200">
+                <tr>
+                  <th class="px-4 py-3">Acciones</th>
+                  <th class="px-4 py-3">Nombre</th>
+                  <th class="px-4 py-3">Email</th>
+                  <th class="px-4 py-3">Rol Actual</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                @for (user of currentUsers(); track trackById($index, user)) {
+                  <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-3">
+                      <button type="button" (click)="openRoleModal(user)"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        Cambiar Rol
+                      </button>
+                    </td>
+                    <td class="px-4 py-3 font-medium text-gray-900">{{ user.name ?? '-' }}</td>
+                    <td class="px-4 py-3 text-gray-600">{{ user.email ?? '-' }}</td>
+                    <td class="px-4 py-3">
+                      @if (user.roleName) {
+                        <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">{{ user.roleName }}</span>
+                      } @else {
+                        <span class="text-gray-400 text-xs">Sin rol</span>
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="px-4 py-12 text-center text-gray-400 text-sm">
+                      No hay usuarios registrados.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <!-- Paginación -->
+        @if (!isLoading() && totalPages() > 1) {
+          <div class="flex items-center justify-between px-5 py-4 border-t border-gray-100">
+            <button type="button" (click)="previousPage()" [disabled]="currentPage() === 1"
+              class="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+              Anterior
+            </button>
+            <div class="flex items-center gap-1">
+              @for (page of pageNumbers; track page) {
+                <button type="button" (click)="goToPage(page)"
+                  [class]="page === currentPage()
+                    ? 'px-3 py-1.5 text-sm font-semibold text-white bg-blue-700 rounded-lg'
+                    : 'px-3 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all'">
+                  {{ page }}
+                </button>
+              }
+            </div>
+            <button type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()"
+              class="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+              Siguiente
+            </button>
+          </div>
+        }
+      </div>
+
+    } <!-- fin isAdmin() -->
+  </div>
+</div>
+
+<!-- ─────────────────────────────────── DROPDOWN FLOTANTE ──────────── -->
+@if (openDropdownId() !== null) {
+  <div
+    class="fixed z-50 bg-white rounded-xl shadow-lg border border-gray-200 py-1 min-w-[160px]"
+    [style.top.px]="dropdownPos().top"
+    [style.left.px]="dropdownPos().left"
+    (click)="$event.stopPropagation()">
+    @for (user of users(); track user.id) {
+      @if (user.id === openDropdownId()) {
+        <button type="button"
+          (click)="openStatusModal(user); openDropdownId.set(null)"
+          class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
+          @if (user.isActive) {
+            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+            Deshabilitar
+          } @else {
+            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Habilitar
+          }
+        </button>
+        <button type="button"
+          (click)="openEditModal(user); openDropdownId.set(null)"
+          class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
+          <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+          Editar
+        </button>
+      }
+    }
+  </div>
+}
+
+<!-- ═══════════════════════════════════════════ MODAL CREAR USUARIO ══ -->
+@if (activeModal() === 'create') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h3 class="text-lg font-semibold text-gray-900">Crear Usuario</h3>
+        <button type="button" (click)="closeModal()"
+          class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre <span class="text-red-500">*</span></label>
+          <input type="text" [(ngModel)]="createForm.name" placeholder="Nombre completo"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
+          <input type="email" [(ngModel)]="createForm.email" placeholder="correo@ejemplo.com"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña <span class="text-red-500">*</span></label>
+          <input type="password" [(ngModel)]="createForm.password" placeholder="Mínimo 6 caracteres"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Número de Documento</label>
+          <input type="text" [(ngModel)]="createForm.documentNumber" placeholder="Opcional"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <button type="button" (click)="closeModal()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="submitCreate()"
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors">
+          Continuar
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════ MODAL ADVERTENCIA CREAR ══ -->
+@if (activeModal() === 'create-confirm') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" (click)="$event.stopPropagation()">
+      <div class="px-6 py-5">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">¿Confirmar creación de usuario?</h3>
+            <p class="text-sm text-gray-600 mb-1">Se va a crear un nuevo usuario con las siguientes credenciales de acceso:</p>
+            <div class="mt-3 bg-gray-50 rounded-lg px-4 py-3 text-sm space-y-1">
+              <p><span class="font-medium text-gray-700">Email:</span> <span class="text-gray-900">{{ createForm.email }}</span></p>
+              <p><span class="font-medium text-gray-700">Contraseña:</span> <span class="text-gray-900">{{ createForm.password }}</span></p>
+            </div>
+            <p class="text-xs text-amber-600 mt-3">Asegúrese de compartir estas credenciales de forma segura con el usuario.</p>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <button type="button" (click)="activeModal.set('create')" [disabled]="isSubmitting()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
+          Volver
+        </button>
+        <button type="button" (click)="confirmCreate()" [disabled]="isSubmitting()"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-50 transition-colors">
+          @if (isSubmitting()) {
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Creando...
+          } @else {
+            Confirmar
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════ MODAL ÉXITO CREAR ══ -->
+@if (activeModal() === 'create-success') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm text-center" (click)="$event.stopPropagation()">
+      <div class="px-6 py-8">
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">¡Usuario creado!</h3>
+        <p class="text-sm text-gray-500">El usuario <strong>{{ createForm.email }}</strong> fue creado correctamente y ya aparece en la tabla.</p>
+        <button type="button" (click)="closeModal()"
+          class="mt-6 px-6 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors">
+          Listo
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════════════ MODAL EDITAR USUARIO ══ -->
+@if (activeModal() === 'edit') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h3 class="text-lg font-semibold text-gray-900">Editar Usuario</h3>
+        <button type="button" (click)="closeModal()"
+          class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre <span class="text-red-500">*</span></label>
+          <input type="text" [(ngModel)]="editForm.name"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
+          <input type="email" [(ngModel)]="editForm.email"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña</label>
+          <input type="password" [(ngModel)]="editForm.password" placeholder="Dejar vacío para no cambiar"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+          <p class="text-xs text-gray-400 mt-1">Si no desea cambiar la contraseña, deje este campo vacío.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Número de Documento</label>
+          <input type="text" [(ngModel)]="editForm.documentNumber"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <button type="button" (click)="closeModal()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="submitEdit()"
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors">
+          Continuar
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════ MODAL ADVERTENCIA EDITAR ══ -->
+@if (activeModal() === 'edit-confirm') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" (click)="$event.stopPropagation()">
+      <div class="px-6 py-5">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">¿Confirmar edición?</h3>
+            <p class="text-sm text-gray-600">
+              Va a modificar los datos del usuario <strong>{{ selectedUser()?.name ?? selectedUser()?.email }}</strong>.
+              @if (editForm.password) {
+                <span class="block mt-1 text-amber-600 font-medium">La contraseña también será actualizada.</span>
+              }
+            </p>
+            <p class="text-xs text-gray-400 mt-2">Esta acción modificará el acceso del usuario al sistema.</p>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <button type="button" (click)="activeModal.set('edit')" [disabled]="isSubmitting()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
+          Volver
+        </button>
+        <button type="button" (click)="confirmEdit()" [disabled]="isSubmitting()"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-50 transition-colors">
+          @if (isSubmitting()) {
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Guardando...
+          } @else {
+            Confirmar
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════ MODAL ÉXITO EDITAR ══ -->
+@if (activeModal() === 'edit-success') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm text-center" (click)="$event.stopPropagation()">
+      <div class="px-6 py-8">
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">¡Usuario actualizado!</h3>
+        <p class="text-sm text-gray-500">Los datos del usuario fueron modificados correctamente.</p>
+        <button type="button" (click)="closeModal()"
+          class="mt-6 px-6 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors">
+          Listo
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══════════════════════════════════════ MODAL CONFIRMAR ESTADO ══ -->
+@if (activeModal() === 'status-confirm') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" (click)="$event.stopPropagation()">
+      <div class="px-6 py-5">
+        <div class="flex items-start gap-4">
+          <div [class]="selectedUser()?.isActive ? 'w-12 h-12 bg-red-100 rounded-full flex items-center justify-center shrink-0' : 'w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shrink-0'">
+            @if (selectedUser()?.isActive) {
+              <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            } @else {
+              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">
+              {{ selectedUser()?.isActive ? 'Deshabilitar' : 'Habilitar' }} usuario
+            </h3>
+            <p class="text-sm text-gray-600">
+              ¿Desea {{ selectedUser()?.isActive ? 'deshabilitar' : 'habilitar' }} al usuario
+              <strong>{{ selectedUser()?.name ?? selectedUser()?.email }}</strong>?
+            </p>
+            @if (selectedUser()?.isActive) {
+              <p class="text-xs text-red-500 mt-2">El usuario no podrá iniciar sesión mientras esté deshabilitado.</p>
+            } @else {
+              <p class="text-xs text-green-600 mt-2">El usuario podrá volver a iniciar sesión normalmente.</p>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <button type="button" (click)="closeModal()" [disabled]="isSubmitting()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmToggleStatus()" [disabled]="isSubmitting()"
+          [class]="selectedUser()?.isActive
+            ? 'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors'
+            : 'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors'">
+          @if (isSubmitting()) {
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          }
+          {{ selectedUser()?.isActive ? 'Deshabilitar' : 'Habilitar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ════════════════════════════════════════════ MODAL ASIGNAR ROL ══ -->
+@if (activeModal() === 'role-assign') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900">Asignar Rol</h3>
+          <p class="text-xs text-gray-500 mt-0.5">{{ selectedUser()?.name ?? selectedUser()?.email }}</p>
+        </div>
+        <button type="button" (click)="closeModal()"
+          class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="px-6 py-5">
+        <p class="text-sm text-gray-600 mb-4">Selecciona el rol que deseas asignar al usuario. Solo puede tener un rol activo.</p>
+        <div class="space-y-3">
+          @for (role of ROLE_OPTIONS; track role.id) {
+            <label
+              class="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all"
+              [class]="selectedRoleId() === role.id
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'">
+              <input
+                type="checkbox"
+                [checked]="selectedRoleId() === role.id"
+                (change)="selectRole(role.id)"
+                class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+              <div class="flex-1">
+                <span class="text-sm font-medium text-gray-900">{{ role.label }}</span>
+                @if (role.id === 1) {
+                  <span class="ml-2 px-1.5 py-0.5 text-xs bg-red-100 text-red-600 rounded font-medium">Admin total</span>
+                }
+              </div>
+              @if (selectedUser()?.roleId === role.id) {
+                <span class="text-xs text-blue-600 font-medium">Actual</span>
+              }
+            </label>
+          }
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <button type="button" (click)="closeModal()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="submitRoleAssign()" [disabled]="!selectedRoleId()"
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+          Asignar Rol
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════ MODAL ADVERTENCIA ADMINISTRADOR ══ -->
+@if (activeModal() === 'role-admin-warn') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" (click)="$event.stopPropagation()">
+      <div class="px-6 py-5">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-red-700 mb-2">Atención</h3>
+            <p class="text-sm text-gray-700">
+              Le va a asignar el rol <strong>Administrador</strong> a
+              <strong>{{ selectedUser()?.name ?? selectedUser()?.email }}</strong>.
+            </p>
+            <p class="text-sm text-red-600 mt-2 font-medium">
+              Este rol tiene acceso a todos los módulos y puede cambiar mucha información sensible.
+            </p>
+            <p class="text-xs text-gray-500 mt-2">¿Está seguro de que desea continuar?</p>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <button type="button" (click)="activeModal.set('role-assign')" [disabled]="isSubmitting()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmRoleAssign()" [disabled]="isSubmitting()"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors">
+          @if (isSubmitting()) {
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          }
+          Aceptar
+        </button>
+      </div>
+    </div>
+  </div>
+}
