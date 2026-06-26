@@ -491,11 +491,11 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   private checkDuplicate(): void {
-    if (this.mode() !== 'create') return;
     const docNumber = this.form.value.documentNumber?.trim();
     if (!docNumber) { this.duplicateDocument.set(false); return; }
+    const currentDocNumber = this.affiliate()?.documentNumber?.trim();
     const exists = this.existingAffiliates().some(
-      (a) => a.documentNumber?.trim() === docNumber
+      (a) => a.documentNumber?.trim() === docNumber && a.documentNumber?.trim() !== currentDocNumber
     );
     this.duplicateDocument.set(exists);
   }
