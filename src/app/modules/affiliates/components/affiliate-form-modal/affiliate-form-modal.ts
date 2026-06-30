@@ -46,7 +46,13 @@ export class AffiliateFormModalComponent implements OnInit {
   section2Open = true
   section3Open = true
 
-  readonly documentTypes = ['CC', 'CE', 'TI', 'NIT', 'PPT'];
+  readonly documentTypeOptions: SelectOption[] = [
+    { value: 'CC', label: 'CC' },
+    { value: 'CE', label: 'CE' },
+    { value: 'TI', label: 'TI' },
+    { value: 'NIT', label: 'NIT' },
+    { value: 'PPT', label: 'PPT' },
+  ];
 
   toggleSection1() {
     this.section1Open = !this.section1Open;
@@ -88,6 +94,10 @@ export class AffiliateFormModalComponent implements OnInit {
   get compensationBoxOptions(): SelectOption[] {
     return this.compensationBoxes().map((c) => ({ value: String(c.id), label: (c as any).nameCompensationBox || c.name }));
   }
+  readonly genderOptions: SelectOption[] = [
+    { value: 'MASCULINO', label: 'Hombre' },
+    { value: 'FEMENINO', label: 'Mujer' },
+  ];
 
   form = this._fb.group({
     // Datos personales
