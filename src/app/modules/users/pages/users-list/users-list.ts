@@ -22,8 +22,6 @@ type UserModal =
   | 'create-confirm'
   | 'create-success'
   | 'edit'
-  | 'edit-confirm'
-  | 'edit-success'
   | 'status-confirm'
   | 'role-assign'
   | 'role-admin-warn';
@@ -229,10 +227,6 @@ export class UsersListComponent implements OnInit {
       this._toast.showError('Nombre y email son obligatorios.');
       return;
     }
-    this.activeModal.set('edit-confirm');
-  }
-
-  protected confirmEdit(): void {
     const user = this.selectedUser();
     if (!user) return;
     this.isSubmitting.set(true);
@@ -249,13 +243,13 @@ export class UsersListComponent implements OnInit {
     this._service.updateUser(user.id, payload).subscribe({
       next: () => {
         this.isSubmitting.set(false);
-        this.activeModal.set('edit-success');
+        this.activeModal.set('none');
+        this._toast.showSuccess('Usuario actualizado correctamente.');
         this.loadUsers();
       },
       error: (err: Error) => {
         this.isSubmitting.set(false);
         this._toast.showError(err.message);
-        this.activeModal.set('none');
       },
     });
   }
