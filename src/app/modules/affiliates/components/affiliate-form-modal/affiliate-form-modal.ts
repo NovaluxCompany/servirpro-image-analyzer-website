@@ -208,6 +208,12 @@ export class AffiliateFormModalComponent implements OnInit {
     }
   }
 
+  validateProfession(professionControl: AbstractControl | null) {
+    if (!this.selectedPlanLabel.includes('ARL')) {
+      professionControl?.setValue('', { emitEvent: false });
+    }
+  }
+
   validateEps(epsControl: AbstractControl | null) {
     if (!this.selectedPlanLabel.includes('EPS')) {
       epsControl?.disable();
@@ -284,6 +290,7 @@ export class AffiliateFormModalComponent implements OnInit {
 
     this.validateAfp(this.form.get('pensionId'));
     this.validateArl(this.form.get('arl'));
+    this.validateProfession(this.form.get('profession'));
     this.validateCcf(this.form.get('compensationBoxId'));
     this.validateEps(this.form.get('epsId'));
 
