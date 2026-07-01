@@ -588,6 +588,13 @@ export class AffiliateFormModalComponent implements OnInit {
 
         const finalize = () => {
           this._toast.showSuccess(successMsg);
+          if (!this.isEdit) {
+            if (result?.siigoSyncStatus === 'SUCCESS') {
+              this._toast.showSuccess('Afiliado creado en Siigo correctamente');
+            } else if (result?.siigoSyncStatus === 'FAILED') {
+              this._toast.showError(result?.siigoSyncError || 'No se pudo crear el afiliado en Siigo');
+            }
+          }
           this.isLoading.set(false);
           this.saved.emit();
         };

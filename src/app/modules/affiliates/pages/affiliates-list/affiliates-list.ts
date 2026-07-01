@@ -54,6 +54,9 @@ export class AffiliatesListComponent implements OnInit {
   // ── Email ─────────────────────────────────────────────────────────
   sendingEmailId = signal<number | null>(null);
 
+  // ── Siigo ─────────────────────────────────────────────────────────
+  syncingSiigoId = signal<number | null>(null);
+
   // ── Dropdown acciones ─────────────────────────────────────────────
   openDropdownId = signal<string | null>(null);
   dropdownPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -188,12 +191,11 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   openStatusToggle(affiliate: AffiliateMember): void {
-    const permission = affiliate.isActive ? 'delete' : 'approve';
     const message = affiliate.isActive
       ? 'Tu rol no tiene permiso para deshabilitar afiliados.'
       : 'Tu rol no tiene permiso para habilitar afiliados.';
 
-    if (!this._permission.check(permission, undefined, message)) return;
+    if (!this._permission.check('toggle', undefined, message)) return;
     this.selectedAffiliate.set(affiliate);
     this.showStatusModal.set(true);
   }
@@ -337,6 +339,29 @@ export class AffiliatesListComponent implements OnInit {
       error: (err) => {
         this._toast.showError(err.message ?? 'No se pudo enviar el correo');
         this.sendingEmailId.set(null);
+      },
+    });
+  }
+
+  syncToSiigo(affiliate: AffiliateMember): void {
+    if (!this._permission.check('edit', undefined, 'Tu rol no tiene permiso para sincronizar afiliados con Siigo.')) {
+      return;
+    }
+
+    const affiliationId = Number(affiliate.id);
+    if (!affiliationId || this.syncingSiigoId() !== null) return;
+
+    this.syncingSiigoId.set(affiliationId);
+    this._toast.showInfo('Subiendo afiliado a Siigo...');
+    this._service.syncToSiigo(affiliationId).subscribe({
+      next: () => {
+        this._toast.showSuccess('Afiliado subido a Siigo correctamente');
+        this.loadAffiliates();
+        this.syncingSiigoId.set(null);
+      },
+      error: (err) => {
+        this._toast.showError(err.message ?? 'No se pudo subir el afiliado a Siigo');
+        this.syncingSiigoId.set(null);
       },
     });
   }

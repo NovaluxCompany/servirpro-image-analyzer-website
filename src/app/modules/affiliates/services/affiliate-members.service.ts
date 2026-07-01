@@ -120,6 +120,17 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  // ── Enviar / sincronizar afiliado con Siigo ─────────────────────────
+  syncToSiigo(id: number): Observable<{ siigoSyncStatus: string; siigoId: string | null; siigoSyncError: string | null }> {
+    return this._http
+      .post<{ siigoSyncStatus: string; siigoId: string | null; siigoSyncError: string | null }>(
+        `${this.baseUrl}/${id}/sync-siigo`,
+        {},
+        { headers: this.getHeaders() }
+      )
+      .pipe(catchError(this.handleError));
+  }
+
   // ── Exportar afiliados a Excel ────────────────────────────────────
   exportToExcel(filters: AffiliateFilters = {}): Observable<Blob> {
     let params = new HttpParams();

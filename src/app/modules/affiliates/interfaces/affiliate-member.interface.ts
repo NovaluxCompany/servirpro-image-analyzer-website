@@ -67,6 +67,10 @@ export interface AffiliateMember {
   certPension?: boolean;
   certCcf?: boolean;
 
+  // Estado de sincronización con Siigo
+  siigoSyncStatus?: 'PENDING' | 'SUCCESS' | 'FAILED' | null;
+  siigoId?: string | null;
+
   // Modificado: Ahora mapea el array relacional que viene del Backend
   documents?: AffiliateDocument[];
 
