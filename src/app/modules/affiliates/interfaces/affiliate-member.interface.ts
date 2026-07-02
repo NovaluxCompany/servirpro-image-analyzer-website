@@ -23,6 +23,8 @@ export interface AffiliateMember {
   email?: string;
   address?: string;
   municipality?: string;
+  departmentCode?: string;
+  cityCode?: string;
   reference?: string;
   // Fecha whatsapp
   whatsappEntryDate?: string;
@@ -90,6 +92,8 @@ export interface CreateAffiliateMemberDto {
   email?: string;
   address?: string;
   municipality?: string;
+  departmentCode?: string;
+  cityCode?: string;
   reference: string;        // required
   profession?: string;
   gender?: string;

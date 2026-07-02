@@ -178,11 +178,20 @@
               }
             </div>
 
-            <!-- Municipio -->
+            <!-- Departamento -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">Departamento</label>
+              <app-searchable-select formControlName="departmentCode" [options]="departmentOptions"
+                placeholder="Seleccionar departamento...">
+              </app-searchable-select>
+            </div>
+
+            <!-- Municipio / Ciudad -->
             <div>
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">Municipio</label>
-              <input type="text" formControlName="municipality" maxlength="255" placeholder="Ej: Medellin"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <app-searchable-select formControlName="cityCode" [options]="cityOptions"
+                placeholder="Seleccionar municipio...">
+              </app-searchable-select>
             </div>
 
             <!-- Direccion -->
