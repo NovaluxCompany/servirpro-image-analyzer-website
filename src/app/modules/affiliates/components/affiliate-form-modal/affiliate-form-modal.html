@@ -67,13 +67,12 @@
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">
                 Tipo de documento <span class="text-red-500">*</span>
               </label>
-              <select formControlName="documentType"
-                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                [class.border-red-400]="isFieldInvalid('documentType')">
-                @for (dt of documentTypes; track dt) {
-                <option [value]="dt">{{ dt }}</option>
-                }
-              </select>
+              <app-searchable-select formControlName="documentType" [options]="documentTypeOptions"
+                placeholder="Seleccionar tipo..." [isInvalid]="isFieldInvalid('documentType')">
+              </app-searchable-select>
+              @if (isFieldInvalid('documentType')) {
+              <p class="mt-1 text-xs text-red-500">Campo requerido</p>
+              }
             </div>
 
             <!-- Numero de documento -->
@@ -147,12 +146,9 @@
             <!-- Género -->
             <div>
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">Género</label>
-              <select formControlName="gender"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
-                <option value="">Sin especificar</option>
-                <option value="MASCULINO">Hombre</option>
-                <option value="FEMENINO">Mujer</option>
-              </select>
+              <app-searchable-select formControlName="gender" [options]="genderOptions"
+                placeholder="Sin especificar">
+              </app-searchable-select>
             </div>
 
             <!-- Vencimiento documento -->

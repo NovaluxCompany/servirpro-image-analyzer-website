@@ -385,7 +385,7 @@
 
               <!-- Cargo (Profesion) -->
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ affiliate.profession || '&#8212;' }}
+                {{ (affiliate.planName || '').toUpperCase().includes('ARL') ? (affiliate.profession || '&#8212;') : '&#8212;' }}
               </td>
 
               <!-- Nivel de Arl -->
