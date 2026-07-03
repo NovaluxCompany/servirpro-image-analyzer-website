@@ -32,6 +32,10 @@ export class AffiliateFormModalComponent implements OnInit {
   errorMessage = signal<string | null>(null);
   fileError = signal<string | null>(null);
   catalogsLoading = signal(true);
+  // Mientras esto sea true, el select de Municipio se muestra en un placeholder
+  // en vez del valor real, para no mostrar el código crudo un instante antes de
+  // que lleguen los municipios del departamento (parpadeo código -> nombre).
+  citiesLoading = signal(true);
 
   plans = signal<Plan[]>([]);
   companies = signal<Company[]>([]);
@@ -110,7 +114,7 @@ export class AffiliateFormModalComponent implements OnInit {
   form = this._fb.group({
     // Datos personales
     documentType: ['CC', Validators.required],
-    documentNumber: ['', [Validators.required, Validators.maxLength(20)]],
+    documentNumber: ['', [Validators.required, Validators.maxLength(11)]],
     firstName: ['', [Validators.required, Validators.maxLength(255)]],
     lastName: ['', [Validators.required, Validators.maxLength(255)]],
     birthDate: [''],
@@ -119,9 +123,9 @@ export class AffiliateFormModalComponent implements OnInit {
     phone: ['', Validators.maxLength(50)],
     email: ['', [Validators.required, Validators.email]],
     address: ['', Validators.maxLength(500)],
-    municipality: ['', Validators.maxLength(255)],
-    departmentCode: [''],
-    cityCode: [''],
+    municipality: ['', [Validators.required, Validators.maxLength(255)]],
+    departmentCode: ['', Validators.required],
+    cityCode: ['', Validators.required],
     reference: ['', Validators.required],
     profession: ['', Validators.maxLength(255)],
     //Fecha whatsapp
@@ -152,8 +156,10 @@ export class AffiliateFormModalComponent implements OnInit {
       if (this.isVisible()) {
         this.loadCatalogs();
         if (this.mode() === 'edit' && this.affiliate()) {
+          this.citiesLoading.set(true);
           this.patchForm(this.affiliate()!);
         } else {
+          this.citiesLoading.set(false);
           this.form.reset();
           this.form.patchValue({
             documentType: 'CC',
@@ -313,9 +319,14 @@ export class AffiliateFormModalComponent implements OnInit {
     });
   }
 
-  private loadCitiesForDepartment(departmentCode: string): void {
+  private loadCitiesForDepartment(departmentCode: string, municipalityToRestore?: string): void {
+    this.citiesLoading.set(true);
     this._service.getCitiesByDepartment(departmentCode).subscribe((cities) => {
       this.cities.set(cities);
+      if (municipalityToRestore) {
+        this.form.get('municipality')?.setValue(municipalityToRestore, { emitEvent: false });
+      }
+      this.citiesLoading.set(false);
     });
   }
 
@@ -419,10 +430,13 @@ export class AffiliateFormModalComponent implements OnInit {
         this.catalogsLoading.set(false);
 
         // In edit mode, the city dropdown depends on the department, which only
-        // resolves once catalogs finish loading.
+        // resolves once catalogs finish loading. Restore the saved municipality
+        // afterwards since patching departmentCode/cityCode earlier wiped it out
+        // (the cityCode valueChanges handler couldn't find it in the still-empty
+        // cities list at that point).
         const currentDepartmentCode = this.form.get('departmentCode')?.value;
         if (currentDepartmentCode) {
-          this.loadCitiesForDepartment(currentDepartmentCode);
+          this.loadCitiesForDepartment(currentDepartmentCode, this.affiliate()?.municipality);
         }
 
         // Re-run plan/grouper logic once catalogs are loaded (edit mode has values before catalogs arrive)
@@ -602,8 +616,10 @@ export class AffiliateFormModalComponent implements OnInit {
       phone: raw.phone || undefined,
       email: raw.email || undefined,
       address: raw.address || undefined,
-      municipality: raw.municipality || undefined,
-      departmentCode: raw.departmentCode || undefined,
+      // municipality/departmentCode ya no son columnas de clients ni campos del DTO del
+      // backend (forbidNonWhitelisted rechaza campos desconocidos): solo se usan aquí
+      // para la cascada departamento -> municipio del formulario. Solo se envía cityCode,
+      // que es la única columna real de ubicación (FK hacia cities).
       cityCode: raw.cityCode || undefined,
       reference: raw.reference!,
       profession: raw.profession || undefined,

@@ -36,7 +36,20 @@ export interface SelectOption {
 export class SearchableSelectComponent implements ControlValueAccessor, OnInit, AfterViewInit, OnDestroy {
   private _elementRef = inject(ElementRef);
 
-  @Input() options: SelectOption[] = [];
+  // `options` se reasigna de forma asíncrona (ej. la lista de municipios llega
+  // después de seleccionar el departamento, o después de cargar el afiliado en
+  // edición). `selectedLabel` es un computed() y solo reacciona a señales, así que
+  // sin este contador de versión no vuelve a calcular la etiqueta cuando cambian
+  // las opciones y se queda mostrando el valor crudo (el código) en vez del nombre.
+  private optionsVersion = signal(0);
+  private _options: SelectOption[] = [];
+  @Input() set options(value: SelectOption[]) {
+    this._options = value ?? [];
+    this.optionsVersion.update((v) => v + 1);
+  }
+  get options(): SelectOption[] {
+    return this._options;
+  }
   @Input() placeholder = 'Seleccionar...';
   @Input() isInvalid = false;
   /** Combobox mode: the trigger IS a text input. Typing sets the value directly.
@@ -83,6 +96,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
   };
 
   selectedLabel = computed(() => {
+    this.optionsVersion();
     const val = this.selectedValue();
     if (!val) return '';
     return this.options.find((o) => o.value === val)?.label ?? val;

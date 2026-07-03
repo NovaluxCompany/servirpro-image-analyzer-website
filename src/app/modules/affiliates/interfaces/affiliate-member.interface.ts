@@ -91,8 +91,10 @@ export interface CreateAffiliateMemberDto {
   phone?: string;
   email?: string;
   address?: string;
-  municipality?: string;
-  departmentCode?: string;
+  // municipality/departmentCode ya no son campos del DTO de creación/edición: el
+  // backend los rechaza (forbidNonWhitelisted). cityCode es la única columna real
+  // de ubicación; municipality/departmentCode solo se leen del backend para mostrar
+  // (ver AffiliateMember), no se envían.
   cityCode?: string;
   reference: string;        // required
   profession?: string;
