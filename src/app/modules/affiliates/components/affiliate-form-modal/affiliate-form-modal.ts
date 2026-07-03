@@ -4,7 +4,7 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@
 import { AffiliateMembersService } from '../../services/affiliate-members.service';
 import { ToastService } from '../../../../core/service/toast.service';
 import { AffiliateMember, CreateAffiliateMemberDto } from '../../interfaces/affiliate-member.interface';
-import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox } from '../../interfaces/catalog.interface';
+import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, Department, CityOption } from '../../interfaces/catalog.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 import { forkJoin } from 'rxjs';
 
@@ -32,6 +32,10 @@ export class AffiliateFormModalComponent implements OnInit {
   errorMessage = signal<string | null>(null);
   fileError = signal<string | null>(null);
   catalogsLoading = signal(true);
+  // Mientras esto sea true, el select de Municipio se muestra en un placeholder
+  // en vez del valor real, para no mostrar el código crudo un instante antes de
+  // que lleguen los municipios del departamento (parpadeo código -> nombre).
+  citiesLoading = signal(true);
 
   plans = signal<Plan[]>([]);
   companies = signal<Company[]>([]);
@@ -41,6 +45,8 @@ export class AffiliateFormModalComponent implements OnInit {
   pensions = signal<Pension[]>([]);
   compensationBoxes = signal<CompensationBox[]>([]);
   references = signal<string[]>([]);
+  departments = signal<Department[]>([]);
+  cities = signal<CityOption[]>([]);
 
   section1Open = true
   section2Open = true
@@ -94,6 +100,12 @@ export class AffiliateFormModalComponent implements OnInit {
   get compensationBoxOptions(): SelectOption[] {
     return this.compensationBoxes().map((c) => ({ value: String(c.id), label: (c as any).nameCompensationBox || c.name }));
   }
+  get departmentOptions(): SelectOption[] {
+    return this.departments().map((d) => ({ value: d.code, label: d.name }));
+  }
+  get cityOptions(): SelectOption[] {
+    return this.cities().map((c) => ({ value: c.cityCode, label: c.cityName }));
+  }
   readonly genderOptions: SelectOption[] = [
     { value: 'MASCULINO', label: 'Hombre' },
     { value: 'FEMENINO', label: 'Mujer' },
@@ -102,7 +114,7 @@ export class AffiliateFormModalComponent implements OnInit {
   form = this._fb.group({
     // Datos personales
     documentType: ['CC', Validators.required],
-    documentNumber: ['', [Validators.required, Validators.maxLength(20)]],
+    documentNumber: ['', [Validators.required, Validators.maxLength(11)]],
     firstName: ['', [Validators.required, Validators.maxLength(255)]],
     lastName: ['', [Validators.required, Validators.maxLength(255)]],
     birthDate: [''],
@@ -111,7 +123,9 @@ export class AffiliateFormModalComponent implements OnInit {
     phone: ['', Validators.maxLength(50)],
     email: ['', [Validators.required, Validators.email]],
     address: ['', Validators.maxLength(500)],
-    municipality: ['', Validators.maxLength(255)],
+    municipality: ['', [Validators.required, Validators.maxLength(255)]],
+    departmentCode: ['', Validators.required],
+    cityCode: ['', Validators.required],
     reference: ['', Validators.required],
     profession: ['', Validators.maxLength(255)],
     //Fecha whatsapp
@@ -142,8 +156,10 @@ export class AffiliateFormModalComponent implements OnInit {
       if (this.isVisible()) {
         this.loadCatalogs();
         if (this.mode() === 'edit' && this.affiliate()) {
+          this.citiesLoading.set(true);
           this.patchForm(this.affiliate()!);
         } else {
+          this.citiesLoading.set(false);
           this.form.reset();
           this.form.patchValue({
             documentType: 'CC',
@@ -282,6 +298,36 @@ export class AffiliateFormModalComponent implements OnInit {
 
       this.validateDocumentFile();
     });
+
+    this.form.get('departmentCode')?.valueChanges.subscribe((code) => {
+      const cityControl = this.form.get('cityCode');
+      cityControl?.setValue('', { emitEvent: false });
+      this.form.get('municipality')?.setValue('', { emitEvent: false });
+      if (!code) {
+        this.cities.set([]);
+        return;
+      }
+      this.loadCitiesForDepartment(code);
+    });
+
+    this.form.get('cityCode')?.valueChanges.subscribe((code) => {
+      if (!code) return;
+      const city = this.cities().find((c) => c.cityCode === code);
+      if (city) {
+        this.form.get('municipality')?.setValue(city.cityName, { emitEvent: false });
+      }
+    });
+  }
+
+  private loadCitiesForDepartment(departmentCode: string, municipalityToRestore?: string): void {
+    this.citiesLoading.set(true);
+    this._service.getCitiesByDepartment(departmentCode).subscribe((cities) => {
+      this.cities.set(cities);
+      if (municipalityToRestore) {
+        this.form.get('municipality')?.setValue(municipalityToRestore, { emitEvent: false });
+      }
+      this.citiesLoading.set(false);
+    });
   }
 
   private updatePlanLogic(planId: any) {
@@ -369,8 +415,9 @@ export class AffiliateFormModalComponent implements OnInit {
       references: this._service.getReferences(),
       pensions: this._service.getPensions(),
       compensationBoxes: this._service.getCompensationBoxes(),
+      departments: this._service.getDepartments(),
     }).subscribe({
-      next: ({ plans, companies, groupers, advisors, epsList, references, pensions, compensationBoxes }) => {
+      next: ({ plans, companies, groupers, advisors, epsList, references, pensions, compensationBoxes, departments }) => {
         this.plans.set(plans);
         this.companies.set(companies);
         this.groupers.set(groupers);
@@ -379,7 +426,18 @@ export class AffiliateFormModalComponent implements OnInit {
         this.references.set(references);
         this.pensions.set(pensions);
         this.compensationBoxes.set(compensationBoxes);
+        this.departments.set(departments);
         this.catalogsLoading.set(false);
+
+        // In edit mode, the city dropdown depends on the department, which only
+        // resolves once catalogs finish loading. Restore the saved municipality
+        // afterwards since patching departmentCode/cityCode earlier wiped it out
+        // (the cityCode valueChanges handler couldn't find it in the still-empty
+        // cities list at that point).
+        const currentDepartmentCode = this.form.get('departmentCode')?.value;
+        if (currentDepartmentCode) {
+          this.loadCitiesForDepartment(currentDepartmentCode, this.affiliate()?.municipality);
+        }
 
         // Re-run plan/grouper logic once catalogs are loaded (edit mode has values before catalogs arrive)
         const currentPlanId = this.form.get('planId')?.value;
@@ -417,6 +475,8 @@ export class AffiliateFormModalComponent implements OnInit {
       email: a.email ?? '',
       address: a.address ?? '',
       municipality: a.municipality ?? '',
+      departmentCode: a.departmentCode ?? '',
+      cityCode: a.cityCode ?? '',
       reference: a.reference ?? '',
       profession: a.profession ?? '',
 
@@ -556,7 +616,11 @@ export class AffiliateFormModalComponent implements OnInit {
       phone: raw.phone || undefined,
       email: raw.email || undefined,
       address: raw.address || undefined,
-      municipality: raw.municipality || undefined,
+      // municipality/departmentCode ya no son columnas de clients ni campos del DTO del
+      // backend (forbidNonWhitelisted rechaza campos desconocidos): solo se usan aquí
+      // para la cascada departamento -> municipio del formulario. Solo se envía cityCode,
+      // que es la única columna real de ubicación (FK hacia cities).
+      cityCode: raw.cityCode || undefined,
       reference: raw.reference!,
       profession: raw.profession || undefined,
       gender: raw.gender || undefined,
@@ -595,6 +659,13 @@ export class AffiliateFormModalComponent implements OnInit {
 
         const finalize = () => {
           this._toast.showSuccess(successMsg);
+          if (!this.isEdit) {
+            if (result?.siigoSyncStatus === 'SUCCESS') {
+              this._toast.showSuccess('Afiliado creado en Siigo correctamente');
+            } else if (result?.siigoSyncStatus === 'FAILED') {
+              this._toast.showError(result?.siigoSyncError || 'No se pudo crear el afiliado en Siigo');
+            }
+          }
           this.isLoading.set(false);
           this.saved.emit();
         };

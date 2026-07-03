@@ -8,6 +8,7 @@ import { AffiliateStatusModalComponent } from '../../components/affiliate-status
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
+import { Department } from '../../interfaces/catalog.interface';
 import { debounceTime, Subject } from 'rxjs';
 
 @Component({
@@ -42,6 +43,7 @@ export class AffiliatesListComponent implements OnInit {
   filterGrupo = '';
   advisorOptions = signal<SelectOption[]>([]);
   referenceOptions = signal<SelectOption[]>([]);
+  private departmentNameByCode = new Map<string, string>();
 
   private filterSubject = new Subject<void>();
 
@@ -53,6 +55,9 @@ export class AffiliatesListComponent implements OnInit {
 
   // ── Email ─────────────────────────────────────────────────────────
   sendingEmailId = signal<number | null>(null);
+
+  // ── Siigo ─────────────────────────────────────────────────────────
+  syncingSiigoId = signal<number | null>(null);
 
   // ── Dropdown acciones ─────────────────────────────────────────────
   openDropdownId = signal<string | null>(null);
@@ -124,6 +129,14 @@ export class AffiliatesListComponent implements OnInit {
     this._service.getReferences().subscribe((list) => {
       this.referenceOptions.set(list.map((r) => ({ value: r, label: r })));
     });
+    this._service.getDepartments().subscribe((list: Department[]) => {
+      this.departmentNameByCode = new Map(list.map((d) => [d.code, d.name]));
+    });
+  }
+
+  getDepartmentName(departmentCode: string | null | undefined): string {
+    if (!departmentCode) return '-';
+    return this.departmentNameByCode.get(departmentCode) ?? '-';
   }
 
   // Triggered by text filter inputs (debounced)
@@ -188,12 +201,11 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   openStatusToggle(affiliate: AffiliateMember): void {
-    const permission = affiliate.isActive ? 'delete' : 'approve';
     const message = affiliate.isActive
       ? 'Tu rol no tiene permiso para deshabilitar afiliados.'
       : 'Tu rol no tiene permiso para habilitar afiliados.';
 
-    if (!this._permission.check(permission, undefined, message)) return;
+    if (!this._permission.check('toggle', undefined, message)) return;
     this.selectedAffiliate.set(affiliate);
     this.showStatusModal.set(true);
   }
@@ -337,6 +349,33 @@ export class AffiliatesListComponent implements OnInit {
       error: (err) => {
         this._toast.showError(err.message ?? 'No se pudo enviar el correo');
         this.sendingEmailId.set(null);
+      },
+    });
+  }
+
+  syncToSiigo(affiliate: AffiliateMember): void {
+    if (!this._permission.check('edit', undefined, 'Tu rol no tiene permiso para sincronizar afiliados con Siigo.')) {
+      return;
+    }
+
+    const affiliationId = Number(affiliate.id);
+    if (!affiliationId || this.syncingSiigoId() !== null) return;
+
+    this.syncingSiigoId.set(affiliationId);
+    this._toast.showInfo('Subiendo afiliado a Siigo...');
+    this._service.syncToSiigo(affiliationId).subscribe({
+      next: (result) => {
+        if (result?.siigoSyncStatus === 'SUCCESS') {
+          this._toast.showSuccess('Afiliado subido a Siigo correctamente');
+        } else {
+          this._toast.showError(result?.siigoSyncError || 'No se pudo subir el afiliado a Siigo');
+        }
+        this.loadAffiliates();
+        this.syncingSiigoId.set(null);
+      },
+      error: (err) => {
+        this._toast.showError(err.message ?? 'No se pudo subir el afiliado a Siigo');
+        this.syncingSiigoId.set(null);
       },
     });
   }

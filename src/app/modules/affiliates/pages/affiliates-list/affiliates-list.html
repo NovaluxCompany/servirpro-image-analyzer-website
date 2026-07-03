@@ -161,6 +161,8 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Pensión</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Municipio</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Departamento</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Observaciones</th>
             </tr>
@@ -210,13 +212,19 @@
                 <div class="h-4 w-24 bg-gray-200 rounded"></div>
               </td>
               <td class="px-4 py-3">
+                <div class="h-4 w-24 bg-gray-200 rounded"></div>
+              </td>
+              <td class="px-4 py-3">
+                <div class="h-4 w-24 bg-gray-200 rounded"></div>
+              </td>
+              <td class="px-4 py-3">
                 <div class="h-4 w-20 bg-gray-200 rounded"></div>
               </td>
             </tr>
             }
             } @else if (affiliates().length === 0) {
             <tr>
-              <td colspan="14" class="px-4 py-16 text-center">
+              <td colspan="16" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -302,6 +310,27 @@
                           d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
                       </svg>
                       Enviar correo
+                      }
+                    </button>
+                    }
+
+                    <!-- Subir a Siigo -->
+                    @if (affiliate.siigoSyncStatus !== 'SUCCESS') {
+                    <button type="button" (click)="syncToSiigo(affiliate); closeDropdown()"
+                      [disabled]="syncingSiigoId() === +affiliate.id!"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-purple-700 hover:bg-purple-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      @if (syncingSiigoId() === +affiliate.id!) {
+                      <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                      </svg>
+                      Subiendo a Siigo...
+                      } @else {
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 7.5 12 3m0 0 4.5 4.5M12 3v13.5" />
+                      </svg>
+                      Subir a Siigo
                       }
                     </button>
                     }
@@ -435,6 +464,16 @@
               <!-- Referencia -->
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
                 {{ affiliate.reference || '&#8212;' }}
+              </td>
+
+              <!-- Municipio -->
+              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                {{ affiliate.municipality || '&#8212;' }}
+              </td>
+
+              <!-- Departamento -->
+              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                {{ getDepartmentName(affiliate.departmentCode) }}
               </td>
 
               <!-- Empresa -->
