@@ -60,7 +60,19 @@
 
           <!-- EL CONTENIDO SOLO SE MUESTRA SI section1Open ES TRUE -->
           @if (section1Open) {
-          <div class="p-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="p-4">
+
+          <!-- Lógica de Carga (departamentos / municipios / datos del afiliado) -->
+          @if (citiesLoading()) {
+          <div class="flex items-center justify-center py-10 gap-2 text-sm text-gray-500">
+            <svg class="w-5 h-5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <span>Cargando datos personales...</span>
+          </div>
+          } @else {
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
             <!-- Tipo de documento -->
             <div>
@@ -196,15 +208,11 @@
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">
                 Municipio <span class="text-red-500">*</span>
               </label>
-              @if (citiesLoading()) {
-              <div class="h-9 w-full bg-gray-100 rounded-lg animate-pulse"></div>
-              } @else {
               <app-searchable-select formControlName="cityCode" [options]="cityOptions"
                 placeholder="Seleccionar municipio..." [isInvalid]="isFieldInvalid('cityCode')">
               </app-searchable-select>
               @if (isFieldInvalid('cityCode')) {
               <p class="mt-1 text-xs text-red-500">El municipio es obligatorio</p>
-              }
               }
             </div>
 
@@ -224,6 +232,8 @@
               <input type="date" formControlName="entryDate"
                 class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed">
             </div>
+          </div>
+          }
           </div>
           }
         </div>
