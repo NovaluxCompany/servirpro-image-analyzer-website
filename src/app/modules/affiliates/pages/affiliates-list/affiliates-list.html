@@ -164,6 +164,8 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Municipio</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Departamento</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha ingreso</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupador</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Observaciones</th>
             </tr>
           </thead>
@@ -485,6 +487,16 @@
                 } @else {
                 <span class="text-gray-400">&#8212;</span>
                 }
+              </td>
+
+              <!-- Fecha ingreso -->
+              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                {{ (affiliate.entryDate | date:'dd/MM/yyyy') || '&#8212;' }}
+              </td>
+
+              <!-- Agrupador -->
+              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                {{ affiliate.grouperName || '&#8212;' }}
               </td>
 
               <!-- Observaciones -->
