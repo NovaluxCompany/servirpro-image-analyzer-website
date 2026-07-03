@@ -83,6 +83,34 @@ export class UpdateCompanyList implements OnInit {
     this._permission.can('export', '/actualizar-compania')
   );
 
+  // Estimados de tiempo (no son progreso real: el backend no reporta avance).
+  // Existen solo para que la persona no piense que la carga "se quedó
+  // pegada" con archivos grandes.
+  private formatSeconds(seconds: number): string {
+    if (seconds < 60) return `~${seconds} segundos`;
+    const minutes = Math.ceil(seconds / 60);
+    return `~${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
+  }
+
+  // Fase de validación (validateFile): aún no se conoce total_filas, se
+  // estima por tamaño de archivo (~50 KB/segundo de lectura+parseo xlsx).
+  protected readonly estimatedValidationLabel = computed(() => {
+    const sizeKb = (this.selectedFile()?.size ?? 0) / 1024;
+    const seconds = Math.max(3, Math.ceil(sizeKb / 50));
+    return this.formatSeconds(seconds);
+  });
+
+  // Fase de ejecución (executeUpload): ya se conoce total_filas por la
+  // pre-validación, se estima a ~4 filas/segundo.
+  protected readonly estimatedProcessingSeconds = computed(() => {
+    const rows = this.validationResult()?.total_filas ?? 0;
+    return Math.max(5, Math.ceil(rows / 4));
+  });
+
+  protected readonly estimatedProcessingLabel = computed(() =>
+    this.formatSeconds(this.estimatedProcessingSeconds())
+  );
+
   // Paginación
   protected readonly totalPages = computed(() =>
     Math.ceil((this.historyTotal() || 1) / (this.historyLimit() || 1))
