@@ -91,7 +91,7 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly canDeactivateByDate = computed(() => {
     const context = this.context();
     if (!context) return false;
-    return context.currentDay >= context.minDay && context.canDeactivateByDate;
+    return context.canDeactivateByDate;
   });
 
   protected readonly allAffiliates = computed(() =>
