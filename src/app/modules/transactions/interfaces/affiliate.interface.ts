@@ -15,6 +15,7 @@ export interface Affiliate {
   arl?: number;
   compensationFund?: string;
   pension?: string;
+  advisor?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

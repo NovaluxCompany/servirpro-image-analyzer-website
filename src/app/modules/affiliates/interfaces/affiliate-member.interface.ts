@@ -23,6 +23,8 @@ export interface AffiliateMember {
   email?: string;
   address?: string;
   municipality?: string;
+  departmentCode?: string;
+  cityCode?: string;
   reference?: string;
   // Fecha whatsapp
   whatsappEntryDate?: string;
@@ -67,6 +69,10 @@ export interface AffiliateMember {
   certPension?: boolean;
   certCcf?: boolean;
 
+  // Estado de sincronización con Siigo
+  siigoSyncStatus?: 'PENDING' | 'SUCCESS' | 'FAILED' | null;
+  siigoId?: string | null;
+
   // Modificado: Ahora mapea el array relacional que viene del Backend
   documents?: AffiliateDocument[];
 
@@ -85,7 +91,11 @@ export interface CreateAffiliateMemberDto {
   phone?: string;
   email?: string;
   address?: string;
-  municipality?: string;
+  // municipality/departmentCode ya no son campos del DTO de creación/edición: el
+  // backend los rechaza (forbidNonWhitelisted). cityCode es la única columna real
+  // de ubicación; municipality/departmentCode solo se leen del backend para mostrar
+  // (ver AffiliateMember), no se envían.
+  cityCode?: string;
   reference: string;        // required
   profession?: string;
   gender?: string;

@@ -15,6 +15,19 @@ export interface EpsItem extends CatalogItem {}
 export interface Pension extends CatalogItem {}
 export interface CompensationBox extends CatalogItem {}
 
+export interface Department {
+  code: string;
+  name: string;
+}
+
+export interface CityOption {
+  id: number;
+  departmentCode: string;
+  departmentName: string;
+  cityCode: string;
+  cityName: string;
+}
+
 export interface AffiliateCatalogs {
   plans: Plan[];
   companies: Company[];
