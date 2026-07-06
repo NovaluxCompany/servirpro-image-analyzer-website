@@ -132,6 +132,16 @@ export class TransactionTableComponent {
     return transaction.affiliates.length;
   }
 
+  // El asesor es del afiliado (snapshot guardado en cada TransactionAffiliate),
+  // no la cuenta que subió la transacción. Una transacción puede traer varios
+  // afiliados con distinto asesor, así que se listan los nombres únicos.
+  getAdvisors(transaction: Transaction): string {
+    const names = Array.from(
+      new Set((transaction.affiliates || []).map((a) => a.advisor).filter((name): name is string => !!name)),
+    );
+    return names.length > 0 ? names.join(', ') : '-';
+  }
+
   getAverageVeracity(transaction: Transaction): number {
     const receiptsWithVeracity = transaction.receipts.filter(r => r.veracityPercentage !== undefined);
     if (receiptsWithVeracity.length === 0) return 0;

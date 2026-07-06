@@ -5,7 +5,7 @@
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Acciones</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Fecha</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
-        <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Realizado por</th>
+        <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Afiliados</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Valor Total</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Valor Pagado</th>
@@ -110,7 +110,7 @@
               {{ transaction.reference }}
             </td>
             <td class="px-4 py-3 whitespace-nowrap">
-              {{ transaction.createdByUser?.name || '-' }}
+              {{ getAdvisors(transaction) }}
             </td>
             <td class="px-4 py-3 text-center">
               {{ getAffiliatesCount(transaction) }}
