@@ -6,7 +6,7 @@ import { ToastService } from '../../../../core/service/toast.service';
 import { AffiliateMember, CreateAffiliateMemberDto } from '../../interfaces/affiliate-member.interface';
 import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, Department, CityOption } from '../../interfaces/catalog.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of, switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-affiliate-form-modal',
@@ -36,6 +36,11 @@ export class AffiliateFormModalComponent implements OnInit {
   // en vez del valor real, para no mostrar el código crudo un instante antes de
   // que lleguen los municipios del departamento (parpadeo código -> nombre).
   citiesLoading = signal(true);
+  // En modo edición, controla si ya se cargaron catálogos + ciudades del afiliado
+  // y se rellenó el formulario. Mientras sea false, el modal muestra un loader en
+  // vez del formulario, para no pintar campos que luego "cambian solos" cuando
+  // llegan los catálogos (profesión, ARL, AFP, CCF, EPS, municipio, etc.).
+  formReady = signal(true);
 
   plans = signal<Plan[]>([]);
   companies = signal<Company[]>([]);
@@ -154,11 +159,12 @@ export class AffiliateFormModalComponent implements OnInit {
   constructor() {
     effect(() => {
       if (this.isVisible()) {
-        this.loadCatalogs();
         if (this.mode() === 'edit' && this.affiliate()) {
-          this.citiesLoading.set(true);
-          this.patchForm(this.affiliate()!);
+          this.formReady.set(false);
+          this.loadEditData(this.affiliate()!);
         } else {
+          this.loadCatalogs();
+          this.formReady.set(true);
           this.citiesLoading.set(false);
           this.form.reset();
           this.form.patchValue({
@@ -319,13 +325,10 @@ export class AffiliateFormModalComponent implements OnInit {
     });
   }
 
-  private loadCitiesForDepartment(departmentCode: string, municipalityToRestore?: string): void {
+  private loadCitiesForDepartment(departmentCode: string): void {
     this.citiesLoading.set(true);
     this._service.getCitiesByDepartment(departmentCode).subscribe((cities) => {
       this.cities.set(cities);
-      if (municipalityToRestore) {
-        this.form.get('municipality')?.setValue(municipalityToRestore, { emitEvent: false });
-      }
       this.citiesLoading.set(false);
     });
   }
@@ -404,9 +407,9 @@ export class AffiliateFormModalComponent implements OnInit {
     return str.substring(0, 10);
   }
 
-  private loadCatalogs(): void {
+  private loadCatalogs$() {
     this.catalogsLoading.set(true);
-    forkJoin({
+    return forkJoin({
       plans: this._service.getPlans(),
       companies: this._service.getCompanies(),
       groupers: this._service.getGroupers(),
@@ -416,8 +419,8 @@ export class AffiliateFormModalComponent implements OnInit {
       pensions: this._service.getPensions(),
       compensationBoxes: this._service.getCompensationBoxes(),
       departments: this._service.getDepartments(),
-    }).subscribe({
-      next: ({ plans, companies, groupers, advisors, epsList, references, pensions, compensationBoxes, departments }) => {
+    }).pipe(
+      switchMap(({ plans, companies, groupers, advisors, epsList, references, pensions, compensationBoxes, departments }) => {
         this.plans.set(plans);
         this.companies.set(companies);
         this.groupers.set(groupers);
@@ -428,30 +431,51 @@ export class AffiliateFormModalComponent implements OnInit {
         this.compensationBoxes.set(compensationBoxes);
         this.departments.set(departments);
         this.catalogsLoading.set(false);
+        return of(null);
+      }),
+    );
+  }
 
-        // In edit mode, the city dropdown depends on the department, which only
-        // resolves once catalogs finish loading. Restore the saved municipality
-        // afterwards since patching departmentCode/cityCode earlier wiped it out
-        // (the cityCode valueChanges handler couldn't find it in the still-empty
-        // cities list at that point).
-        const currentDepartmentCode = this.form.get('departmentCode')?.value;
-        if (currentDepartmentCode) {
-          this.loadCitiesForDepartment(currentDepartmentCode, this.affiliate()?.municipality);
-        }
-
-        // Re-run plan/grouper logic once catalogs are loaded (edit mode has values before catalogs arrive)
-        const currentPlanId = this.form.get('planId')?.value;
-        if (currentPlanId) {
-          this.updatePlanLogic(currentPlanId);
-        }
-        const currentGrouperId = this.form.get('grouperId')?.value;
-        if (currentGrouperId) {
-          const selectedGrouper = this.groupers().find(g => String(g.id) === String(currentGrouperId));
-          this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
-          this.validateDocumentFile();
-        }
-      },
+  private loadCatalogs(): void {
+    this.loadCatalogs$().subscribe({
       error: () => this.catalogsLoading.set(false),
+    });
+  }
+
+  // Modo edición: primero cargamos catálogos y las ciudades del departamento del
+  // afiliado, y solo cuando todo eso ya está disponible rellenamos el formulario.
+  // Así evitamos que patchForm() dispare valueChanges (planId, cityCode, etc.) con
+  // catálogos todavía vacíos, que borraban campos (profesión, ARL, AFP, CCF, EPS,
+  // municipio) y luego "aparecían solos" al reabrir el modal.
+  private loadEditData(a: AffiliateMember): void {
+    this.citiesLoading.set(true);
+    this.loadCatalogs$().pipe(
+      switchMap(() => a.departmentCode
+        ? this._service.getCitiesByDepartment(a.departmentCode)
+        : of([])),
+    ).subscribe({
+      next: (cities) => {
+        this.cities.set(cities);
+        this.citiesLoading.set(false);
+
+        this.patchForm(a);
+
+        if (a.planId) {
+          this.updatePlanLogic(String(a.planId));
+        }
+        if (a.grouperId) {
+          const selectedGrouper = this.groupers().find(g => String(g.id) === String(a.grouperId));
+          this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
+        }
+        this.validateDocumentFile();
+
+        this.formReady.set(true);
+      },
+      error: () => {
+        this.catalogsLoading.set(false);
+        this.citiesLoading.set(false);
+        this.formReady.set(true);
+      },
     });
   }
 
@@ -496,7 +520,7 @@ export class AffiliateFormModalComponent implements OnInit {
       certEps: a.certEps ?? false,
       certPension: a.certPension ?? false,
       certCcf: a.certCcf ?? false,
-    });
+    }, { emitEvent: false });
 
     // In edit mode: entryDate is fixed (disable to prevent editing), companyEntryDate is editable (enable)
     this.form.get('entryDate')?.disable({ emitEvent: false });
