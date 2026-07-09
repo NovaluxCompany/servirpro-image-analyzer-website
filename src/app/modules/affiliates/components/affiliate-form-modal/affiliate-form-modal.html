@@ -28,6 +28,16 @@
     <!-- Body -->
     <div class="flex-1 overflow-y-auto p-6 space-y-6">
 
+      @if (!formReady()) {
+      <div class="flex flex-col items-center justify-center gap-3 py-16">
+        <svg class="w-8 h-8 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+        </svg>
+        <p class="text-sm text-gray-500">Cargando información del afiliado...</p>
+      </div>
+      } @else {
+
       @if (errorMessage()) {
       <div class="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
         <svg class="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,20 +70,31 @@
 
           <!-- EL CONTENIDO SOLO SE MUESTRA SI section1Open ES TRUE -->
           @if (section1Open) {
-          <div class="p-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="p-4">
+
+          <!-- Lógica de Carga (departamentos / municipios / datos del afiliado) -->
+          @if (citiesLoading()) {
+          <div class="flex items-center justify-center py-10 gap-2 text-sm text-gray-500">
+            <svg class="w-5 h-5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <span>Cargando datos personales...</span>
+          </div>
+          } @else {
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
             <!-- Tipo de documento -->
             <div>
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">
                 Tipo de documento <span class="text-red-500">*</span>
               </label>
-              <select formControlName="documentType"
-                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                [class.border-red-400]="isFieldInvalid('documentType')">
-                @for (dt of documentTypes; track dt) {
-                <option [value]="dt">{{ dt }}</option>
-                }
-              </select>
+              <app-searchable-select formControlName="documentType" [options]="documentTypeOptions"
+                placeholder="Seleccionar tipo..." [isInvalid]="isFieldInvalid('documentType')">
+              </app-searchable-select>
+              @if (isFieldInvalid('documentType')) {
+              <p class="mt-1 text-xs text-red-500">Campo requerido</p>
+              }
             </div>
 
             <!-- Numero de documento -->
@@ -82,13 +103,13 @@
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">
                 Numero de documento <span class="text-red-500">*</span>
               </label>
-              <input type="text" formControlName="documentNumber" maxlength="20" placeholder="Ej: 1000334535"
+              <input type="text" formControlName="documentNumber" maxlength="11" placeholder="Ej: 1000334535"
                 (blur)="onDocumentNumberBlur()"
                 class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 [class.border-red-400]="isFieldInvalid('documentNumber') || duplicateDocument()"
                 [class.border-gray-300]="!isFieldInvalid('documentNumber') && !duplicateDocument()">
               @if (isFieldInvalid('documentNumber')) {
-              <p class="mt-1 text-xs text-red-500">Campo requerido (max. 20 caracteres)</p>
+              <p class="mt-1 text-xs text-red-500">Campo requerido (max. 11 caracteres)</p>
               }
               @if (duplicateDocument()) {
               <p class="mt-1 text-xs text-red-500 font-semibold">Ya existe un afiliado con este numero de documento.</p>
@@ -147,12 +168,9 @@
             <!-- Género -->
             <div>
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">Género</label>
-              <select formControlName="gender"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
-                <option value="">Sin especificar</option>
-                <option value="MASCULINO">Hombre</option>
-                <option value="FEMENINO">Mujer</option>
-              </select>
+              <app-searchable-select formControlName="gender" [options]="genderOptions"
+                placeholder="Sin especificar">
+              </app-searchable-select>
             </div>
 
             <!-- Vencimiento documento -->
@@ -182,11 +200,30 @@
               }
             </div>
 
-            <!-- Municipio -->
+            <!-- Departamento -->
             <div>
-              <label class="block mb-1.5 text-xs font-semibold text-gray-700">Municipio</label>
-              <input type="text" formControlName="municipality" maxlength="255" placeholder="Ej: Medellin"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                Departamento <span class="text-red-500">*</span>
+              </label>
+              <app-searchable-select formControlName="departmentCode" [options]="departmentOptions"
+                placeholder="Seleccionar departamento..." [isInvalid]="isFieldInvalid('departmentCode')">
+              </app-searchable-select>
+              @if (isFieldInvalid('departmentCode')) {
+              <p class="mt-1 text-xs text-red-500">El departamento es obligatorio</p>
+              }
+            </div>
+
+            <!-- Municipio / Ciudad -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                Municipio <span class="text-red-500">*</span>
+              </label>
+              <app-searchable-select formControlName="cityCode" [options]="cityOptions"
+                placeholder="Seleccionar municipio..." [isInvalid]="isFieldInvalid('cityCode')">
+              </app-searchable-select>
+              @if (isFieldInvalid('cityCode')) {
+              <p class="mt-1 text-xs text-red-500">El municipio es obligatorio</p>
+              }
             </div>
 
             <!-- Direccion -->
@@ -205,6 +242,8 @@
               <input type="date" formControlName="entryDate"
                 class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed">
             </div>
+          </div>
+          }
           </div>
           }
         </div>
@@ -595,6 +634,7 @@
           </div>
         </div>
       </form>
+      }
     </div>
   </div>
 </div>

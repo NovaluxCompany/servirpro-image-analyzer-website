@@ -4,7 +4,7 @@ import { Observable, catchError, of, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../../core/service/token.service';
 import { AffiliateMember,CreateAffiliateMemberDto,UpdateAffiliateMemberDto,} from '../interfaces/affiliate-member.interface';
-import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, } from '../interfaces/catalog.interface';
+import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, Department, CityOption, } from '../interfaces/catalog.interface';
 import { PaginatedAffiliatesResponse } from '../interfaces/paginated-affiliates.interface';
 
 export interface AffiliateFilters {
@@ -120,6 +120,17 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  // ── Enviar / sincronizar afiliado con Siigo ─────────────────────────
+  syncToSiigo(id: number): Observable<{ siigoSyncStatus: string; siigoId: string | null; siigoSyncError: string | null }> {
+    return this._http
+      .post<{ siigoSyncStatus: string; siigoId: string | null; siigoSyncError: string | null }>(
+        `${this.baseUrl}/${id}/sync-siigo`,
+        {},
+        { headers: this.getHeaders() }
+      )
+      .pipe(catchError(this.handleError));
+  }
+
   // ── Exportar afiliados a Excel ────────────────────────────────────
   exportToExcel(filters: AffiliateFilters = {}): Observable<Blob> {
     let params = new HttpParams();
@@ -200,6 +211,19 @@ export class AffiliateMembersService {
   getCompensationBoxes(): Observable<CompensationBox[]> {
     return this._http
       .get<CompensationBox[]>(`${environment.urlBD}/compensation_box/dropdown`, { headers: this.getHeaders() })
+      .pipe(catchError(() => of([])));
+  }
+
+  getDepartments(): Observable<Department[]> {
+    return this._http
+      .get<Department[]>(`${environment.urlBD}/cities/departments`, { headers: this.getHeaders() })
+      .pipe(catchError(() => of([])));
+  }
+
+  getCitiesByDepartment(departmentCode: string): Observable<CityOption[]> {
+    const params = new HttpParams().set('departmentCode', departmentCode);
+    return this._http
+      .get<CityOption[]>(`${environment.urlBD}/cities/dropdown`, { headers: this.getHeaders(), params })
       .pipe(catchError(() => of([])));
   }
 

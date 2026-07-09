@@ -4,9 +4,9 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@
 import { AffiliateMembersService } from '../../services/affiliate-members.service';
 import { ToastService } from '../../../../core/service/toast.service';
 import { AffiliateMember, CreateAffiliateMemberDto } from '../../interfaces/affiliate-member.interface';
-import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox } from '../../interfaces/catalog.interface';
+import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, Department, CityOption } from '../../interfaces/catalog.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of, switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-affiliate-form-modal',
@@ -32,6 +32,15 @@ export class AffiliateFormModalComponent implements OnInit {
   errorMessage = signal<string | null>(null);
   fileError = signal<string | null>(null);
   catalogsLoading = signal(true);
+  // Mientras esto sea true, el select de Municipio se muestra en un placeholder
+  // en vez del valor real, para no mostrar el código crudo un instante antes de
+  // que lleguen los municipios del departamento (parpadeo código -> nombre).
+  citiesLoading = signal(true);
+  // En modo edición, controla si ya se cargaron catálogos + ciudades del afiliado
+  // y se rellenó el formulario. Mientras sea false, el modal muestra un loader en
+  // vez del formulario, para no pintar campos que luego "cambian solos" cuando
+  // llegan los catálogos (profesión, ARL, AFP, CCF, EPS, municipio, etc.).
+  formReady = signal(true);
 
   plans = signal<Plan[]>([]);
   companies = signal<Company[]>([]);
@@ -41,12 +50,20 @@ export class AffiliateFormModalComponent implements OnInit {
   pensions = signal<Pension[]>([]);
   compensationBoxes = signal<CompensationBox[]>([]);
   references = signal<string[]>([]);
+  departments = signal<Department[]>([]);
+  cities = signal<CityOption[]>([]);
 
   section1Open = true
   section2Open = true
   section3Open = true
 
-  readonly documentTypes = ['CC', 'CE', 'TI', 'NIT', 'PPT'];
+  readonly documentTypeOptions: SelectOption[] = [
+    { value: 'CC', label: 'CC' },
+    { value: 'CE', label: 'CE' },
+    { value: 'TI', label: 'TI' },
+    { value: 'NIT', label: 'NIT' },
+    { value: 'PPT', label: 'PPT' },
+  ];
 
   toggleSection1() {
     this.section1Open = !this.section1Open;
@@ -88,11 +105,21 @@ export class AffiliateFormModalComponent implements OnInit {
   get compensationBoxOptions(): SelectOption[] {
     return this.compensationBoxes().map((c) => ({ value: String(c.id), label: (c as any).nameCompensationBox || c.name }));
   }
+  get departmentOptions(): SelectOption[] {
+    return this.departments().map((d) => ({ value: d.code, label: d.name }));
+  }
+  get cityOptions(): SelectOption[] {
+    return this.cities().map((c) => ({ value: c.cityCode, label: c.cityName }));
+  }
+  readonly genderOptions: SelectOption[] = [
+    { value: 'MASCULINO', label: 'Hombre' },
+    { value: 'FEMENINO', label: 'Mujer' },
+  ];
 
   form = this._fb.group({
     // Datos personales
     documentType: ['CC', Validators.required],
-    documentNumber: ['', [Validators.required, Validators.maxLength(20)]],
+    documentNumber: ['', [Validators.required, Validators.maxLength(11)]],
     firstName: ['', [Validators.required, Validators.maxLength(255)]],
     lastName: ['', [Validators.required, Validators.maxLength(255)]],
     birthDate: [''],
@@ -101,7 +128,9 @@ export class AffiliateFormModalComponent implements OnInit {
     phone: ['', Validators.maxLength(50)],
     email: ['', [Validators.required, Validators.email]],
     address: ['', Validators.maxLength(500)],
-    municipality: ['', Validators.maxLength(255)],
+    municipality: ['', [Validators.required, Validators.maxLength(255)]],
+    departmentCode: ['', Validators.required],
+    cityCode: ['', Validators.required],
     reference: ['', Validators.required],
     profession: ['', Validators.maxLength(255)],
     //Fecha whatsapp
@@ -130,10 +159,13 @@ export class AffiliateFormModalComponent implements OnInit {
   constructor() {
     effect(() => {
       if (this.isVisible()) {
-        this.loadCatalogs();
         if (this.mode() === 'edit' && this.affiliate()) {
-          this.patchForm(this.affiliate()!);
+          this.formReady.set(false);
+          this.loadEditData(this.affiliate()!);
         } else {
+          this.loadCatalogs();
+          this.formReady.set(true);
+          this.citiesLoading.set(false);
           this.form.reset();
           this.form.patchValue({
             documentType: 'CC',
@@ -195,6 +227,12 @@ export class AffiliateFormModalComponent implements OnInit {
     } else {
       ccfControl?.setValidators([Validators.required]);
       ccfControl?.enable();
+    }
+  }
+
+  validateProfession(professionControl: AbstractControl | null) {
+    if (!this.selectedPlanLabel.includes('ARL')) {
+      professionControl?.setValue('', { emitEvent: false });
     }
   }
 
@@ -266,6 +304,33 @@ export class AffiliateFormModalComponent implements OnInit {
 
       this.validateDocumentFile();
     });
+
+    this.form.get('departmentCode')?.valueChanges.subscribe((code) => {
+      const cityControl = this.form.get('cityCode');
+      cityControl?.setValue('', { emitEvent: false });
+      this.form.get('municipality')?.setValue('', { emitEvent: false });
+      if (!code) {
+        this.cities.set([]);
+        return;
+      }
+      this.loadCitiesForDepartment(code);
+    });
+
+    this.form.get('cityCode')?.valueChanges.subscribe((code) => {
+      if (!code) return;
+      const city = this.cities().find((c) => c.cityCode === code);
+      if (city) {
+        this.form.get('municipality')?.setValue(city.cityName, { emitEvent: false });
+      }
+    });
+  }
+
+  private loadCitiesForDepartment(departmentCode: string): void {
+    this.citiesLoading.set(true);
+    this._service.getCitiesByDepartment(departmentCode).subscribe((cities) => {
+      this.cities.set(cities);
+      this.citiesLoading.set(false);
+    });
   }
 
   private updatePlanLogic(planId: any) {
@@ -274,6 +339,7 @@ export class AffiliateFormModalComponent implements OnInit {
 
     this.validateAfp(this.form.get('pensionId'));
     this.validateArl(this.form.get('arl'));
+    this.validateProfession(this.form.get('profession'));
     this.validateCcf(this.form.get('compensationBoxId'));
     this.validateEps(this.form.get('epsId'));
 
@@ -341,9 +407,9 @@ export class AffiliateFormModalComponent implements OnInit {
     return str.substring(0, 10);
   }
 
-  private loadCatalogs(): void {
+  private loadCatalogs$() {
     this.catalogsLoading.set(true);
-    forkJoin({
+    return forkJoin({
       plans: this._service.getPlans(),
       companies: this._service.getCompanies(),
       groupers: this._service.getGroupers(),
@@ -352,8 +418,9 @@ export class AffiliateFormModalComponent implements OnInit {
       references: this._service.getReferences(),
       pensions: this._service.getPensions(),
       compensationBoxes: this._service.getCompensationBoxes(),
-    }).subscribe({
-      next: ({ plans, companies, groupers, advisors, epsList, references, pensions, compensationBoxes }) => {
+      departments: this._service.getDepartments(),
+    }).pipe(
+      switchMap(({ plans, companies, groupers, advisors, epsList, references, pensions, compensationBoxes, departments }) => {
         this.plans.set(plans);
         this.companies.set(companies);
         this.groupers.set(groupers);
@@ -362,21 +429,53 @@ export class AffiliateFormModalComponent implements OnInit {
         this.references.set(references);
         this.pensions.set(pensions);
         this.compensationBoxes.set(compensationBoxes);
+        this.departments.set(departments);
         this.catalogsLoading.set(false);
+        return of(null);
+      }),
+    );
+  }
 
-        // Re-run plan/grouper logic once catalogs are loaded (edit mode has values before catalogs arrive)
-        const currentPlanId = this.form.get('planId')?.value;
-        if (currentPlanId) {
-          this.updatePlanLogic(currentPlanId);
-        }
-        const currentGrouperId = this.form.get('grouperId')?.value;
-        if (currentGrouperId) {
-          const selectedGrouper = this.groupers().find(g => String(g.id) === String(currentGrouperId));
-          this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
-          this.validateDocumentFile();
-        }
-      },
+  private loadCatalogs(): void {
+    this.loadCatalogs$().subscribe({
       error: () => this.catalogsLoading.set(false),
+    });
+  }
+
+  // Modo edición: primero cargamos catálogos y las ciudades del departamento del
+  // afiliado, y solo cuando todo eso ya está disponible rellenamos el formulario.
+  // Así evitamos que patchForm() dispare valueChanges (planId, cityCode, etc.) con
+  // catálogos todavía vacíos, que borraban campos (profesión, ARL, AFP, CCF, EPS,
+  // municipio) y luego "aparecían solos" al reabrir el modal.
+  private loadEditData(a: AffiliateMember): void {
+    this.citiesLoading.set(true);
+    this.loadCatalogs$().pipe(
+      switchMap(() => a.departmentCode
+        ? this._service.getCitiesByDepartment(a.departmentCode)
+        : of([])),
+    ).subscribe({
+      next: (cities) => {
+        this.cities.set(cities);
+        this.citiesLoading.set(false);
+
+        this.patchForm(a);
+
+        if (a.planId) {
+          this.updatePlanLogic(String(a.planId));
+        }
+        if (a.grouperId) {
+          const selectedGrouper = this.groupers().find(g => String(g.id) === String(a.grouperId));
+          this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
+        }
+        this.validateDocumentFile();
+
+        this.formReady.set(true);
+      },
+      error: () => {
+        this.catalogsLoading.set(false);
+        this.citiesLoading.set(false);
+        this.formReady.set(true);
+      },
     });
   }
 
@@ -400,6 +499,8 @@ export class AffiliateFormModalComponent implements OnInit {
       email: a.email ?? '',
       address: a.address ?? '',
       municipality: a.municipality ?? '',
+      departmentCode: a.departmentCode ?? '',
+      cityCode: a.cityCode ?? '',
       reference: a.reference ?? '',
       profession: a.profession ?? '',
 
@@ -419,7 +520,7 @@ export class AffiliateFormModalComponent implements OnInit {
       certEps: a.certEps ?? false,
       certPension: a.certPension ?? false,
       certCcf: a.certCcf ?? false,
-    });
+    }, { emitEvent: false });
 
     // In edit mode: entryDate is fixed (disable to prevent editing), companyEntryDate is editable (enable)
     this.form.get('entryDate')?.disable({ emitEvent: false });
@@ -491,11 +592,11 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   private checkDuplicate(): void {
-    if (this.mode() !== 'create') return;
     const docNumber = this.form.value.documentNumber?.trim();
     if (!docNumber) { this.duplicateDocument.set(false); return; }
+    const currentDocNumber = this.affiliate()?.documentNumber?.trim();
     const exists = this.existingAffiliates().some(
-      (a) => a.documentNumber?.trim() === docNumber
+      (a) => a.documentNumber?.trim() === docNumber && a.documentNumber?.trim() !== currentDocNumber
     );
     this.duplicateDocument.set(exists);
   }
@@ -539,7 +640,11 @@ export class AffiliateFormModalComponent implements OnInit {
       phone: raw.phone || undefined,
       email: raw.email || undefined,
       address: raw.address || undefined,
-      municipality: raw.municipality || undefined,
+      // municipality/departmentCode ya no son columnas de clients ni campos del DTO del
+      // backend (forbidNonWhitelisted rechaza campos desconocidos): solo se usan aquí
+      // para la cascada departamento -> municipio del formulario. Solo se envía cityCode,
+      // que es la única columna real de ubicación (FK hacia cities).
+      cityCode: raw.cityCode || undefined,
       reference: raw.reference!,
       profession: raw.profession || undefined,
       gender: raw.gender || undefined,
@@ -578,6 +683,13 @@ export class AffiliateFormModalComponent implements OnInit {
 
         const finalize = () => {
           this._toast.showSuccess(successMsg);
+          if (!this.isEdit) {
+            if (result?.siigoSyncStatus === 'SUCCESS') {
+              this._toast.showSuccess('Afiliado creado en Siigo correctamente');
+            } else if (result?.siigoSyncStatus === 'FAILED') {
+              this._toast.showError(result?.siigoSyncError || 'No se pudo crear el afiliado en Siigo');
+            }
+          }
           this.isLoading.set(false);
           this.saved.emit();
         };
