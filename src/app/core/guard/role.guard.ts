@@ -14,12 +14,11 @@ const normalizePath = (path: string): string => {
 /**
  * Guard basado en menuPaths (control desde la base de datos).
  *
- * Lógica:
- *   1. Si menuPaths: [] → modo bootstrap / sin restricciones configuradas → permite todo.
- *   2. Si menuPaths tiene rutas → solo permite acceder a rutas que el usuario tenga asignadas.
+ * Lógica: solo permite acceder a rutas que el usuario tenga asignadas en menuPaths.
+ * Si el usuario no tiene ningún menuPath (rol sin permisos configurados), no accede a nada.
  *
  * La seguridad real se aplica en el backend (@Roles en los controladores NestJS).
- * Este guard solo maneja la UX: redirige al usuario si intenta acceder a una ruta
+ * Este guard además maneja la UX: redirige al usuario si intenta acceder a una ruta
  * que no tiene asignada en su perfil.
  */
 export const roleGuard: CanActivateFn = (
@@ -38,13 +37,9 @@ export const roleGuard: CanActivateFn = (
   }
 
   const menuPaths: string[] = user.menuPaths ?? [];
-
-  // Sin menuPaths configurados → acceso total (bootstrap o perfil sin restricciones aún)
-  if (menuPaths.length === 0) return true;
-
   const currentPath = normalizePath(state.url);
 
-  // 1º check: menuPaths de la BD
+  // check: menuPaths de la BD
   const hasMenuAccess = menuPaths.some((p) => {
     const allowedPath = normalizePath(p);
     return currentPath === allowedPath || currentPath.startsWith(allowedPath + '/');
@@ -64,10 +59,11 @@ export const roleGuard: CanActivateFn = (
     return false;
   }
 
-  // Si no hay URL anterior (primera carga), redirigir al primer menu permitido en BD
+  // Si no hay URL anterior (primera carga), redirigir al primer menu permitido en BD,
+  // o al login si el usuario no tiene ningún menú asignado.
   const fallback = menuPaths
     .map((p) => normalizePath(p))
-    .find((path) => path !== '/') ?? '/';
+    .find((path) => path !== '/') ?? '/login';
   router.navigate([fallback]);
   return false;
 };
