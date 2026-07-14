@@ -84,8 +84,15 @@ export class Login {
           })
           .filter((p, index, array) => p !== '/' && p !== '' && array.indexOf(p) === index);
 
-        const destination = menuPaths[0] ?? '/';
-        this._router.navigate([destination]);
+        if (menuPaths.length === 0) {
+          this._tokenService.removeToken();
+          this.showError = true;
+          this.messageError = 'Actualmente no cuenta con ningún rol en el sistema, no puede ingresar sin un rol vinculado.';
+          this._cdr.detectChanges();
+          return;
+        }
+
+        this._router.navigate([menuPaths[0]]);
       },
       error: () => {
         this.isLoading = false;

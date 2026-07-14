@@ -27,8 +27,6 @@ export class LayoutComponent {
   // o si el rol tiene acceso según PermissionService (cubre rutas que el backend
   // no tiene correctamente configuradas, como /usuarios → /afiliados en Pagos).
   canSee = (path: string): boolean => {
-    const menuPaths = this.currentUser()?.menuPaths ?? [];
-    if (menuPaths.length === 0) return true; // sin restricciones = mostrar todo
     return this._permission.canAccessRoute(path);
   };
 

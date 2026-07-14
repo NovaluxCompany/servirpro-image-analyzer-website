@@ -4,7 +4,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Gestión de Roles</h1>
+        <h1 class="text-3xl font-bold text-gray-900">Roles</h1>
         <p class="mt-1 text-sm text-gray-500">Define los perfiles de acceso y permisos específicos por módulo</p>
       </div>
       <button type="button" (click)="openCreateModal()"
@@ -16,68 +16,91 @@
       </button>
     </div>
 
-    <!-- Loading -->
-    @if (isLoading()) {
-      <div class="flex justify-center items-center py-20">
-        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-        <span class="ml-3 text-gray-500 text-sm">Cargando roles...</span>
-      </div>
-    } @else {
+    <!-- Tabla -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
 
-      <!-- Tabla -->
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th scope="col" class="px-6 py-4 font-semibold">Nombre del rol</th>
-                <th scope="col" class="px-6 py-4 font-semibold">Menús asociados</th>
-                <th scope="col" class="px-6 py-4 font-semibold text-center">Estado</th>
-                <th scope="col" class="px-6 py-4 font-semibold">Fecha de creación</th>
-                <th scope="col" class="px-6 py-4 font-semibold text-right">Acciones</th>
+      <!-- Table header info -->
+      <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+        <p class="text-sm text-gray-500">
+          @if (!isLoading()) {
+          Total: <span class="font-semibold text-gray-800">{{ totalItems() }}</span> roles
+          &nbsp;&mdash;&nbsp; Página {{ currentPage() }} de {{ totalPages }}
+          }
+        </p>
+      </div>
+
+      <div class="overflow-x-auto overflow-y-auto max-h-[calc(100vh-18rem)]">
+        <table class="w-full text-sm text-left text-gray-600">
+          <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+            <tr>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Acción</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre del rol</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Menús asociados</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha de creación</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+
+            @if (isLoading()) {
+              @for (i of [1,2,3,4,5]; track i) {
+              <tr class="animate-pulse">
+                <td class="px-4 py-3"><div class="h-7 w-8 bg-gray-200 rounded-lg"></div></td>
+                <td class="px-4 py-3"><div class="h-4 w-32 bg-gray-200 rounded"></div></td>
+                <td class="px-4 py-3"><div class="h-4 w-48 bg-gray-200 rounded"></div></td>
+                <td class="px-4 py-3"><div class="h-5 w-16 bg-gray-200 rounded-full"></div></td>
+                <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
               </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
+              }
+            } @else if (roles().length === 0) {
+            <tr>
+              <td colspan="5" class="px-4 py-16 text-center">
+                <div class="flex flex-col items-center gap-3">
+                  <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
+                    </svg>
+                  </div>
+                  <p class="text-gray-500 font-medium">No se encontraron roles registrados</p>
+                  <button (click)="openCreateModal()" class="text-blue-600 hover:underline text-sm font-medium">
+                    Crear el primero
+                  </button>
+                </div>
+              </td>
+            </tr>
+            } @else {
               @for (role of roles(); track role.id) {
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-2">
-                      <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                        <span class="text-blue-600 font-bold text-xs">{{ role.name.charAt(0).toUpperCase() }}</span>
-                      </div>
-                      <span class="font-semibold text-gray-900">{{ role.name }}</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4">
-                    <p class="text-xs text-gray-600 max-w-xs" [title]="getMenusList(role)">
-                      {{ getMenusList(role) }}
-                    </p>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span [ngClass]="role.isActive
-                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                        : 'bg-red-100 text-red-700 border-red-200'"
-                      class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full border">
-                      <span class="w-1.5 h-1.5 rounded-full"
-                        [ngClass]="role.isActive ? 'bg-emerald-500' : 'bg-red-400'"></span>
-                      {{ role.isActive ? 'Activo' : 'Inactivo' }}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-gray-400 text-xs">
-                    {{ role.createdAt | date:'dd/MM/yyyy':'America/Bogota' }}
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-end gap-2">
-                      <button type="button" (click)="openEditModal(role)" title="Editar rol"
-                        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-lg hover:bg-blue-200 transition-colors">
+              <tr class="hover:bg-gray-50 transition-colors duration-150">
+
+                <!-- Acciones -->
+                <td class="px-4 py-3">
+                  <div>
+                    <button type="button" #actionBtn
+                      (click)="toggleDropdown(role.id!, actionBtn); $event.stopPropagation()"
+                      class="inline-flex items-center justify-center w-8 h-8 text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                      title="Acciones">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
+                      </svg>
+                    </button>
+
+                    @if (openDropdownId() === role.id) {
+                    <div class="fixed z-50 w-44 bg-white border border-gray-200 rounded-lg shadow-lg py-1"
+                      [style.top.px]="dropdownPos().top"
+                      [style.left.px]="dropdownPos().left">
+
+                      <button type="button" (click)="openEditModal(role); closeDropdown()"
+                        class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                         Editar
                       </button>
-                      <button type="button" (click)="confirmDelete(role)" title="Eliminar rol"
-                        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-100 border border-red-200 rounded-lg hover:bg-red-200 transition-colors">
+
+                      <button type="button" (click)="confirmDelete(role); closeDropdown()"
+                        class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-red-700 hover:bg-red-50 transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -85,68 +108,86 @@
                         Eliminar
                       </button>
                     </div>
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="5" class="px-6 py-16 text-center">
-                    <div class="flex flex-col items-center gap-3">
-                      <svg class="w-12 h-12 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
-                      </svg>
-                      <p class="text-gray-400 text-sm">No se encontraron roles registrados.</p>
-                      <button (click)="openCreateModal()"
-                        class="text-blue-600 hover:underline text-sm font-medium">
-                        Crear el primero
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+                    }
+                  </div>
+                </td>
 
-        <!-- Pagination -->
-        @if (totalPages > 1) {
-          <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-            <span class="text-sm text-gray-600">
-              Mostrando {{ (currentPage() - 1) * pageSize() + 1 }}–{{ Math.min(currentPage() * pageSize(), totalItems()) }}
-              de {{ totalItems() }} resultados
-            </span>
-            <div class="inline-flex items-center gap-1">
-              <button (click)="onPageChange(currentPage() - 1)" [disabled]="currentPage() === 1"
-                class="px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-colors">
-                Anterior
-              </button>
-              @for (page of pages; track page) {
-                <button (click)="onPageChange(page)"
-                  [ngClass]="currentPage() === page
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100'"
-                  class="px-3 py-2 text-sm border rounded-lg transition-colors">
-                  {{ page }}
-                </button>
+                <!-- Nombre -->
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <span class="text-blue-600 font-bold text-xs">{{ role.name.charAt(0).toUpperCase() }}</span>
+                    </div>
+                    <span class="font-semibold text-gray-900">{{ role.name }}</span>
+                  </div>
+                </td>
+
+                <!-- Menús -->
+                <td class="px-4 py-3">
+                  <p class="text-xs text-gray-600 max-w-xs truncate" [title]="getMenusList(role)">
+                    {{ getMenusList(role) }}
+                  </p>
+                </td>
+
+                <!-- Estado -->
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span [ngClass]="role.isActive
+                      ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                      : 'bg-red-100 text-red-700 border-red-200'"
+                    class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full border">
+                    <span class="w-1.5 h-1.5 rounded-full"
+                      [ngClass]="role.isActive ? 'bg-emerald-500' : 'bg-red-400'"></span>
+                    {{ role.isActive ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+
+                <!-- Fecha -->
+                <td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                  {{ role.createdAt | date:'dd/MM/yyyy':'America/Bogota' }}
+                </td>
+
+              </tr>
               }
-              <button (click)="onPageChange(currentPage() + 1)" [disabled]="currentPage() === totalPages"
-                class="px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-colors">
-                Siguiente
-              </button>
-            </div>
-          </div>
-        }
+            }
+          </tbody>
+        </table>
       </div>
-    }
+
+      <!-- Paginacion -->
+      @if (totalPages > 1) {
+      <div class="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50">
+        <p class="text-sm text-gray-600">
+          {{ totalItems() }} registros &mdash; Página {{ currentPage() }} de {{ totalPages }}
+        </p>
+        <nav class="inline-flex items-center gap-1">
+          <button type="button" (click)="onPageChange(currentPage() - 1)" [disabled]="currentPage() === 1"
+            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+            Anterior
+          </button>
+          @for (page of pages; track page) {
+          <button type="button" (click)="onPageChange(page)"
+            [class]="page === currentPage()
+                  ? 'px-3 py-1.5 text-sm font-semibold text-white bg-blue-700 border border-blue-700 rounded-lg'
+                  : 'px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'">
+            {{ page }}
+          </button>
+          }
+          <button type="button" (click)="onPageChange(currentPage() + 1)" [disabled]="currentPage() === totalPages"
+            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+            Siguiente
+          </button>
+        </nav>
+      </div>
+      }
+    </div>
+
   </div>
 </div>
 
-<!-- Modal: Confirmar eliminación de rol -->
+<!-- Modal: Confirmar eliminación -->
 @if (roleToDelete()) {
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
     <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-
-      <!-- Header -->
       <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-red-600 to-red-700">
         <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
           <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,8 +197,6 @@
         </div>
         <h3 class="text-base font-bold text-white">Eliminar Rol</h3>
       </div>
-
-      <!-- Body -->
       <div class="px-6 py-5">
         <div class="flex items-center justify-center mb-4">
           <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
@@ -170,12 +209,8 @@
         <p class="text-center text-sm text-gray-700 leading-relaxed">
           ¿Está seguro de eliminar el rol <strong>{{ roleToDelete()?.name }}</strong>?
         </p>
-        <p class="mt-3 text-center text-xs text-gray-400">
-          Esta acción no se puede deshacer.
-        </p>
+        <p class="mt-3 text-center text-xs text-gray-400">Esta acción no se puede deshacer.</p>
       </div>
-
-      <!-- Footer -->
       <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
         <button type="button" (click)="cancelDelete()"
           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RolesService } from '../../services/roles.service';
 import { Role } from '../../interfaces/role.interface';
@@ -25,6 +25,14 @@ export class RoleListComponent implements OnInit {
   isLoading = signal(false);
   roleToDelete = signal<Role | null>(null);
 
+  openDropdownId = signal<number | null>(null);
+  dropdownPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    this.closeDropdown();
+  }
+
   ngOnInit() {
     this.loadRoles();
   }
@@ -42,6 +50,20 @@ export class RoleListComponent implements OnInit {
         this.isLoading.set(false);
       }
     });
+  }
+
+  toggleDropdown(id: number, btn: HTMLElement) {
+    if (this.openDropdownId() === id) {
+      this.closeDropdown();
+      return;
+    }
+    const rect = btn.getBoundingClientRect();
+    this.dropdownPos.set({ top: rect.bottom + 4, left: rect.left });
+    this.openDropdownId.set(id);
+  }
+
+  closeDropdown() {
+    this.openDropdownId.set(null);
   }
 
   openCreateModal() {
