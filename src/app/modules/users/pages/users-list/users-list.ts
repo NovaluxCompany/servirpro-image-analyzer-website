@@ -20,7 +20,6 @@ type UserModal =
   | 'none'
   | 'create'
   | 'create-confirm'
-  | 'create-success'
   | 'edit'
   | 'status-confirm'
   | 'role-assign'
@@ -47,6 +46,7 @@ export class UsersListComponent implements OnInit {
   protected readonly activeModal = signal<UserModal>('none');
   protected readonly users = signal<SystemUser[]>([]);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly createErrorMessage = signal<string | null>(null);
 
   // ── Dropdown acciones ─────────────────────────────────────────────
   protected readonly openDropdownId = signal<number | null>(null);
@@ -62,6 +62,24 @@ export class UsersListComponent implements OnInit {
     password: '',
     documentNumber: '',
   };
+  protected readonly createTouched = signal({ name: false, email: false, password: false });
+  private readonly EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  protected get isCreateNameValid(): boolean {
+    return !!this.createForm.name.trim();
+  }
+
+  protected get isCreateEmailValid(): boolean {
+    return this.EMAIL_REGEX.test(this.createForm.email.trim());
+  }
+
+  protected get isCreatePasswordValid(): boolean {
+    return !!this.createForm.password.trim();
+  }
+
+  protected onCreateBlur(field: 'name' | 'email' | 'password'): void {
+    this.createTouched.update(t => ({ ...t, [field]: true }));
+  }
 
   // ── Formulario editar usuario ─────────────────────────────────────
   protected editForm = {
@@ -70,6 +88,19 @@ export class UsersListComponent implements OnInit {
     password: '',
     documentNumber: '',
   };
+  protected readonly editTouched = signal({ name: false, email: false });
+
+  protected get isEditNameValid(): boolean {
+    return !!this.editForm.name.trim();
+  }
+
+  protected get isEditEmailValid(): boolean {
+    return this.EMAIL_REGEX.test(this.editForm.email.trim());
+  }
+
+  protected onEditBlur(field: 'name' | 'email'): void {
+    this.editTouched.update(t => ({ ...t, [field]: true }));
+  }
 
   // ── Asignar rol ───────────────────────────────────────────────────
   protected selectedRoleId = signal<number | null>(null);
@@ -178,19 +209,23 @@ export class UsersListComponent implements OnInit {
   // ── Crear usuario ─────────────────────────────────────────────────
   protected openCreateModal(): void {
     this.createForm = { name: '', email: '', password: '', documentNumber: '' };
+    this.createErrorMessage.set(null);
+    this.createTouched.set({ name: false, email: false, password: false });
     this.activeModal.set('create');
   }
 
   protected submitCreate(): void {
-    if (!this.createForm.name || !this.createForm.email || !this.createForm.password) {
-      this._toast.showError('Nombre, email y contraseña son obligatorios.');
+    this.createTouched.set({ name: true, email: true, password: true });
+    if (!this.isCreateNameValid || !this.isCreateEmailValid || !this.isCreatePasswordValid) {
       return;
     }
+    this.createErrorMessage.set(null);
     this.activeModal.set('create-confirm');
   }
 
   protected confirmCreate(): void {
     this.isSubmitting.set(true);
+    this.createErrorMessage.set(null);
     this._service.createUser({
       name: this.createForm.name,
       email: this.createForm.email,
@@ -199,13 +234,13 @@ export class UsersListComponent implements OnInit {
     }).subscribe({
       next: () => {
         this.isSubmitting.set(false);
-        this.activeModal.set('create-success');
+        this.activeModal.set('none');
+        this._toast.showSuccess(`Usuario ${this.createForm.email} creado correctamente.`);
         this.loadUsers();
       },
       error: (err: Error) => {
         this.isSubmitting.set(false);
-        this._toast.showError(err.message);
-        this.activeModal.set('none');
+        this.createErrorMessage.set(err.message);
       },
     });
   }
@@ -219,12 +254,13 @@ export class UsersListComponent implements OnInit {
       password: '',
       documentNumber: user.documentNumber ?? '',
     };
+    this.editTouched.set({ name: false, email: false });
     this.activeModal.set('edit');
   }
 
   protected submitEdit(): void {
-    if (!this.editForm.name || !this.editForm.email) {
-      this._toast.showError('Nombre y email son obligatorios.');
+    this.editTouched.set({ name: true, email: true });
+    if (!this.isEditNameValid || !this.isEditEmailValid) {
       return;
     }
     const user = this.selectedUser();
@@ -292,6 +328,7 @@ export class UsersListComponent implements OnInit {
   }
 
   protected submitRoleAssign(): void {
+    if (this.isSubmitting()) return;
     const roleId = this.selectedRoleId();
     if (!roleId) {
       this._toast.showError('Selecciona un rol para continuar.');
@@ -305,6 +342,7 @@ export class UsersListComponent implements OnInit {
   }
 
   protected confirmRoleAssign(): void {
+    if (this.isSubmitting()) return;
     const user = this.selectedUser();
     const roleId = this.selectedRoleId();
     if (!user || !roleId) return;
@@ -328,6 +366,9 @@ export class UsersListComponent implements OnInit {
   protected closeModal(): void {
     this.activeModal.set('none');
     this.selectedUser.set(null);
+    this.createErrorMessage.set(null);
+    this.createTouched.set({ name: false, email: false, password: false });
+    this.editTouched.set({ name: false, email: false });
   }
 
   // ── Paginación ────────────────────────────────────────────────────
