@@ -94,10 +94,12 @@ export class Login {
 
         this._router.navigate([menuPaths[0]]);
       },
-      error: () => {
+      error: (err) => {
         this.isLoading = false;
         this.showError = true;
-        this.messageError = "Correo electrónico y/o contraseña incorrectos";
+        this.messageError = err?.error?.message === 'Credenciales inválidas'
+          ? "Correo electrónico y/o contraseña incorrectos"
+          : (err?.error?.message ?? "Correo electrónico y/o contraseña incorrectos");
         this._cdr.detectChanges();
       }
     });
