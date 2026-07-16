@@ -29,6 +29,22 @@ export class UpdateCompanyPage {
     ).toBeVisible({ timeout: 20_000 });
   }
 
+  /**
+   * Verifica que el backend rechazó el archivo por contenido inválido (ej.
+   * una columna con el nombre mal escrito) y que el flujo no avanza.
+   */
+  async expectInvalidFile(errorDetailText?: string | RegExp): Promise<void> {
+    await expect(
+      this.page.getByText('El archivo contiene errores y no será procesado:')
+    ).toBeVisible({ timeout: 20_000 });
+
+    if (errorDetailText) {
+      await expect(this.page.getByText(errorDetailText)).toBeVisible();
+    }
+
+    await expect(this.page.getByRole('button', { name: 'Procesar actualización' })).toHaveCount(0);
+  }
+
   async processUpdate(): Promise<void> {
     await this.page.getByRole('button', { name: 'Procesar actualización' }).click();
     await expect(this.page.getByRole('heading', { name: 'Confirmar actualización' })).toBeVisible();
