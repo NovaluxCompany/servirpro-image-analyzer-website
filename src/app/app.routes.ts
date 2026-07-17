@@ -30,7 +30,7 @@ export const routes: Routes = [
             },
             {
                 path: 'roles',
-                canActivate: [redirectBackGuard],
+                canActivate: [roleGuard],
                 loadChildren: () => import('./modules/roles/roles.routes').then(m => m.rolesRoutes)
             },
             {

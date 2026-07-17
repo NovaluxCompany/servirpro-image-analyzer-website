@@ -42,7 +42,9 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly selectedIds = signal<number[]>([]);
   protected readonly context = signal<DeactivationContext | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly activeTab = signal<InactivationTab>('unpaid');
+  protected readonly activeTab = signal<InactivationTab>(
+    this._permission.can('view', '/desactivar-afiliados/sin-pago') ? 'unpaid' : 'underpaid'
+  );
 
   protected readonly unpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
   protected readonly underpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
@@ -55,6 +57,11 @@ export class DeactivateAffiliatesList implements OnInit {
 
   protected readonly showResultsModal = signal(false);
   protected readonly deactivationResult = signal<DeactivateAffiliatesResponse | null>(null);
+
+  // Verifica si el usuario puede acceder al tab "Sin pago"
+  protected readonly canViewUnpaid = computed(() =>
+    this._permission.can('view', '/desactivar-afiliados/sin-pago')
+  );
 
   // Verifica si el usuario puede acceder al tab "Pagos Incompletos"
   protected readonly canViewUnderpaid = computed(() =>
