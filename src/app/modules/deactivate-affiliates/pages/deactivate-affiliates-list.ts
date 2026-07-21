@@ -49,10 +49,9 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly unpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
   protected readonly underpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
 
-  protected readonly isTransactionsModalOpen = signal(false);
+  protected readonly expandedAffiliateId = signal<number | null>(null);
   protected readonly isLoadingTransactions = signal(false);
   protected readonly transactionsError = signal<string | null>(null);
-  protected readonly selectedAffiliateForDetail = signal<InactivationAffiliateRow | null>(null);
   protected readonly affiliateTransactions = signal<AffiliateTransactionRow[]>([]);
 
   protected readonly showResultsModal = signal(false);
@@ -493,10 +492,14 @@ export class DeactivateAffiliatesList implements OnInit {
     this.selectedIds.set([]);
   }
 
-  // ── Modal transacciones ───────────────────────────────────────────
-  protected openTransactionsModal(affiliate: InactivationAffiliateRow): void {
-    this.selectedAffiliateForDetail.set(affiliate);
-    this.isTransactionsModalOpen.set(true);
+  // ── Fila expandible: detalle de transacciones / observaciones ─────
+  protected toggleRowExpansion(affiliate: InactivationAffiliateRow): void {
+    if (this.expandedAffiliateId() === affiliate.affiliateId) {
+      this.collapseRow();
+      return;
+    }
+
+    this.expandedAffiliateId.set(affiliate.affiliateId);
     this.isLoadingTransactions.set(true);
     this.transactionsError.set(null);
     this.affiliateTransactions.set([]);
@@ -513,9 +516,8 @@ export class DeactivateAffiliatesList implements OnInit {
     });
   }
 
-  protected closeTransactionsModal(): void {
-    this.isTransactionsModalOpen.set(false);
-    this.selectedAffiliateForDetail.set(null);
+  protected collapseRow(): void {
+    this.expandedAffiliateId.set(null);
     this.affiliateTransactions.set([]);
     this.transactionsError.set(null);
   }
