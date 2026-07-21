@@ -29,7 +29,7 @@ export class AssignPermissionsComponent implements OnInit {
   showConfirm = signal(false);
 
   /** Set original (tal como está guardado) y set en edición (checkboxes actuales) */
-  originalMenuPermissionIds = new Set<number>();
+  originalMenuPermissionIds = signal(new Set<number>());
   selectedMenuPermissionIds = signal(new Set<number>());
 
   selectedRole = computed(() => this.roles().find((r) => r.id === this.selectedRoleId()) ?? null);
@@ -39,12 +39,28 @@ export class AssignPermissionsComponent implements OnInit {
 
   hasChanges = computed(() => {
     const current = this.selectedMenuPermissionIds();
-    if (current.size !== this.originalMenuPermissionIds.size) return true;
+    const original = this.originalMenuPermissionIds();
+    if (current.size !== original.size) return true;
     for (const id of current) {
-      if (!this.originalMenuPermissionIds.has(id)) return true;
+      if (!original.has(id)) return true;
     }
     return false;
   });
+
+  private summaryFor(menus: Menu[]): { menuName: string; permissions: string[] }[] {
+    const current = this.selectedMenuPermissionIds();
+    return menus
+      .map((menu) => ({
+        menuName: menu.name,
+        permissions: (menu.menuPermissions ?? [])
+          .filter((mp) => current.has(mp.id!))
+          .map((mp) => mp.permission.description),
+      }))
+      .filter((entry) => entry.permissions.length > 0);
+  }
+
+  generalSelectionSummary = computed(() => this.summaryFor(this.generalMenus()));
+  sensitiveSelectionSummary = computed(() => this.summaryFor(this.sensitiveMenus()));
 
   ngOnInit() {
     this.loadRoles();
@@ -77,7 +93,7 @@ export class AssignPermissionsComponent implements OnInit {
     this.selectedRoleId.set(id);
     const role = this.selectedRole();
     const grantedIds = (role?.roleMenuPermissions ?? []).map((rmp) => rmp.menuPermissionId);
-    this.originalMenuPermissionIds = new Set(grantedIds);
+    this.originalMenuPermissionIds.set(new Set(grantedIds));
     this.selectedMenuPermissionIds.set(new Set(grantedIds));
   }
 
@@ -91,6 +107,32 @@ export class AssignPermissionsComponent implements OnInit {
       next.add(menuPermissionId);
     } else {
       next.delete(menuPermissionId);
+    }
+    this.selectedMenuPermissionIds.set(next);
+  }
+
+  isMenuFullyChecked(menu: Menu): boolean {
+    const ids = menu.menuPermissions ?? [];
+    if (!ids.length) return false;
+    const current = this.selectedMenuPermissionIds();
+    return ids.every((mp) => current.has(mp.id!));
+  }
+
+  isMenuPartiallyChecked(menu: Menu): boolean {
+    const ids = menu.menuPermissions ?? [];
+    const current = this.selectedMenuPermissionIds();
+    const checkedCount = ids.filter((mp) => current.has(mp.id!)).length;
+    return checkedCount > 0 && checkedCount < ids.length;
+  }
+
+  toggleMenu(menu: Menu, checked: boolean) {
+    const next = new Set(this.selectedMenuPermissionIds());
+    for (const mp of menu.menuPermissions ?? []) {
+      if (checked) {
+        next.add(mp.id!);
+      } else {
+        next.delete(mp.id!);
+      }
     }
     this.selectedMenuPermissionIds.set(next);
   }
@@ -114,7 +156,7 @@ export class AssignPermissionsComponent implements OnInit {
       next: (updated) => {
         this.isSaving.set(false);
         this.showConfirm.set(false);
-        this.originalMenuPermissionIds = new Set(menuPermissionIds);
+        this.originalMenuPermissionIds.set(new Set(menuPermissionIds));
         this.roles.set(this.roles().map((r) => (r.id === updated.id ? updated : r)));
         this.toastService.showSuccess('Permisos actualizados correctamente.');
       },

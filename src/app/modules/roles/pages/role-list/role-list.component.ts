@@ -32,6 +32,7 @@ export class RoleListComponent implements OnInit {
   selectedRole = signal<Role | null>(null);
   isLoading = signal(false);
   roleToToggle = signal<Role | null>(null);
+  isToggling = signal(false);
 
   openDropdownId = signal<number | null>(null);
   dropdownPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -100,22 +101,26 @@ export class RoleListComponent implements OnInit {
   }
 
   cancelToggle() {
+    if (this.isToggling()) return;
     this.roleToToggle.set(null);
   }
 
   toggleRoleStatus() {
     const role = this.roleToToggle();
-    if (!role?.id) return;
+    if (!role?.id || this.isToggling()) return;
+    this.isToggling.set(true);
     this.rolesService.update(role.id, { isActive: !role.isActive }).subscribe({
       next: () => {
         this.toastService.showSuccess(
           role.isActive ? 'Rol deshabilitado correctamente.' : 'Rol habilitado correctamente.'
         );
+        this.isToggling.set(false);
         this.roleToToggle.set(null);
         this.loadRoles();
       },
       error: () => {
         this.toastService.showError('No se pudo actualizar el estado del rol. Intenta de nuevo.');
+        this.isToggling.set(false);
         this.roleToToggle.set(null);
       }
     });
@@ -130,11 +135,11 @@ export class RoleListComponent implements OnInit {
   }
 
   getMenusList(role: Role): string {
-    if (!role.roleMenuPermissions?.length) return 'Ninguno';
+    if (!role.roleMenuPermissions?.length) return '-';
     const menuNames = role.roleMenuPermissions
       .map((rmp) => rmp.menuPermission?.menu?.name)
       .filter((name): name is string => !!name);
     const unique = [...new Set(menuNames)];
-    return unique.length ? unique.join(', ') : 'Ninguno';
+    return unique.length ? unique.join(', ') : '-';
   }
 }

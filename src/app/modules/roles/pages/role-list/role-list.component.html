@@ -19,20 +19,20 @@
     </div>
 
     <!-- Tabs -->
-    <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
+    <div class="inline-flex rounded-xl border border-gray-200 bg-white p-1 mb-6">
       @if (canViewRoles) {
       <button type="button" (click)="activeTab.set('roles')"
         [class]="activeTab() === 'roles'
-          ? 'px-4 py-2.5 text-sm font-semibold text-blue-700 border-b-2 border-blue-700'
-          : 'px-4 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent'">
+          ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
+          : 'px-4 py-2 text-sm font-semibold rounded-lg text-gray-700 hover:bg-gray-100'">
         Roles
       </button>
       }
       @if (canAssignPermissions) {
       <button type="button" (click)="activeTab.set('permissions')"
         [class]="activeTab() === 'permissions'
-          ? 'px-4 py-2.5 text-sm font-semibold text-blue-700 border-b-2 border-blue-700'
-          : 'px-4 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent'">
+          ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
+          : 'px-4 py-2 text-sm font-semibold rounded-lg text-gray-700 hover:bg-gray-100'">
         Asignar Permisos
       </button>
       }
@@ -143,12 +143,7 @@
 
                 <!-- Nombre -->
                 <td class="px-4 py-3">
-                  <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <span class="text-blue-600 font-bold text-xs">{{ role.name.charAt(0) }}</span>
-                    </div>
-                    <span class="font-semibold text-gray-900">{{ role.name }}</span>
-                  </div>
+                  <span class="font-medium text-gray-900">{{ role.name || '-' }}</span>
                 </td>
 
                 <!-- Menús -->
@@ -158,21 +153,22 @@
                   </p>
                 </td>
 
-                <!-- Estado -->
+                <!-- Estado (habilitado / deshabilitado) -->
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <span [ngClass]="role.isActive
-                      ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                      : 'bg-red-100 text-red-700 border-red-200'"
-                    class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full border">
-                    <span class="w-1.5 h-1.5 rounded-full"
-                      [ngClass]="role.isActive ? 'bg-emerald-500' : 'bg-red-400'"></span>
-                    {{ role.isActive ? 'Activo' : 'Inactivo' }}
+                  @if (role.isActive) {
+                  <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded-full">
+                    Habilitado
                   </span>
+                  } @else {
+                  <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full">
+                    Deshabilitado
+                  </span>
+                  }
                 </td>
 
                 <!-- Fecha -->
                 <td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                  {{ role.createdAt | date:'dd/MM/yyyy':'America/Bogota' }}
+                  {{ (role.createdAt | date:'dd/MM/yyyy':'America/Bogota') || '-' }}
                 </td>
 
               </tr>
@@ -238,15 +234,23 @@
         }
       </div>
       <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
-        <button type="button" (click)="cancelToggle()"
-          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+        <button type="button" (click)="cancelToggle()" [disabled]="isToggling()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
           Cancelar
         </button>
-        <button type="button" (click)="toggleRoleStatus()"
+        <button type="button" (click)="toggleRoleStatus()" [disabled]="isToggling()"
           [class]="role.isActive
-            ? 'inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-300 rounded-lg transition-all'
-            : 'inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 rounded-lg transition-all'">
+            ? 'inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-300 rounded-lg transition-all disabled:opacity-50'
+            : 'inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 rounded-lg transition-all disabled:opacity-50'">
+          @if (isToggling()) {
+          <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Procesando...
+          } @else {
           Sí, {{ role.isActive ? 'deshabilitar' : 'habilitar' }}
+          }
         </button>
       </div>
     </div>
