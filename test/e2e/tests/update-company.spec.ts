@@ -18,27 +18,13 @@ test.use({ storageState: authStateFile('Administrador') });
  * abajo (que sí depende de esa variable).
  */
 test.describe('Actualizar Empresa — validación de archivo', () => {
-  test('DEMO: sube un PDF y falla a propósito (para mostrar un reporte en rojo)', async ({
-    page,
-  }) => {
-    const updateCompanyPage = new UpdateCompanyPage(page);
-    await updateCompanyPage.goto();
-
-    const pdfPath = buildDummyPdf();
-    await updateCompanyPage.uploadFile(pdfPath);
-
-    // La app SÍ rechaza el PDF correctamente (toast de error, sin avanzar).
-    // Esta aserción es intencionalmente incorrecta —espera el botón de
-    // "Procesar actualización" que NUNCA aparece tras un archivo rechazado—
-    // para que el test se reporte en rojo a modo de demostración.
-    await expect(page.getByRole('button', { name: 'Procesar actualización' })).toBeVisible({
-      timeout: 10_000,
-    });
-  });
-
   test('rechaza un archivo que no es .xlsx (ej. PDF)', async ({ page }) => {
     const updateCompanyPage = new UpdateCompanyPage(page);
     await updateCompanyPage.goto();
+    test.skip(
+      !(await updateCompanyPage.isWithinAllowedWindow()),
+      'Fuera de la ventana de días permitida (minDay-maxDay) para este módulo este mes.'
+    );
 
     const pdfPath = buildDummyPdf();
     await updateCompanyPage.uploadFile(pdfPath);
@@ -54,6 +40,10 @@ test.describe('Actualizar Empresa — validación de archivo', () => {
   test('rechaza un .xlsx válido en formato pero con una columna mal nombrada', async ({ page }) => {
     const updateCompanyPage = new UpdateCompanyPage(page);
     await updateCompanyPage.goto();
+    test.skip(
+      !(await updateCompanyPage.isWithinAllowedWindow()),
+      'Fuera de la ventana de días permitida (minDay-maxDay) para este módulo este mes.'
+    );
 
     // Parte de la plantilla REAL (para que solo falle la columna que
     // corrompemos a propósito, no las demás) y le cambia el nombre a la
@@ -79,34 +69,6 @@ test.describe('Actualizar Empresa — validación de archivo', () => {
     }
   });
 
-  test('DEMO: columna mal nombrada, falla a propósito (para mostrar un reporte en rojo)', async ({
-    page,
-  }) => {
-    const updateCompanyPage = new UpdateCompanyPage(page);
-    await updateCompanyPage.goto();
-
-    const templatePath = await updateCompanyPage.downloadTemplate(
-      generatedFilePath(`template-badcol-demo-${Date.now()}.xlsx`)
-    );
-    const filePath = await buildFixtureWithBadColumnName(
-      templatePath,
-      [randomDocumentNumber()],
-      'EMPRESA DE PRUEBAS QA',
-      'Compañia'
-    );
-    fs.unlinkSync(templatePath);
-
-    try {
-      await updateCompanyPage.uploadFile(filePath);
-      // La app SÍ rechaza el archivo correctamente (columna "Empresa" no
-      // reconocida). Esta aserción es intencionalmente incorrecta —espera
-      // que el archivo se valide como bueno, cosa que nunca pasa con una
-      // columna mal nombrada— para que el test se reporte en rojo.
-      await updateCompanyPage.expectValidFile(1);
-    } finally {
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    }
-  });
 });
 
 /**
@@ -135,6 +97,10 @@ test.describe('Actualizar Empresa', () => {
   test('actualiza empresa de 1-2 afiliados puntuales (no masivo)', async ({ page }) => {
     const updateCompanyPage = new UpdateCompanyPage(page);
     await updateCompanyPage.goto();
+    test.skip(
+      !(await updateCompanyPage.isWithinAllowedWindow()),
+      'Fuera de la ventana de días permitida (minDay-maxDay) para este módulo este mes.'
+    );
 
     const templatePath = await updateCompanyPage.downloadTemplate(
       generatedFilePath(`template-${Date.now()}.xlsx`)

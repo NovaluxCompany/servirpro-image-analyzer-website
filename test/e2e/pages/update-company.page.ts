@@ -23,6 +23,25 @@ export class UpdateCompanyPage {
     await this.page.locator('input[type="file"]').setInputFiles(filePath);
   }
 
+  /**
+   * Regla de negocio: el módulo solo permite subir archivos entre el día
+   * `minDay` y `maxDay` de cada mes (ver update-company-list.html). Fuera de
+   * esa ventana el input de archivo ni siquiera se renderiza. Los tests que
+   * necesitan subir un archivo deben llamar a esto tras goto() y saltarse
+   * (test.skip) si la ventana está cerrada, en vez de fallar por timeout.
+   */
+  async isWithinAllowedWindow(): Promise<boolean> {
+    // El contexto (minDay/maxDay) llega async; hasta que carga, isDateAllowed()
+    // puede mostrar transitoriamente el input de archivo por defecto. Hay que
+    // esperar a que el estado se asiente (banner de bloqueo O input estable)
+    // antes de decidir, no quedarse con el primer estado que aparezca.
+    const blocked = this.page.getByText('Módulo no disponible en esta fecha');
+    const fileInput = this.page.locator('input[type="file"]');
+    await expect(blocked.or(fileInput)).toBeAttached({ timeout: 15_000 });
+    await this.page.waitForTimeout(500); // deja asentar el estado tras la carga del contexto
+    return (await fileInput.count()) > 0 && (await blocked.count()) === 0;
+  }
+
   async expectValidFile(expectedRows: number): Promise<void> {
     await expect(
       this.page.getByText(new RegExp(`Se actualizará la empresa de ${expectedRows}`))
