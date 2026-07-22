@@ -47,10 +47,9 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly unpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
   protected readonly underpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
 
-  protected readonly isTransactionsModalOpen = signal(false);
+  protected readonly expandedAffiliateId = signal<number | null>(null);
   protected readonly isLoadingTransactions = signal(false);
   protected readonly transactionsError = signal<string | null>(null);
-  protected readonly selectedAffiliateForDetail = signal<InactivationAffiliateRow | null>(null);
   protected readonly affiliateTransactions = signal<AffiliateTransactionRow[]>([]);
 
   protected readonly showResultsModal = signal(false);
@@ -486,10 +485,15 @@ export class DeactivateAffiliatesList implements OnInit {
     this.selectedIds.set([]);
   }
 
-  // ── Modal transacciones ───────────────────────────────────────────
-  protected openTransactionsModal(affiliate: InactivationAffiliateRow): void {
-    this.selectedAffiliateForDetail.set(affiliate);
-    this.isTransactionsModalOpen.set(true);
+  // ── Fila expandible de transacciones ──────────────────────────────
+  /** Alterna la fila expandible de detalle; solo una fila puede estar expandida a la vez. */
+  protected toggleAffiliateExpand(affiliate: InactivationAffiliateRow): void {
+    if (this.expandedAffiliateId() === affiliate.affiliateId) {
+      this.expandedAffiliateId.set(null);
+      return;
+    }
+
+    this.expandedAffiliateId.set(affiliate.affiliateId);
     this.isLoadingTransactions.set(true);
     this.transactionsError.set(null);
     this.affiliateTransactions.set([]);
@@ -504,13 +508,6 @@ export class DeactivateAffiliatesList implements OnInit {
         this.isLoadingTransactions.set(false);
       },
     });
-  }
-
-  protected closeTransactionsModal(): void {
-    this.isTransactionsModalOpen.set(false);
-    this.selectedAffiliateForDetail.set(null);
-    this.affiliateTransactions.set([]);
-    this.transactionsError.set(null);
   }
 
   protected toggleTransactionApproved(tx: AffiliateTransactionRow): void {
