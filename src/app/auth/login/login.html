@@ -1,92 +1,21 @@
-<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-50">
-  <div class="flex min-h-screen">
-    <!-- Left Panel - Branding -->
-    <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 p-12 relative overflow-hidden">
-      <!-- Decorative elements -->
-      <div class="absolute top-0 left-0 w-full h-full opacity-10">
-        <div class="absolute top-20 left-20 w-72 h-72 bg-white rounded-full blur-3xl"></div>
-        <div class="absolute bottom-20 right-20 w-96 h-96 bg-white rounded-full blur-3xl"></div>
-      </div>
-      
-      <div class="relative z-10 flex flex-col justify-between w-full">
-        <!-- Logo/Brand -->
+<div class="min-h-screen bg-white flex relative overflow-hidden">
+  <!-- Decorative circle -->
+  <div class="hidden lg:block absolute top-1/2 left-[94vw] -translate-x-1/2 -translate-y-1/2 w-[94vw] h-[94vw] rounded-full bg-linear-to-br from-blue-600 to-blue-800"></div>
+
+  <div class="w-full flex min-h-screen">
+    <!-- Left Panel - Login Form -->
+    <div class="relative z-10 flex-1 flex items-center justify-center p-8 lg:p-14">
+      <div class="w-full max-w-sm">
+        <!-- Logo -->
+        <div class="mb-8 flex justify-center">
+          <img src="/images/logotype/logo.webp" alt="ServirPRO Seguros" class="h-14 w-auto">
+        </div>
+
         <div>
-          <div class="flex items-center gap-3 mb-8">
-            <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg">
-              <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <h1 class="text-3xl font-bold text-white">ImageAnalyzer</h1>
-          </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="mb-20">
-          <h2 class="text-4xl font-bold text-white mb-6 leading-tight">
-            Gestión inteligente de<br/>transacciones y afiliados
-          </h2>
-          <p class="text-blue-100 text-lg leading-relaxed max-w-md">
-            Procesa y analiza comprobantes de pago con inteligencia artificial. 
-            Administra transacciones de forma rápida y segura.
-          </p>
-          
-          <!-- Features -->
-          <div class="mt-12 space-y-4">
-            <div class="flex items-center gap-3 text-white">
-              <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span class="text-blue-50">Procesamiento automático con IA</span>
-            </div>
-            <div class="flex items-center gap-3 text-white">
-              <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span class="text-blue-50">Gestión de afiliados simplificada</span>
-            </div>
-            <div class="flex items-center gap-3 text-white">
-              <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span class="text-blue-50">Reportes y analytics en tiempo real</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="text-blue-200 text-sm">
-          © 2024 ImageAnalyzer Dashboard. Todos los derechos reservados.
-        </div>
-      </div>
-    </div>
-
-    <!-- Right Panel - Login Form -->
-    <div class="flex-1 flex items-center justify-center p-8">
-      <div class="w-full max-w-md">
-        <!-- Mobile Logo -->
-        <div class="lg:hidden flex justify-center mb-8">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <h1 class="text-2xl font-bold text-gray-900">ImageAnalyzer</h1>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
           <!-- Header -->
           <div class="mb-8">
-            <h2 class="text-3xl font-bold text-gray-900 mb-2">Bienvenido</h2>
-            <p class="text-gray-500">Ingresa tus credenciales para continuar</p>
+            <h2 class="text-3xl font-bold text-gray-900 mb-2">Iniciar Sesión</h2>
+            <p class="text-gray-500">Ingresa a tu cuenta para continuar</p>
           </div>
 
           <!-- Error Alert -->
@@ -107,19 +36,19 @@
             <!-- Email Field -->
             <div>
               <label for="email" class="block mb-2 text-sm font-medium text-gray-900">
-                Correo Electrónico
+                Correo electrónico
               </label>
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
                   <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <input 
                   type="email" 
                   id="email" 
                   formControlName="email"
-                  placeholder="tu@email.com"
+                  placeholder="Correo electrónico"
                   [class.border-red-500]="isFieldInvalid('email')"
                   [class.focus:ring-red-500]="isFieldInvalid('email')"
                   [class.border-gray-300]="!isFieldInvalid('email')"
@@ -143,7 +72,7 @@
                   [type]="showPassword ? 'text' : 'password'" 
                   id="password" 
                   formControlName="password"
-                  placeholder="••••••••"
+                  placeholder="Contraseña"
                   [class.border-red-500]="isFieldInvalid('password')"
                   [class.focus:ring-red-500]="isFieldInvalid('password')"
                   [class.border-gray-300]="!isFieldInvalid('password')"
@@ -166,6 +95,13 @@
                   }
                 </button>
               </div>
+            </div>
+
+            <!-- Forgot Password -->
+            <div class="text-center">
+              <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors duration-200">
+                ¿Olvidaste tu contraseña?
+              </a>
             </div>
 
             <!-- Submit Button -->
@@ -195,12 +131,45 @@
         </div>
 
         <!-- Additional Info -->
-        <p class="text-center text-sm text-gray-500 mt-6">
-          ¿Necesitas ayuda? 
-          <a href="#" class="font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors duration-200">
-            Contacta soporte
-          </a>
+        <div class="flex items-center gap-3 text-sm text-gray-500 mt-8">
+          <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <span>Acceso seguro y confidencial</span>
+          <span class="text-gray-300">|</span>
+          <span>Versión 2026</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel - Branding -->
+    <div class="hidden lg:flex lg:w-1/2 relative z-10 items-center justify-center">
+
+      <div class="relative z-10 flex flex-col items-center text-center px-12 max-w-md">
+        <div class="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-8">
+          <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+            <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+        </div>
+
+        <h2 class="text-5xl font-bold text-white mb-5">Bienvenido</h2>
+        <div class="flex items-center gap-3 mb-6 w-48">
+          <span class="flex-1 h-px bg-white/30"></span>
+          <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h4l2-6 4 12 2-6h6" />
+          </svg>
+          <span class="flex-1 h-px bg-white/30"></span>
+        </div>
+        <p class="text-blue-100 text-lg leading-relaxed">
+          Este acceso es exclusivo para usuarios autorizados.
+          Toda la información está protegida.
         </p>
+      </div>
+
+      <div class="absolute bottom-8 left-0 right-0 text-center">
+        <span class="text-blue-200 text-xs tracking-widest font-medium">SISTEMA PRO</span>
       </div>
     </div>
   </div>
