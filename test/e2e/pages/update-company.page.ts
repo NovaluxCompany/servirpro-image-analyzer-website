@@ -27,8 +27,9 @@ export class UpdateCompanyPage {
    * Regla de negocio: el módulo solo permite subir archivos entre el día
    * `minDay` y `maxDay` de cada mes (ver update-company-list.html). Fuera de
    * esa ventana el input de archivo ni siquiera se renderiza. Los tests que
-   * necesitan subir un archivo deben llamar a esto tras goto() y saltarse
-   * (test.skip) si la ventana está cerrada, en vez de fallar por timeout.
+   * necesitan subir un archivo deben llamar a esto tras goto() y, si la
+   * ventana está cerrada, verificar expectBlockedByDateWindow() en vez de
+   * saltarse — así siempre se valida el comportamiento real del día actual.
    */
   async isWithinAllowedWindow(): Promise<boolean> {
     // El contexto (minDay/maxDay) llega async; hasta que carga, isDateAllowed()
@@ -40,6 +41,12 @@ export class UpdateCompanyPage {
     await expect(blocked.or(fileInput)).toBeAttached({ timeout: 15_000 });
     await this.page.waitForTimeout(500); // deja asentar el estado tras la carga del contexto
     return (await fileInput.count()) > 0 && (await blocked.count()) === 0;
+  }
+
+  /** Confirma el estado "bloqueado por fecha" (alternativa a subir archivo cuando la ventana está cerrada). */
+  async expectBlockedByDateWindow(): Promise<void> {
+    await expect(this.page.getByText('Módulo no disponible en esta fecha')).toBeVisible();
+    await expect(this.page.locator('input[type="file"]')).toHaveCount(0);
   }
 
   async expectValidFile(expectedRows: number): Promise<void> {

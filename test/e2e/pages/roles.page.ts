@@ -43,6 +43,20 @@ export class RolesPage {
     await expect(this.page.locator('select option')).not.toHaveCount(1, { timeout: 15_000 });
   }
 
+  /**
+   * Devuelve el texto del primer rol seleccionable (distinto del placeholder
+   * "-- Selecciona --"). Usa un locator con espera propia en vez de leer
+   * allTextContents() en un instante fijo, para no correr contra un re-render
+   * a mitad de camino tras openPermissionsTab().
+   */
+  async firstSelectableRoleName(): Promise<string> {
+    const realOption = this.page.locator('select option').filter({ hasNotText: '-- Selecciona --' }).first();
+    await expect(realOption, 'Se requiere al menos un rol configurado en el ambiente de pruebas.').toBeAttached({
+      timeout: 10_000,
+    });
+    return (await realOption.textContent())?.trim() ?? '';
+  }
+
   async openCreateModal(): Promise<void> {
     await this.page.getByRole('button', { name: 'Nuevo Rol' }).click();
     await expect(this.page.getByRole('heading', { name: 'Crear Nuevo Rol' })).toBeVisible();
@@ -96,9 +110,10 @@ export class RolesPage {
   async selectRoleForPermissions(roleName: string): Promise<void> {
     await this.page.locator('select').selectOption({ label: roleName });
     await expect(this.page.getByRole('heading', { name: roleName, level: 3 })).toBeVisible();
-    // Los checkboxes de permisos (menús generales/sensibles) cargan tras
-    // seleccionar el rol; esperamos a que al menos uno esté listo.
-    await expect(this.page.locator('input[type="checkbox"]').first()).toBeAttached({ timeout: 10_000 });
+    // Los checkboxes de permisos individuales (dentro de ".ml-6", uno por
+    // menú) cargan tras seleccionar el rol; esperamos a que al menos uno
+    // esté listo antes de seguir, para no leer el DOM a mitad de un render.
+    await expect(this.page.locator('.ml-6 input[type="checkbox"]').first()).toBeAttached({ timeout: 10_000 });
   }
 
   permissionCheckbox(permissionDescription: string) {

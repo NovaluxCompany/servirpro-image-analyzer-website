@@ -83,11 +83,8 @@ test.describe('Roles', () => {
     await rolesPage.goto();
     await rolesPage.openPermissionsTab();
 
-    const options = await page.locator('select option').allTextContents();
-    const firstRealOption = options.find((o) => o.trim() && o !== '-- Selecciona --');
-    test.skip(!firstRealOption, 'No hay roles disponibles para probar asignación de permisos.');
-
-    await rolesPage.selectRoleForPermissions(firstRealOption!);
+    const firstRealOption = await rolesPage.firstSelectableRoleName();
+    await rolesPage.selectRoleForPermissions(firstRealOption);
 
     // Sin tocar ningún checkbox, no hay cambios pendientes que guardar.
     await expect(rolesPage.saveChangesButton()).toBeDisabled();
@@ -100,17 +97,14 @@ test.describe('Roles', () => {
     await rolesPage.goto();
     await rolesPage.openPermissionsTab();
 
-    const options = await page.locator('select option').allTextContents();
-    const firstRealOption = options.find((o) => o.trim() && o !== '-- Selecciona --');
-    test.skip(!firstRealOption, 'No hay roles disponibles para probar asignación de permisos.');
-
-    await rolesPage.selectRoleForPermissions(firstRealOption!);
+    const firstRealOption = await rolesPage.firstSelectableRoleName();
+    await rolesPage.selectRoleForPermissions(firstRealOption);
 
     // Los checkboxes dentro del grid "ml-6" son permisos individuales; el
     // checkbox de la cabecera del menú es "Seleccionar todo" y se comporta
     // distinto (afecta a todos los permisos del menú a la vez).
     const firstCheckbox = page.locator('.ml-6 input[type="checkbox"]').first();
-    test.skip((await firstCheckbox.count()) === 0, 'No hay menús/permisos configurados para probar.');
+    await expect(firstCheckbox, 'Se requieren menús con permisos configurados en el ambiente de pruebas.').toBeAttached();
 
     await firstCheckbox.click();
     await expect(rolesPage.saveChangesButton()).toBeEnabled();

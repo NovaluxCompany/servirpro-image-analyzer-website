@@ -21,10 +21,14 @@ test.describe('Actualizar Empresa — validación de archivo', () => {
   test('rechaza un archivo que no es .xlsx (ej. PDF)', async ({ page }) => {
     const updateCompanyPage = new UpdateCompanyPage(page);
     await updateCompanyPage.goto();
-    test.skip(
-      !(await updateCompanyPage.isWithinAllowedWindow()),
-      'Fuera de la ventana de días permitida (minDay-maxDay) para este módulo este mes.'
-    );
+
+    if (!(await updateCompanyPage.isWithinAllowedWindow())) {
+      // Regla de negocio real: fuera del día minDay-maxDay el módulo se
+      // bloquea por completo. En vez de saltar el test, validamos ESE
+      // comportamiento (el único válido hoy) en vez de subir un archivo.
+      await updateCompanyPage.expectBlockedByDateWindow();
+      return;
+    }
 
     const pdfPath = buildDummyPdf();
     await updateCompanyPage.uploadFile(pdfPath);
@@ -40,10 +44,11 @@ test.describe('Actualizar Empresa — validación de archivo', () => {
   test('rechaza un .xlsx válido en formato pero con una columna mal nombrada', async ({ page }) => {
     const updateCompanyPage = new UpdateCompanyPage(page);
     await updateCompanyPage.goto();
-    test.skip(
-      !(await updateCompanyPage.isWithinAllowedWindow()),
-      'Fuera de la ventana de días permitida (minDay-maxDay) para este módulo este mes.'
-    );
+
+    if (!(await updateCompanyPage.isWithinAllowedWindow())) {
+      await updateCompanyPage.expectBlockedByDateWindow();
+      return;
+    }
 
     // Parte de la plantilla REAL (para que solo falle la columna que
     // corrompemos a propósito, no las demás) y le cambia el nombre a la
@@ -82,12 +87,13 @@ const rawDocuments = process.env.UPDATE_COMPANY_TEST_DOCUMENTS;
 const targetCompanyName = process.env.UPDATE_COMPANY_TARGET_NAME ?? 'EMPRESA DE PRUEBAS QA';
 const documents = rawDocuments?.split(',').map((d) => d.trim()).filter(Boolean) ?? [];
 
-test.describe('Actualizar Empresa', () => {
-  test.skip(
-    documents.length === 0,
-    'Define UPDATE_COMPANY_TEST_DOCUMENTS en test/e2e/.env (1-2 documentos existentes) para correr este spec.'
+if (documents.length === 0) {
+  throw new Error(
+    'Define UPDATE_COMPANY_TEST_DOCUMENTS en test/e2e/.env (1-2 documentos "No Ordinario" existentes) para correr update-company.spec.ts.'
   );
+}
 
+test.describe('Actualizar Empresa', () => {
   let filePath: string;
 
   test.afterEach(() => {
@@ -97,10 +103,11 @@ test.describe('Actualizar Empresa', () => {
   test('actualiza empresa de 1-2 afiliados puntuales (no masivo)', async ({ page }) => {
     const updateCompanyPage = new UpdateCompanyPage(page);
     await updateCompanyPage.goto();
-    test.skip(
-      !(await updateCompanyPage.isWithinAllowedWindow()),
-      'Fuera de la ventana de días permitida (minDay-maxDay) para este módulo este mes.'
-    );
+
+    if (!(await updateCompanyPage.isWithinAllowedWindow())) {
+      await updateCompanyPage.expectBlockedByDateWindow();
+      return;
+    }
 
     const templatePath = await updateCompanyPage.downloadTemplate(
       generatedFilePath(`template-${Date.now()}.xlsx`)
