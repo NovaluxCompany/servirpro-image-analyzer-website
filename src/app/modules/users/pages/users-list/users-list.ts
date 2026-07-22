@@ -10,9 +10,11 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../../../core/service/toast.service';
-import { TokenService } from '../../../../core/service/token.service';
 import { UsersManagementService } from '../../services/users.service';
-import { SystemUser, ROLE_OPTIONS } from '../../interfaces/user.interface';
+import { SystemUser } from '../../interfaces/user.interface';
+import { RolesService } from '../../../roles/services/roles.service';
+import { Role } from '../../../roles/interfaces/role.interface';
+import { PermissionService } from '../../../../core/service/permission.service';
 
 type UsersTab = 'usuarios' | 'asignar-rol';
 
@@ -35,14 +37,20 @@ type UserModal =
 export class UsersListComponent implements OnInit {
   private _service = inject(UsersManagementService);
   private _toast = inject(ToastService);
-  private _tokenService = inject(TokenService);
+  private _rolesService = inject(RolesService);
+  private _permissionService = inject(PermissionService);
 
-  protected readonly ROLE_OPTIONS = ROLE_OPTIONS;
+  protected readonly roles = signal<Role[]>([]);
+
+  protected readonly canViewUsers = this._permissionService.can('view', '/usuarios');
+  protected readonly canAssignRole = this._permissionService.can('view', '/usuarios/asignar-rol');
+  protected readonly canEditRoleAssignment = this._permissionService.can('edit', '/usuarios/asignar-rol');
+  protected readonly canCreateUsers = this._permissionService.can('create', '/usuarios');
 
   // ── Estado general ────────────────────────────────────────────────
   protected readonly isLoading = signal(false);
   protected readonly isSubmitting = signal(false);
-  protected readonly activeTab = signal<UsersTab>('usuarios');
+  protected readonly activeTab = signal<UsersTab>(this.canViewUsers ? 'usuarios' : 'asignar-rol');
   protected readonly activeModal = signal<UserModal>('none');
   protected readonly users = signal<SystemUser[]>([]);
   protected readonly errorMessage = signal<string | null>(null);
@@ -114,10 +122,6 @@ export class UsersListComponent implements OnInit {
   protected readonly pageSize = signal(10);
 
   // ── Computed ──────────────────────────────────────────────────────
-  protected readonly isAdmin = computed(() =>
-    this._tokenService.hasRole('Administrador')
-  );
-
   protected readonly filteredUsers = computed(() => {
     const all = this.users();
     const name = this.filterName().toLowerCase().trim();
@@ -154,15 +158,24 @@ export class UsersListComponent implements OnInit {
 
   protected readonly selectedRoleLabel = computed(() => {
     const id = this.selectedRoleId();
-    return ROLE_OPTIONS.find(r => r.id === id)?.label ?? '';
+    return this.roles().find(r => r.id === id)?.name ?? '';
   });
 
   ngOnInit(): void {
-    if (!this.isAdmin()) {
-      this._toast.showError('Solo los Administradores pueden acceder a este módulo.');
+    if (!this.canViewUsers && !this.canAssignRole) {
+      this._toast.showError('Tu rol no tiene permisos sobre este módulo.');
       return;
     }
     this.loadUsers();
+    this.loadRoles();
+  }
+
+  // ── Carga de roles ───────────────────────────────────────────────
+  protected loadRoles(): void {
+    this._rolesService.findAll(1, 100).subscribe({
+      next: (res) => this.roles.set(res.items.filter(r => r.isActive)),
+      error: (err: Error) => this._toast.showError(err.message),
+    });
   }
 
   // ── Carga ─────────────────────────────────────────────────────────
@@ -334,7 +347,8 @@ export class UsersListComponent implements OnInit {
       this._toast.showError('Selecciona un rol para continuar.');
       return;
     }
-    if (roleId === 1) {
+    const role = this.roles().find(r => r.id === roleId);
+    if (role?.name === 'Administrador') {
       this.activeModal.set('role-admin-warn');
       return;
     }

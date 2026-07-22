@@ -57,6 +57,56 @@ export async function fillUpdateCompanyTemplate(
   return outPath;
 }
 
+/**
+ * Igual que fillUpdateCompanyTemplate(), pero a propósito le cambia el
+ * nombre a la columna "Empresa" (ej. "Compañia" mal escrito) antes de
+ * guardar, para probar que el backend rechaza el archivo por columna con
+ * nombre incorrecto — sin tocar la columna de documento, que queda válida.
+ */
+export async function buildFixtureWithBadColumnName(
+  templatePath: string,
+  documentNumbers: string[],
+  targetCompanyName: string,
+  wrongCompanyHeader = 'Compañia'
+): Promise<string> {
+  if (documentNumbers.length === 0 || documentNumbers.length > 2) {
+    throw new Error(
+      'Por regla de negocio, el archivo de prueba de Actualizar Empresa debe tener 1 o 2 filas, no más.'
+    );
+  }
+
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(templatePath);
+  const sheet = workbook.worksheets[0];
+
+  const headerRow = sheet.getRow(1);
+  const documentColIndex = findColumnIndex(headerRow, /documento/i);
+  const companyColIndex = findColumnIndex(headerRow, /empresa/i);
+
+  if (!documentColIndex || !companyColIndex) {
+    throw new Error(
+      `No se encontraron las columnas esperadas en la plantilla descargada. Headers: ${JSON.stringify(
+        headerRow.values
+      )}`
+    );
+  }
+
+  // Corrompe a propósito el nombre de la columna "Empresa".
+  headerRow.getCell(companyColIndex).value = wrongCompanyHeader;
+  headerRow.commit();
+
+  documentNumbers.forEach((doc, i) => {
+    const row = sheet.getRow(2 + i);
+    row.getCell(documentColIndex).value = doc;
+    row.getCell(companyColIndex).value = targetCompanyName;
+    row.commit();
+  });
+
+  const outPath = generatedFilePath(`update-company-bad-column-${Date.now()}.xlsx`);
+  await workbook.xlsx.writeFile(outPath);
+  return outPath;
+}
+
 function findColumnIndex(headerRow: ExcelJS.Row, pattern: RegExp): number | null {
   let found: number | null = null;
   headerRow.eachCell((cell, colNumber) => {

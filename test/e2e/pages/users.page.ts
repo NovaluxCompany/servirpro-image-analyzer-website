@@ -34,6 +34,20 @@ export class UsersPage {
     await expect(this.page.getByText(/creado correctamente/)).toBeVisible({ timeout: 15_000 });
   }
 
+  /**
+   * Crea un usuario de prueba dedicado (propio email/password) para specs que
+   * necesiten operar sobre un usuario real sin tocar cuentas compartidas
+   * entre tests o datos de producción. Deja al usuario visible en el
+   * listado, listo para buscarlo con searchByEmail/rowByEmail.
+   */
+  async createUser(data: { name: string; email: string; password: string }): Promise<void> {
+    await this.openCreateModal();
+    await this.fillCreateForm(data);
+    await this.continueToConfirm();
+    await this.confirmCreate();
+    await this.expectCreateToast();
+  }
+
   rowByEmail(email: string) {
     return this.page.locator('tbody tr', { hasText: email });
   }
@@ -59,6 +73,7 @@ export class UsersPage {
   /** Regresión: el botón debe deshabilitarse en cuanto se envía, evitando doble notificación. */
   async assertRoleAssignButtonDisablesWhileSubmitting(): Promise<void> {
     const button = this.roleModal().getByRole('button', { name: /Asignar Rol|Asignando.../ });
+    await button.scrollIntoViewIfNeeded();
     await button.click();
     await expect(button).toBeDisabled();
   }

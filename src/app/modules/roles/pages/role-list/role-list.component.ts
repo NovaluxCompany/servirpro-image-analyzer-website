@@ -3,18 +3,26 @@ import { CommonModule } from '@angular/common';
 import { RolesService } from '../../services/roles.service';
 import { Role } from '../../interfaces/role.interface';
 import { RoleFormModalComponent } from '../../components/role-form-modal/role-form-modal.component';
+import { AssignPermissionsComponent } from '../../components/assign-permissions/assign-permissions.component';
 import { ToastService } from '../../../../core/service/toast.service';
+import { PermissionService } from '../../../../core/service/permission.service';
 
 @Component({
   selector: 'app-role-list',
   standalone: true,
-  imports: [CommonModule, RoleFormModalComponent],
+  imports: [CommonModule, RoleFormModalComponent, AssignPermissionsComponent],
   templateUrl: './role-list.component.html',
 })
 export class RoleListComponent implements OnInit {
   private rolesService = inject(RolesService);
   private toastService = inject(ToastService);
+  private permissionService = inject(PermissionService);
   protected Math = Math;
+
+  canViewRoles = this.permissionService.can('view', '/roles');
+  canAssignPermissions = this.permissionService.can('view', '/roles/asignar-permisos');
+
+  activeTab = signal<'roles' | 'permissions'>(this.canViewRoles ? 'roles' : 'permissions');
 
   roles = signal<Role[]>([]);
   totalItems = signal(0);
@@ -23,7 +31,8 @@ export class RoleListComponent implements OnInit {
   showFormModal = signal(false);
   selectedRole = signal<Role | null>(null);
   isLoading = signal(false);
-  roleToDelete = signal<Role | null>(null);
+  roleToToggle = signal<Role | null>(null);
+  isToggling = signal(false);
 
   openDropdownId = signal<number | null>(null);
   dropdownPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -87,26 +96,32 @@ export class RoleListComponent implements OnInit {
     this.loadRoles();
   }
 
-  confirmDelete(role: Role) {
-    this.roleToDelete.set(role);
+  confirmToggle(role: Role) {
+    this.roleToToggle.set(role);
   }
 
-  cancelDelete() {
-    this.roleToDelete.set(null);
+  cancelToggle() {
+    if (this.isToggling()) return;
+    this.roleToToggle.set(null);
   }
 
-  deleteRole() {
-    const role = this.roleToDelete();
-    if (!role?.id) return;
-    this.rolesService.remove(role.id).subscribe({
+  toggleRoleStatus() {
+    const role = this.roleToToggle();
+    if (!role?.id || this.isToggling()) return;
+    this.isToggling.set(true);
+    this.rolesService.update(role.id, { isActive: !role.isActive }).subscribe({
       next: () => {
-        this.toastService.showSuccess('Rol eliminado correctamente.');
-        this.roleToDelete.set(null);
+        this.toastService.showSuccess(
+          role.isActive ? 'Rol deshabilitado correctamente.' : 'Rol habilitado correctamente.'
+        );
+        this.isToggling.set(false);
+        this.roleToToggle.set(null);
         this.loadRoles();
       },
       error: () => {
-        this.toastService.showError('No se pudo eliminar el rol. Intenta de nuevo.');
-        this.roleToDelete.set(null);
+        this.toastService.showError('No se pudo actualizar el estado del rol. Intenta de nuevo.');
+        this.isToggling.set(false);
+        this.roleToToggle.set(null);
       }
     });
   }
@@ -120,11 +135,11 @@ export class RoleListComponent implements OnInit {
   }
 
   getMenusList(role: Role): string {
-    if (!role.roleMenuPermissions?.length) return 'Ninguno';
+    if (!role.roleMenuPermissions?.length) return '-';
     const menuNames = role.roleMenuPermissions
       .map((rmp) => rmp.menuPermission?.menu?.name)
       .filter((name): name is string => !!name);
     const unique = [...new Set(menuNames)];
-    return unique.length ? unique.join(', ') : 'Ninguno';
+    return unique.length ? unique.join(', ') : '-';
   }
 }
