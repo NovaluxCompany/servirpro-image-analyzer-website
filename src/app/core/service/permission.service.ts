@@ -51,9 +51,6 @@ export class PermissionService {
 
     const menus = this.getUserMenus();
     const menuPaths = (user.menuPaths ?? []).map((p) => this.normalizePath(p));
-    if (menuPaths.length === 0 && menus.length === 0) {
-      return true;
-    }
 
     if (menuPaths.some((p) => p === targetPath || targetPath.startsWith(`${p}/`))) {
       return true;

@@ -1,0 +1,193 @@
+<div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+
+  <!-- Selector de rol -->
+  <div class="max-w-md space-y-1 mb-6">
+    <label class="text-xs font-semibold text-gray-700 uppercase tracking-wider">Selecciona un rol</label>
+    <select (change)="onRoleChange($any($event.target).value)"
+      class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none">
+      <option value="">-- Selecciona --</option>
+      @for (role of roles(); track role.id) {
+      <option [value]="role.id">{{ role.name }}</option>
+      }
+    </select>
+  </div>
+
+  @if (selectedRole(); as role) {
+  <div class="space-y-6">
+    <h3 class="text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">{{ role.name }}</h3>
+
+    <!-- Permisos Generales -->
+    <div class="space-y-3">
+      <h4 class="text-sm font-bold text-gray-700 uppercase tracking-wider">Permisos Generales</h4>
+      @if (generalMenus().length === 0) {
+      <p class="text-xs text-gray-400 italic">No hay menús generales configurados.</p>
+      }
+      <div class="space-y-3">
+        @for (menu of generalMenus(); track menu.id) {
+        <div class="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <i [className]="'text-lg ' + menu.icon + ' text-gray-500'"></i>
+              <span class="font-semibold text-gray-800 text-sm">{{ menu.name }}</span>
+            </div>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <span class="text-xs text-gray-500 group-hover:text-blue-600">Seleccionar todo</span>
+              <input type="checkbox" [checked]="isMenuFullyChecked(menu)"
+                (change)="toggleMenu(menu, $any($event.target).checked)"
+                class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+            </label>
+          </div>
+          <div class="ml-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
+            @for (mp of menu.menuPermissions; track mp.id) {
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" [checked]="isChecked(mp.id!)"
+                (change)="toggle(mp.id!, $any($event.target).checked)"
+                class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+              <span class="text-sm text-gray-600 group-hover:text-blue-600">{{ mp.permission.description }}</span>
+            </label>
+            }
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- Permisos Sensibles -->
+    <div class="space-y-3">
+      <h4 class="text-sm font-bold text-amber-700 uppercase tracking-wider flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+        Permisos Sensibles
+      </h4>
+      @if (sensitiveMenus().length === 0) {
+      <p class="text-xs text-gray-400 italic">No hay menús sensibles configurados.</p>
+      }
+      <div class="space-y-3">
+        @for (menu of sensitiveMenus(); track menu.id) {
+        <div class="border border-amber-200 rounded-xl p-4 bg-amber-50/50">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <i [className]="'text-lg ' + menu.icon + ' text-amber-600'"></i>
+              <span class="font-semibold text-gray-800 text-sm">{{ menu.name }}</span>
+            </div>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <span class="text-xs text-amber-700 group-hover:text-amber-800">Seleccionar todo</span>
+              <input type="checkbox" [checked]="isMenuFullyChecked(menu)"
+                (change)="toggleMenu(menu, $any($event.target).checked)"
+                class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500">
+            </label>
+          </div>
+          <div class="ml-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
+            @for (mp of menu.menuPermissions; track mp.id) {
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" [checked]="isChecked(mp.id!)"
+                (change)="toggle(mp.id!, $any($event.target).checked)"
+                class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500">
+              <span class="text-sm text-gray-600 group-hover:text-amber-700">{{ mp.permission.description }}</span>
+            </label>
+            }
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+      @if (canEditPermissions) {
+      <button type="button" [disabled]="!hasChanges()" (click)="askConfirm()"
+        class="px-6 py-2 bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-md hover:bg-blue-800 focus:ring-4 focus:ring-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+        Guardar Cambios
+      </button>
+      }
+    </div>
+  </div>
+  } @else {
+  <p class="text-sm text-gray-500 italic">Selecciona un rol para ver y asignar sus permisos.</p>
+  }
+</div>
+
+<!-- Modal: Confirmar cambio de permisos -->
+@if (showConfirm(); as confirm) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700">
+        <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h3 class="text-base font-bold text-white">Confirmar cambio de permisos</h3>
+      </div>
+      <div class="px-6 py-5 max-h-[60vh] overflow-y-auto">
+        <p class="text-center text-sm text-gray-700 leading-relaxed">
+          ¿Está seguro de asignar los siguientes permisos al rol <strong>{{ selectedRole()?.name }}</strong>?
+        </p>
+
+        @if (generalSelectionSummary().length === 0 && sensitiveSelectionSummary().length === 0) {
+        <p class="mt-4 text-center text-xs text-gray-400 italic">No se asignará ningún permiso.</p>
+        }
+
+        @if (generalSelectionSummary().length > 0) {
+        <div class="mt-4 space-y-3">
+          @for (item of generalSelectionSummary(); track item.menuName) {
+          <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
+            <p class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">{{ item.menuName }}</p>
+            <ul class="list-disc list-inside text-xs text-gray-600 space-y-0.5">
+              @for (perm of item.permissions; track perm) {
+              <li>{{ perm }}</li>
+              }
+            </ul>
+          </div>
+          }
+        </div>
+        }
+
+        @if (sensitiveSelectionSummary().length > 0) {
+        <div class="mt-4 space-y-3">
+          <p class="flex items-center gap-2 text-xs font-bold text-red-700 uppercase tracking-wider">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Contiene permisos sensibles
+          </p>
+          @for (item of sensitiveSelectionSummary(); track item.menuName) {
+          <div class="border border-red-200 rounded-lg p-3 bg-red-50">
+            <p class="text-xs font-bold text-red-800 uppercase tracking-wider mb-1">{{ item.menuName }}</p>
+            <ul class="list-disc list-inside text-xs text-red-700 space-y-0.5">
+              @for (perm of item.permissions; track perm) {
+              <li>{{ perm }}</li>
+              }
+            </ul>
+          </div>
+          }
+        </div>
+        }
+
+        <p class="mt-4 text-center text-xs text-gray-400">Esta acción afecta a todos los usuarios con este rol.</p>
+      </div>
+      <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <button type="button" (click)="cancelConfirm()" [disabled]="isSaving()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmChange()" [disabled]="isSaving()"
+          class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 rounded-lg transition-all disabled:opacity-50">
+          @if (isSaving()) {
+          <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Procesando...
+          } @else {
+          Sí, confirmar
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

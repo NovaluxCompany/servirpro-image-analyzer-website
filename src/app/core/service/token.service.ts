@@ -46,7 +46,7 @@ export class TokenService {
     const cleanedPath = (path ?? '').trim();
     const targetPath = cleanedPath.startsWith('/') ? cleanedPath : `/${cleanedPath}`;
 
-    return menuPaths.length === 0 || menuPaths.some((p) => {
+    return menuPaths.some((p) => {
       const cleanedMenuPath = (p ?? '').trim();
       const allowedPath = cleanedMenuPath.startsWith('/') ? cleanedMenuPath : `/${cleanedMenuPath}`;
       return targetPath === allowedPath || targetPath.startsWith(`${allowedPath}/`);

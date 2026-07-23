@@ -20,6 +20,7 @@ export interface Menu {
   parentId?: number | null;
   sortOrder?: number;
   isActive: boolean;
+  isSensitive?: boolean;
   menuPermissions?: MenuPermission[];
   createdAt?: string;
   updatedAt?: string;
