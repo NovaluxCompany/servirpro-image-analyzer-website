@@ -144,6 +144,9 @@ export class AffiliateFormModalComponent implements OnInit {
     pensionId: [''],
     compensationBoxId: [''],
     isActive: [true],
+    discount: [<number | null>null],
+    affiliateType: ['DEPENDIENTE', Validators.required],
+    isNew: [false],
     entryDate: [{ value: '', disabled: true }],
     observation: ['', Validators.maxLength(2000)],
     documentFile: [<File | string | null>null],
@@ -176,6 +179,8 @@ export class AffiliateFormModalComponent implements OnInit {
           // In create mode: entryDate is automatic (disabled), companyEntryDate is freely editable
           this.form.get('entryDate')?.disable({ emitEvent: false });
           this.form.get('companyEntryDate')?.enable({ emitEvent: false });
+          // El bloqueo de plan por afiliado activo solo aplica en edición
+          this.form.get('planId')?.enable({ emitEvent: false });
           // Asegurar que el campo de archivo esté siempre habilitado en modo creación
           this.form.get('documentFile')?.enable({ emitEvent: false });
           this.form.get('documentFile')?.clearValidators();
@@ -463,6 +468,12 @@ export class AffiliateFormModalComponent implements OnInit {
         if (a.planId) {
           this.updatePlanLogic(String(a.planId));
         }
+        // El plan solo puede cambiarse mientras el afiliado está desactivado.
+        if (a.isActive) {
+          this.form.get('planId')?.disable({ emitEvent: false });
+        } else {
+          this.form.get('planId')?.enable({ emitEvent: false });
+        }
         if (a.grouperId) {
           const selectedGrouper = this.groupers().find(g => String(g.id) === String(a.grouperId));
           this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
@@ -510,6 +521,8 @@ export class AffiliateFormModalComponent implements OnInit {
       advisorId: a.advisorId ? String(a.advisorId) : '',
       epsId: a.epsId ? String(a.epsId) : '',
       isActive: a.isActive ?? true,
+      discount: a.discount ?? null,
+      affiliateType: a.affiliateType ?? 'DEPENDIENTE',
       companyEntryDate: this.toLocalDateStr(a.companyEntryDate ?? this.todayDate()),
       entryDate: this.toLocalDateStr(a.entryDate),
       arl: a.arl ?? null,
@@ -657,6 +670,8 @@ export class AffiliateFormModalComponent implements OnInit {
       pensionId: toNumberOrNull(raw.pensionId),
       compensationBoxId: toNumberOrNull(raw.compensationBoxId),
       isActive: raw.isActive ?? true,
+      discount: toNumberOrNull(raw.discount) ?? undefined,
+      affiliateType: raw.affiliateType as 'INDEPENDIENTE' | 'DEPENDIENTE' | undefined,
       // companyEntryDate comes from its own form control (disabled), NOT from entryDate
       companyEntryDate: raw.companyEntryDate || this.toLocalDateStr(this.todayDate()),
       // entryDate only sent on create; in edit mode the backend ignores it (only set on create/enable)
@@ -668,7 +683,10 @@ export class AffiliateFormModalComponent implements OnInit {
         certEps: raw.certEps ?? false,
         certPension: raw.certPension ?? false,
         certCcf: raw.certCcf ?? false,
-      } : {}),
+      } : {
+        // isNew solo se captura al crear; en edición no se envía (el backend tampoco lo acepta)
+        isNew: raw.isNew ?? false,
+      }),
     };
 
     const obs =

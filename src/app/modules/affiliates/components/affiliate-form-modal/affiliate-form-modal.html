@@ -296,7 +296,38 @@
                 @if (isFieldInvalid('planId')) {
                 <p class="mt-1 text-xs text-red-500">Campo requerido</p>
                 }
+                @if (form.get('planId')?.disabled) {
+                <p class="mt-1 text-xs text-gray-500">Para cambiar el plan primero debe desactivar al afiliado.</p>
+                }
               </div>
+
+              <!-- Descuento -->
+              <div>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Descuento</label>
+                <input type="number" formControlName="discount" min="0" placeholder="0"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              </div>
+
+              <!-- Tipo de afiliado -->
+              <div>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                  Tipo de afiliado <span class="text-red-500">*</span>
+                </label>
+                <select formControlName="affiliateType"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  <option value="DEPENDIENTE">Dependiente</option>
+                  <option value="INDEPENDIENTE">Independiente</option>
+                </select>
+              </div>
+
+              @if (!isEdit) {
+              <!-- ¿Es afiliado nuevo? (solo al crear) -->
+              <div class="flex items-center gap-2 pt-6">
+                <input type="checkbox" id="isNew" formControlName="isNew"
+                  class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                <label for="isNew" class="text-xs font-semibold text-gray-700">¿Es afiliado nuevo?</label>
+              </div>
+              }
 
               <!-- Profesion -->
               <div>
