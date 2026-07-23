@@ -12,6 +12,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
       <!-- Tabs (Sin pago / Pago incompleto) -->
       <div class="inline-flex rounded-xl border border-gray-200 bg-white p-1">
+        @if (canViewUnpaid()) {
         <button
           type="button"
           (click)="changeTab('unpaid')"
@@ -21,6 +22,7 @@
         >
           Sin pago
         </button>
+        }
         @if (canViewUnderpaid()) {
           <button
             type="button"
@@ -295,9 +297,21 @@
             @for (affiliate of currentAffiliates(); track trackById($index, affiliate)) {
             <tr class="hover:bg-gray-50 transition-colors duration-150">
               @if (activeTab() === 'underpaid') {
-                <!-- Acciones: botón 3 puntos -->
+                <!-- Acciones: expandir detalles + botón 3 puntos -->
                 <td class="px-4 py-3">
-                  <div>
+                  <div class="flex items-center gap-1">
+                    <!-- Expandir/ocultar detalles de transacciones -->
+                    <button type="button"
+                      (click)="toggleAffiliateExpand(affiliate); $event.stopPropagation()"
+                      class="inline-flex items-center justify-center w-8 h-8 text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                      [title]="expandedAffiliateId() === affiliate.affiliateId ? 'Ocultar detalles' : 'Ver detalles'">
+                      <svg class="w-4 h-4 transition-transform duration-150"
+                        [class.rotate-180]="expandedAffiliateId() === affiliate.affiliateId"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
                     <button type="button" #actionBtn
                       (click)="toggleDropdown(affiliate.affiliateId, actionBtn); $event.stopPropagation()"
                       class="inline-flex items-center justify-center w-8 h-8 text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
@@ -311,18 +325,6 @@
                     <div class="fixed z-50 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1"
                       [style.top.px]="dropdownPos().top"
                       [style.left.px]="dropdownPos().left">
-
-                      <!-- Ver detalles -->
-                      <button type="button" (click)="openTransactionsModal(affiliate); closeDropdown()"
-                        class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        Ver detalles
-                      </button>
 
                       <!-- Aceptar pago -->
                       <button type="button"
@@ -345,6 +347,7 @@
                       </button>
                     </div>
                     }
+                    </div>
                   </div>
                 </td>
                 <!-- Checkbox -->
@@ -390,6 +393,100 @@
                 <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.pension || '-' }}</td>
               }
             </tr>
+            @if (activeTab() === 'underpaid' && expandedAffiliateId() === affiliate.affiliateId) {
+            <tr class="bg-gray-50/60">
+              <td [attr.colspan]="12" class="px-4 py-4">
+                @if (transactionsError()) {
+                <div class="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {{ transactionsError() }}
+                </div>
+                }
+                <div class="overflow-x-auto max-h-[50vh] overflow-y-auto border border-gray-200 rounded-xl bg-white">
+                  <table class="w-full text-sm text-left text-gray-600">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                      <tr>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Aprobar</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha Pago</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Monto Pagado</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor total</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Descuento</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Motivo de error</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Coincidencia</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Observación</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                      @if (isLoadingTransactions()) {
+                      <tr><td colspan="11" class="px-4 py-10 text-center text-gray-500">Cargando transacciones...</td></tr>
+                      } @else if (affiliateTransactions().length === 0) {
+                      <tr><td colspan="11" class="px-4 py-10 text-center text-gray-500">No hay transacciones activas para este afiliado.</td></tr>
+                      } @else {
+                      @for (tx of affiliateTransactions(); track trackByTransactionId($index, tx)) {
+                      <tr>
+                        <!-- Botón aprobar transacción -->
+                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                          <button
+                            type="button"
+                            [disabled]="approvingTransactionId() === tx.transactionId"
+                            (click)="toggleTransactionApproved(tx)"
+                            [class]="tx.isApproved
+                              ? 'px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-100 rounded-lg hover:bg-green-200 disabled:opacity-50'
+                              : 'px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50'"
+                            [title]="tx.isApproved ? 'Revertir aprobación' : 'Aprobar transacción'"
+                          >
+                            @if (approvingTransactionId() === tx.transactionId) {
+                              <svg class="w-3.5 h-3.5 animate-spin inline" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                              </svg>
+                            } @else if (tx.isApproved) {
+                              ✓ Aprobada
+                            } @else {
+                              Aprobar
+                            }
+                          </button>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-xs">{{ formatDateColombia(tx.createdAt) }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ tx.reference || '-' }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap font-medium text-green-700">{{ formatCurrency(tx.amountPaid) }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">{{ formatCurrency(tx.totalValue) }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                          <span [class.text-orange-600]="tx.discountedValue">{{ tx.discountedValue ? formatCurrency(tx.discountedValue) : '-' }}</span>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                          <span class="px-2 py-1 text-xs font-semibold rounded-full"
+                            [class.bg-green-100]="tx.status === 'completed'" [class.text-green-800]="tx.status === 'completed'"
+                            [class.bg-yellow-100]="tx.status === 'pending'" [class.text-yellow-800]="tx.status === 'pending'"
+                            [class.bg-red-100]="tx.status === 'failed' || tx.status === 'error'" [class.text-red-800]="tx.status === 'failed' || tx.status === 'error'">
+                            {{ tx.status || '-' }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3">
+                          @if (tx.errorReason) {
+                            <div class="max-w-xs text-red-700 text-xs bg-red-50 p-2 rounded border border-red-200" [title]="tx.errorReason">
+                              {{ tx.errorReason.substring(0, 50) }}...
+                            </div>
+                          } @else { - }
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-blue-700 font-medium">{{ tx.advisorName || '-' }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                          <span [class.text-green-600]="tx.amountsMatch" [class.text-red-600]="tx.amountsMatch === false" class="text-lg font-bold">
+                            {{ tx.amountsMatch === true ? '✓' : (tx.amountsMatch === false ? '✗' : '-') }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3">{{ tx.observation || '-' }}</td>
+                      </tr>
+                      }
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+            }
             }
             }
           </tbody>
@@ -527,111 +624,6 @@
 </div>
 }
 
-@if (isTransactionsModalOpen()) {
-<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-  <div class="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden">
-    <div class="flex items-center justify-between px-6 py-4 bg-blue-700">
-      <div>
-        <h3 class="text-base font-bold text-white">Detalle de transacciones</h3>
-        <p class="text-xs text-blue-100 mt-0.5">{{ selectedAffiliateForDetail()?.name }}</p>
-      </div>
-      <button type="button" (click)="closeTransactionsModal()" class="text-white text-sm font-semibold">Cerrar</button>
-    </div>
-
-    <div class="px-6 py-5">
-      @if (transactionsError()) {
-      <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-        {{ transactionsError() }}
-      </div>
-      }
-
-      <div class="overflow-x-auto max-h-[60vh] overflow-y-auto border border-gray-100 rounded-xl">
-        <table class="w-full text-sm text-left text-gray-600">
-          <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-            <tr>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Aprobar</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha Pago</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Monto Pagado</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor total</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Descuento</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Motivo de error</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Coincidencia</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Observación</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            @if (isLoadingTransactions()) {
-            <tr><td colspan="11" class="px-4 py-10 text-center text-gray-500">Cargando transacciones...</td></tr>
-            } @else if (affiliateTransactions().length === 0) {
-            <tr><td colspan="11" class="px-4 py-10 text-center text-gray-500">No hay transacciones activas para este afiliado.</td></tr>
-            } @else {
-            @for (tx of affiliateTransactions(); track trackByTransactionId($index, tx)) {
-            <tr>
-              <!-- Botón aprobar transacción -->
-              <td class="px-4 py-3 whitespace-nowrap text-center">
-                <button
-                  type="button"
-                  [disabled]="approvingTransactionId() === tx.transactionId"
-                  (click)="toggleTransactionApproved(tx)"
-                  [class]="tx.isApproved
-                    ? 'px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-100 rounded-lg hover:bg-green-200 disabled:opacity-50'
-                    : 'px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50'"
-                  [title]="tx.isApproved ? 'Revertir aprobación' : 'Aprobar transacción'"
-                >
-                  @if (approvingTransactionId() === tx.transactionId) {
-                    <svg class="w-3.5 h-3.5 animate-spin inline" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                    </svg>
-                  } @else if (tx.isApproved) {
-                    ✓ Aprobada
-                  } @else {
-                    Aprobar
-                  }
-                </button>
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap text-xs">{{ formatDateColombia(tx.createdAt) }}</td>
-              <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ tx.reference || '-' }}</td>
-              <td class="px-4 py-3 whitespace-nowrap font-medium text-green-700">{{ formatCurrency(tx.amountPaid) }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ formatCurrency(tx.totalValue) }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">
-                <span [class.text-orange-600]="tx.discountedValue">{{ tx.discountedValue ? formatCurrency(tx.discountedValue) : '-' }}</span>
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap">
-                <span class="px-2 py-1 text-xs font-semibold rounded-full"
-                  [class.bg-green-100]="tx.status === 'completed'" [class.text-green-800]="tx.status === 'completed'"
-                  [class.bg-yellow-100]="tx.status === 'pending'" [class.text-yellow-800]="tx.status === 'pending'"
-                  [class.bg-red-100]="tx.status === 'failed' || tx.status === 'error'" [class.text-red-800]="tx.status === 'failed' || tx.status === 'error'">
-                  {{ tx.status || '-' }}
-                </span>
-              </td>
-              <td class="px-4 py-3">
-                @if (tx.errorReason) {
-                  <div class="max-w-xs text-red-700 text-xs bg-red-50 p-2 rounded border border-red-200" [title]="tx.errorReason">
-                    {{ tx.errorReason.substring(0, 50) }}...
-                  </div>
-                } @else { - }
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap text-blue-700 font-medium">{{ tx.advisorName || '-' }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center">
-                <span [class.text-green-600]="tx.amountsMatch" [class.text-red-600]="tx.amountsMatch === false" class="text-lg font-bold">
-                  {{ tx.amountsMatch === true ? '✓' : (tx.amountsMatch === false ? '✗' : '-') }}
-                </span>
-              </td>
-              <td class="px-4 py-3">{{ tx.observation || '-' }}</td>
-            </tr>
-            }
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
-
 @if (showResultsModal()) {
 <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
   <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -704,5 +696,4 @@
     </div>
   </div>
 </div>
-}
 }

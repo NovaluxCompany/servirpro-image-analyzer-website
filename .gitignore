@@ -39,6 +39,15 @@ testem.log
 /typings
 __screenshots__/
 
+# Playwright E2E
+/test/e2e/.env
+/test/e2e/.auth/
+/test/e2e/.state/
+/test/e2e/fixtures/generated/
+/playwright-report/
+/test-results/
+/blob-report/
+
 # System files
 .DS_Store
 Thumbs.db

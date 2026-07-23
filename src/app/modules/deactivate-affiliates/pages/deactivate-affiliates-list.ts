@@ -42,19 +42,25 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly selectedIds = signal<number[]>([]);
   protected readonly context = signal<DeactivationContext | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly activeTab = signal<InactivationTab>('unpaid');
+  protected readonly activeTab = signal<InactivationTab>(
+    this._permission.can('view', '/desactivar-afiliados/sin-pago') ? 'unpaid' : 'underpaid'
+  );
 
   protected readonly unpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
   protected readonly underpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
 
-  protected readonly isTransactionsModalOpen = signal(false);
+  protected readonly expandedAffiliateId = signal<number | null>(null);
   protected readonly isLoadingTransactions = signal(false);
   protected readonly transactionsError = signal<string | null>(null);
-  protected readonly selectedAffiliateForDetail = signal<InactivationAffiliateRow | null>(null);
   protected readonly affiliateTransactions = signal<AffiliateTransactionRow[]>([]);
 
   protected readonly showResultsModal = signal(false);
   protected readonly deactivationResult = signal<DeactivateAffiliatesResponse | null>(null);
+
+  // Verifica si el usuario puede acceder al tab "Sin pago"
+  protected readonly canViewUnpaid = computed(() =>
+    this._permission.can('view', '/desactivar-afiliados/sin-pago')
+  );
 
   // Verifica si el usuario puede acceder al tab "Pagos Incompletos"
   protected readonly canViewUnderpaid = computed(() =>
@@ -486,10 +492,15 @@ export class DeactivateAffiliatesList implements OnInit {
     this.selectedIds.set([]);
   }
 
-  // ── Modal transacciones ───────────────────────────────────────────
-  protected openTransactionsModal(affiliate: InactivationAffiliateRow): void {
-    this.selectedAffiliateForDetail.set(affiliate);
-    this.isTransactionsModalOpen.set(true);
+  // ── Fila expandible de transacciones ──────────────────────────────
+  /** Alterna la fila expandible de detalle; solo una fila puede estar expandida a la vez. */
+  protected toggleAffiliateExpand(affiliate: InactivationAffiliateRow): void {
+    if (this.expandedAffiliateId() === affiliate.affiliateId) {
+      this.expandedAffiliateId.set(null);
+      return;
+    }
+
+    this.expandedAffiliateId.set(affiliate.affiliateId);
     this.isLoadingTransactions.set(true);
     this.transactionsError.set(null);
     this.affiliateTransactions.set([]);
@@ -504,13 +515,6 @@ export class DeactivateAffiliatesList implements OnInit {
         this.isLoadingTransactions.set(false);
       },
     });
-  }
-
-  protected closeTransactionsModal(): void {
-    this.isTransactionsModalOpen.set(false);
-    this.selectedAffiliateForDetail.set(null);
-    this.affiliateTransactions.set([]);
-    this.transactionsError.set(null);
   }
 
   protected toggleTransactionApproved(tx: AffiliateTransactionRow): void {
