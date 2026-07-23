@@ -297,22 +297,21 @@
             @for (affiliate of currentAffiliates(); track trackById($index, affiliate)) {
             <tr class="hover:bg-gray-50 transition-colors duration-150">
               @if (activeTab() === 'underpaid') {
-                <!-- Acciones: expandir + botón 3 puntos -->
+                <!-- Acciones: expandir detalles + botón 3 puntos -->
                 <td class="px-4 py-3">
-                  <div class="flex items-center gap-1.5">
-                    <!-- Expandir fila (observaciones / detalle de transacciones) -->
+                  <div class="flex items-center gap-1">
+                    <!-- Expandir/ocultar detalles de transacciones -->
                     <button type="button"
-                      (click)="toggleRowExpansion(affiliate); $event.stopPropagation()"
+                      (click)="toggleAffiliateExpand(affiliate); $event.stopPropagation()"
                       class="inline-flex items-center justify-center w-8 h-8 text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
-                      [title]="expandedAffiliateId() === affiliate.affiliateId ? 'Ocultar detalle' : 'Ver detalle'">
-                      <svg class="w-4 h-4 transition-transform"
+                      [title]="expandedAffiliateId() === affiliate.affiliateId ? 'Ocultar detalles' : 'Ver detalles'">
+                      <svg class="w-4 h-4 transition-transform duration-150"
                         [class.rotate-180]="expandedAffiliateId() === affiliate.affiliateId"
                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
 
-                    <div class="relative">
                     <button type="button" #actionBtn
                       (click)="toggleDropdown(affiliate.affiliateId, actionBtn); $event.stopPropagation()"
                       class="inline-flex items-center justify-center w-8 h-8 text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
@@ -394,19 +393,17 @@
                 <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.pension || '-' }}</td>
               }
             </tr>
-
             @if (activeTab() === 'underpaid' && expandedAffiliateId() === affiliate.affiliateId) {
-            <tr>
-              <td colspan="12" class="px-4 py-4 bg-gray-50 border-t border-b border-gray-100">
+            <tr class="bg-gray-50/60">
+              <td [attr.colspan]="12" class="px-4 py-4">
                 @if (transactionsError()) {
                 <div class="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                   {{ transactionsError() }}
                 </div>
                 }
-
                 <div class="overflow-x-auto max-h-[50vh] overflow-y-auto border border-gray-200 rounded-xl bg-white">
                   <table class="w-full text-sm text-left text-gray-600">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-100 border-b border-gray-200 sticky top-0 z-10">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                       <tr>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Aprobar</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha Pago</th>
@@ -423,9 +420,9 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                       @if (isLoadingTransactions()) {
-                      <tr><td colspan="11" class="px-4 py-8 text-center text-gray-500">Cargando transacciones...</td></tr>
+                      <tr><td colspan="11" class="px-4 py-10 text-center text-gray-500">Cargando transacciones...</td></tr>
                       } @else if (affiliateTransactions().length === 0) {
-                      <tr><td colspan="11" class="px-4 py-8 text-center text-gray-500">No hay transacciones activas para este afiliado.</td></tr>
+                      <tr><td colspan="11" class="px-4 py-10 text-center text-gray-500">No hay transacciones activas para este afiliado.</td></tr>
                       } @else {
                       @for (tx of affiliateTransactions(); track trackByTransactionId($index, tx)) {
                       <tr>

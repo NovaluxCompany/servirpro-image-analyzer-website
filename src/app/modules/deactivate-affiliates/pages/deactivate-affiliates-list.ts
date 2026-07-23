@@ -492,10 +492,11 @@ export class DeactivateAffiliatesList implements OnInit {
     this.selectedIds.set([]);
   }
 
-  // ── Fila expandible: detalle de transacciones / observaciones ─────
-  protected toggleRowExpansion(affiliate: InactivationAffiliateRow): void {
+  // ── Fila expandible de transacciones ──────────────────────────────
+  /** Alterna la fila expandible de detalle; solo una fila puede estar expandida a la vez. */
+  protected toggleAffiliateExpand(affiliate: InactivationAffiliateRow): void {
     if (this.expandedAffiliateId() === affiliate.affiliateId) {
-      this.collapseRow();
+      this.expandedAffiliateId.set(null);
       return;
     }
 
@@ -514,12 +515,6 @@ export class DeactivateAffiliatesList implements OnInit {
         this.isLoadingTransactions.set(false);
       },
     });
-  }
-
-  protected collapseRow(): void {
-    this.expandedAffiliateId.set(null);
-    this.affiliateTransactions.set([]);
-    this.transactionsError.set(null);
   }
 
   protected toggleTransactionApproved(tx: AffiliateTransactionRow): void {
