@@ -164,6 +164,7 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Municipio</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Departamento</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha nacimiento</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha ingreso</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupador</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Observaciones</th>
@@ -487,6 +488,11 @@
                 } @else {
                 <span class="text-gray-400">&#8212;</span>
                 }
+              </td>
+
+              <!-- Fecha nacimiento -->
+              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                {{ (affiliate.birthDate | date:'dd/MM/yyyy') || '&#8212;' }}
               </td>
 
               <!-- Fecha ingreso -->
