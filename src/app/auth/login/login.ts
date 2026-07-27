@@ -84,7 +84,12 @@ export class Login {
           })
           .filter((p, index, array) => p !== '/' && p !== '' && array.indexOf(p) === index);
 
-        if (menuPaths.length === 0) {
+        // Solo las rutas raíz (un segmento) están registradas en app.routes.ts.
+        // Los paths con más de un segmento (ej. /roles/asignar-permisos) son
+        // sub-tabs dentro de una página, no rutas navegables por sí solas.
+        const navigablePaths = menuPaths.filter((p) => p.split('/').filter(Boolean).length === 1);
+
+        if (navigablePaths.length === 0) {
           this._tokenService.removeToken();
           this.showError = true;
           this.messageError = 'Actualmente no cuenta con ningún rol en el sistema, no puede ingresar sin un rol vinculado.';
@@ -92,7 +97,7 @@ export class Login {
           return;
         }
 
-        this._router.navigate([menuPaths[0]]);
+        this._router.navigate([navigablePaths[0]]);
       },
       error: (err) => {
         this.isLoading = false;

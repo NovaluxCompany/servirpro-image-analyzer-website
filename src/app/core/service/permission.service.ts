@@ -63,6 +63,24 @@ export class PermissionService {
   }
 
   /**
+   * Verifica si el usuario tiene ese path exacto asignado como menú propio.
+   * A diferencia de hasPathAccess/canAccessRoute, NO asume acceso por tener
+   * el padre asignado: cada menú (incluidas las "sub-tabs" como
+   * /roles/asignar-permisos o /usuarios/asignar-rol) requiere su propio
+   * registro explícito en menuPaths/menus.
+   */
+  hasMenuEntry(path: string): boolean {
+    const targetPath = this.normalizePath(path);
+    const user = this._tokenService.getUser();
+    if (!user || !targetPath) return false;
+
+    const menuPaths = (user.menuPaths ?? []).map((p) => this.normalizePath(p));
+    if (menuPaths.includes(targetPath)) return true;
+
+    return this.getUserMenus().some((menu) => this.normalizePath(menu.path) === targetPath);
+  }
+
+  /**
    * Evalua si el usuario tiene permiso sobre un menu/path.
    * Si no se envia path, usa el segmento actual de la ruta.
    */

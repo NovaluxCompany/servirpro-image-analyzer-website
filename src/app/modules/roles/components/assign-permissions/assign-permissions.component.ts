@@ -7,6 +7,11 @@ import { Menu } from '../../../menu/interfaces/menu.interface';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
 
+export interface MenuGroup {
+  menu: Menu;
+  children: Menu[];
+}
+
 @Component({
   selector: 'app-assign-permissions',
   standalone: true,
@@ -19,12 +24,13 @@ export class AssignPermissionsComponent implements OnInit {
   private toastService = inject(ToastService);
   private permissionService = inject(PermissionService);
 
-  canEditPermissions = this.permissionService.can('edit', '/roles/asignar-permisos');
+  canEditPermissions = computed(() => this.permissionService.can('edit', '/roles/asignar-permisos'));
 
   roles = signal<Role[]>([]);
   menus = signal<Menu[]>([]);
   selectedRoleId = signal<number | null>(null);
   isLoading = signal(false);
+  isPermissionError = signal(false);
   isSaving = signal(false);
   showConfirm = signal(false);
 
@@ -34,8 +40,8 @@ export class AssignPermissionsComponent implements OnInit {
 
   selectedRole = computed(() => this.roles().find((r) => r.id === this.selectedRoleId()) ?? null);
 
-  generalMenus = computed(() => this.menus().filter((m) => !m.isSensitive));
-  sensitiveMenus = computed(() => this.menus().filter((m) => m.isSensitive));
+  generalMenus = computed(() => this.groupByParent(this.menus().filter((m) => !m.isSensitive)));
+  sensitiveMenus = computed(() => this.groupByParent(this.menus().filter((m) => m.isSensitive)));
 
   hasChanges = computed(() => {
     const current = this.selectedMenuPermissionIds();
@@ -47,9 +53,19 @@ export class AssignPermissionsComponent implements OnInit {
     return false;
   });
 
-  private summaryFor(menus: Menu[]): { menuName: string; permissions: string[] }[] {
+  private groupByParent(menus: Menu[]): MenuGroup[] {
+    const byId = new Map(menus.map((m) => [m.id, m]));
+    const roots = menus.filter((m) => !m.parentId || !byId.has(m.parentId));
+    return roots.map((menu) => ({
+      menu,
+      children: menus.filter((m) => m.parentId === menu.id),
+    }));
+  }
+
+  private summaryFor(groups: MenuGroup[]): { menuName: string; permissions: string[] }[] {
     const current = this.selectedMenuPermissionIds();
-    return menus
+    const flatMenus = groups.flatMap((g) => [g.menu, ...g.children]);
+    return flatMenus
       .map((menu) => ({
         menuName: menu.name,
         permissions: (menu.menuPermissions ?? [])
@@ -69,13 +85,18 @@ export class AssignPermissionsComponent implements OnInit {
 
   loadRoles() {
     this.isLoading.set(true);
+    this.isPermissionError.set(false);
     this.rolesService.findAll(1, 100).subscribe({
       next: (res) => {
         this.roles.set(res.items);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.toastService.showError('Error al cargar los roles.');
+      error: (error: { status?: number }) => {
+        if (error?.status === 403) {
+          this.isPermissionError.set(true);
+        } else {
+          this.toastService.showError('Error al cargar los roles.');
+        }
         this.isLoading.set(false);
       },
     });
@@ -83,8 +104,14 @@ export class AssignPermissionsComponent implements OnInit {
 
   loadMenus() {
     this.menusService.findAll(1, 100).subscribe({
-      next: (res) => this.menus.set(res.items.filter((m) => m.isActive)),
-      error: () => this.toastService.showError('Error al cargar los menús.'),
+      next: (res) => this.menus.set(res.items.filter((m) => m.isActive && m.path !== '/menu')),
+      error: (error: { status?: number }) => {
+        if (error?.status === 403) {
+          this.isPermissionError.set(true);
+        } else {
+          this.toastService.showError('Error al cargar los menús.');
+        }
+      },
     });
   }
 
@@ -138,6 +165,10 @@ export class AssignPermissionsComponent implements OnInit {
   }
 
   askConfirm() {
+    if (!this.canEditPermissions()) {
+      this.toastService.showError('Tu rol no tiene permiso para asignar permisos.');
+      return;
+    }
     this.showConfirm.set(true);
   }
 
