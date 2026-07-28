@@ -12,6 +12,7 @@ import { TransactionStatusBadgeComponent } from '../transaction-status-badge/tra
 export class TransactionTableComponent {
   transactions = input.required<Transaction[]>();
   isLoading = input<boolean>(false);
+  isPermissionError = input<boolean>(false);
   canDisable = input<boolean>(false);
   disableInProgress = input<boolean>(false);
   disablingTransactionId = input<string | null>(null);

@@ -30,6 +30,7 @@ export class TransactionsListComponent {
   disablingTransactionId = signal<string | null>(null);
   disabledTransactionId = signal<string | null>(null);
   errorMessage = signal<string | null>(null);
+  isPermissionError = signal(false);
   currentFilters?: TransactionFilters;
 
   currentPage = signal(1);
@@ -50,6 +51,7 @@ export class TransactionsListComponent {
   loadTransactions(filters?: TransactionFilters, page: number = this.currentPage()): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
+    this.isPermissionError.set(false);
 
     this._transactionsService.getPaginatedTransactions(filters, page, this.pageSize).subscribe({
       next: (response) => {
@@ -59,8 +61,12 @@ export class TransactionsListComponent {
         this.totalItems.set(response.total);
         this.isLoading.set(false);
       },
-      error: (error) => {
-        this.errorMessage.set(error.message);
+      error: (error: Error & { status?: number }) => {
+        if (error.status === 403) {
+          this.isPermissionError.set(true);
+        } else {
+          this.errorMessage.set(error.message);
+        }
         this.isLoading.set(false);
       }
     });

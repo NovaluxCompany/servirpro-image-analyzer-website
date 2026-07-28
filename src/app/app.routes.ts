@@ -6,7 +6,7 @@ import { redirectBackGuard } from './core/guard/redirect-back.guard';
 import { LayoutComponent } from './core/components/layout/layout';
 
 export const routes: Routes = [
-    { path: '', component: Login },
+    { path: '', pathMatch: 'full', component: Login },
     { path: 'login', component: Login },
     {
         path: '',
@@ -25,7 +25,7 @@ export const routes: Routes = [
             },
             {
                 path: 'menu',
-                canActivate: [redirectBackGuard],
+                canActivate: [roleGuard],
                 loadChildren: () => import('./modules/menu/services/menu.routes').then(m => m.menuRoutes)
             },
             {

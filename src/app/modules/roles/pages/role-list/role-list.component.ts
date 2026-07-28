@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, HostListener } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RolesService } from '../../services/roles.service';
 import { Role } from '../../interfaces/role.interface';
@@ -19,10 +19,11 @@ export class RoleListComponent implements OnInit {
   private permissionService = inject(PermissionService);
   protected Math = Math;
 
-  canViewRoles = this.permissionService.can('view', '/roles');
-  canAssignPermissions = this.permissionService.can('view', '/roles/asignar-permisos');
+  canViewRoles = computed(() => this.permissionService.hasMenuEntry('/roles'));
+  canAssignPermissions = computed(() => this.permissionService.hasMenuEntry('/roles/asignar-permisos'));
+  canCreateRoles = computed(() => this.permissionService.can('create', '/roles'));
 
-  activeTab = signal<'roles' | 'permissions'>(this.canViewRoles ? 'roles' : 'permissions');
+  activeTab = signal<'roles' | 'permissions'>(this.canViewRoles() ? 'roles' : 'permissions');
 
   roles = signal<Role[]>([]);
   totalItems = signal(0);
@@ -31,6 +32,7 @@ export class RoleListComponent implements OnInit {
   showFormModal = signal(false);
   selectedRole = signal<Role | null>(null);
   isLoading = signal(false);
+  isPermissionError = signal(false);
   roleToToggle = signal<Role | null>(null);
   isToggling = signal(false);
 
@@ -48,14 +50,19 @@ export class RoleListComponent implements OnInit {
 
   loadRoles() {
     this.isLoading.set(true);
+    this.isPermissionError.set(false);
     this.rolesService.findAll(this.currentPage(), this.pageSize()).subscribe({
       next: (response) => {
         this.roles.set(response.items);
         this.totalItems.set(response.meta.totalItems);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.toastService.showError('Error al cargar los roles. Intenta de nuevo.');
+      error: (error: { status?: number }) => {
+        if (error?.status === 403) {
+          this.isPermissionError.set(true);
+        } else {
+          this.toastService.showError('Error al cargar los roles. Intenta de nuevo.');
+        }
         this.isLoading.set(false);
       }
     });
@@ -76,6 +83,7 @@ export class RoleListComponent implements OnInit {
   }
 
   openCreateModal() {
+    if (!this.permissionService.check('create', '/roles', 'Tu rol no tiene permiso para crear roles.')) return;
     this.selectedRole.set(null);
     this.showFormModal.set(true);
   }
