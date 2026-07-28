@@ -153,11 +153,11 @@ export class AffiliateMembersService {
   }
 
   // ── Enviar correo vía n8n ──────────────────────────────────────────
-  sendEmail(affiliationId: number): Observable<{ success: boolean; message: string }> {
+  sendEmail(affiliationId: number, emails: string[]): Observable<{ success: boolean; message: string }> {
     return this._http
       .post<{ success: boolean; message: string }>(
         `${environment.urlBD}/affiliates/${affiliationId}/send-email`,
-        {},
+        { emails },
         { headers: this.getHeaders() }
       )
       .pipe(catchError(this.handleError));
