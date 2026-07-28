@@ -42,8 +42,9 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly selectedIds = signal<number[]>([]);
   protected readonly context = signal<DeactivationContext | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly isPermissionError = signal(false);
   protected readonly activeTab = signal<InactivationTab>(
-    this._permission.can('view', '/desactivar-afiliados/sin-pago') ? 'unpaid' : 'underpaid'
+    this._permission.hasMenuEntry('/desactivar-afiliados/sin-pago') ? 'unpaid' : 'underpaid'
   );
 
   protected readonly unpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
@@ -59,12 +60,12 @@ export class DeactivateAffiliatesList implements OnInit {
 
   // Verifica si el usuario puede acceder al tab "Sin pago"
   protected readonly canViewUnpaid = computed(() =>
-    this._permission.can('view', '/desactivar-afiliados/sin-pago')
+    this._permission.hasMenuEntry('/desactivar-afiliados/sin-pago')
   );
 
   // Verifica si el usuario puede acceder al tab "Pagos Incompletos"
   protected readonly canViewUnderpaid = computed(() =>
-    this._permission.can('view', '/desactivar-afiliados/pagos-incompletos')
+    this._permission.hasMenuEntry('/desactivar-afiliados/pagos-incompletos')
   );
 
   // Verifica si el usuario puede desactivar afiliados en el tab actual
@@ -265,6 +266,7 @@ export class DeactivateAffiliatesList implements OnInit {
   protected loadData(): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
+    this.isPermissionError.set(false);
     this.selectedIds.set([]);
 
     const underpaidRequest = this.canViewUnderpaid()
@@ -282,8 +284,12 @@ export class DeactivateAffiliatesList implements OnInit {
         this.underpaidAffiliates.set(response.underpaid);
         this.isLoading.set(false);
       },
-      error: (error: Error) => {
-        this.errorMessage.set(error.message);
+      error: (error: Error & { status?: number }) => {
+        if (error.status === 403) {
+          this.isPermissionError.set(true);
+        } else {
+          this.errorMessage.set(error.message);
+        }
         this.isLoading.set(false);
       },
     });
@@ -297,7 +303,8 @@ export class DeactivateAffiliatesList implements OnInit {
       ? '/desactivar-afiliados/sin-pago'
       : '/desactivar-afiliados/pagos-incompletos';
 
-    if (!this._permission.check('view', path, 'No tienes permiso para acceder a este módulo.')) {
+    if (!this._permission.hasMenuEntry(path)) {
+      this._toastService.showError('No tienes permiso para acceder a este módulo.');
       return;
     }
 

@@ -47,7 +47,7 @@
     </div>
 
     <!-- Error Alert -->
-    @if (errorMessage()) {
+    @if (errorMessage() && !isPermissionError()) {
       <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100" role="alert">
         <span class="font-medium">Error:</span> {{ errorMessage() }}
       </div>
@@ -57,6 +57,7 @@
     <app-transaction-table
       [transactions]="transactions()"
       [isLoading]="isLoading()"
+      [isPermissionError]="isPermissionError()"
       [canDisable]="canDisableTransactions"
       [disableInProgress]="isDisablingTransaction()"
       [disablingTransactionId]="disablingTransactionId()"
