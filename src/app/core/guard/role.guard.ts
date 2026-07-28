@@ -59,11 +59,14 @@ export const roleGuard: CanActivateFn = (
     return false;
   }
 
-  // Si no hay URL anterior (primera carga), redirigir al primer menu permitido en BD,
-  // o al login si el usuario no tiene ningún menú asignado.
+  // Si no hay URL anterior (primera carga), redirigir a la primera ruta de nivel raíz
+  // (un solo segmento) que el usuario tenga permitida en BD; /menu es administrativo
+  // y nunca debe usarse como destino. Si no tiene ninguna ruta raíz navegable
+  // (ej. solo tiene permisos en sub-rutas/hijos), se manda al login.
   const fallback = menuPaths
     .map((p) => normalizePath(p))
-    .find((path) => path !== '/') ?? '/login';
+    .find((path) => path !== '/' && path !== '/menu' && path.split('/').filter(Boolean).length === 1)
+    ?? '/login';
   router.navigate([fallback]);
   return false;
 };

@@ -63,20 +63,23 @@
                 <div class="flex items-center gap-2">
                   <i [className]="'text-sm ' + child.icon + ' text-gray-400'"></i>
                   <span class="font-medium text-gray-700 text-sm">{{ child.name }}</span>
+                  @if (isMenuLocked(child)) {
+                  <span class="text-[10px] text-gray-400 italic">(requiere permisos en el menú padre)</span>
+                  }
                 </div>
                 <label class="flex items-center gap-2 cursor-pointer group">
                   <span class="text-xs text-gray-500 group-hover:text-blue-600">Seleccionar todo</span>
-                  <input type="checkbox" [checked]="isMenuFullyChecked(child)"
+                  <input type="checkbox" [checked]="isMenuFullyChecked(child)" [disabled]="isMenuLocked(child)"
                     (change)="toggleMenu(child, $any($event.target).checked)"
-                    class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed">
                 </label>
               </div>
               <div class="ml-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
                 @for (mp of child.menuPermissions; track mp.id) {
                 <label class="flex items-center gap-2 cursor-pointer group">
-                  <input type="checkbox" [checked]="isChecked(mp.id!)"
+                  <input type="checkbox" [checked]="isChecked(mp.id!)" [disabled]="isMenuLocked(child)"
                     (change)="toggle(mp.id!, $any($event.target).checked)"
-                    class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed">
                   <span class="text-sm text-gray-600 group-hover:text-blue-600">{{ mp.permission.description }}</span>
                 </label>
                 }
@@ -143,20 +146,23 @@
                 <div class="flex items-center gap-2">
                   <i [className]="'text-sm ' + child.icon + ' text-amber-500'"></i>
                   <span class="font-medium text-gray-700 text-sm">{{ child.name }}</span>
+                  @if (isMenuLocked(child)) {
+                  <span class="text-[10px] text-gray-400 italic">(requiere permisos en el menú padre)</span>
+                  }
                 </div>
                 <label class="flex items-center gap-2 cursor-pointer group">
                   <span class="text-xs text-amber-700 group-hover:text-amber-800">Seleccionar todo</span>
-                  <input type="checkbox" [checked]="isMenuFullyChecked(child)"
+                  <input type="checkbox" [checked]="isMenuFullyChecked(child)" [disabled]="isMenuLocked(child)"
                     (change)="toggleMenu(child, $any($event.target).checked)"
-                    class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500">
+                    class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500 disabled:opacity-40 disabled:cursor-not-allowed">
                 </label>
               </div>
               <div class="ml-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
                 @for (mp of child.menuPermissions; track mp.id) {
                 <label class="flex items-center gap-2 cursor-pointer group">
-                  <input type="checkbox" [checked]="isChecked(mp.id!)"
+                  <input type="checkbox" [checked]="isChecked(mp.id!)" [disabled]="isMenuLocked(child)"
                     (change)="toggle(mp.id!, $any($event.target).checked)"
-                    class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500">
+                    class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500 disabled:opacity-40 disabled:cursor-not-allowed">
                   <span class="text-sm text-gray-600 group-hover:text-amber-700">{{ mp.permission.description }}</span>
                 </label>
                 }

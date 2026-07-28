@@ -53,13 +53,37 @@ export class AssignPermissionsComponent implements OnInit {
     return false;
   });
 
+  /**
+   * Resuelve el menú padre de otro. Usa parentId si está disponible en la BD;
+   * si no (los seeds actuales lo traen en null), infiere el padre por el path
+   * (ej. /roles/asignar-permisos -> /roles).
+   */
+  private getParentMenu(menu: Menu, allMenus: Menu[] = this.menus()): Menu | undefined {
+    if (menu.parentId) {
+      const byId = allMenus.find((m) => m.id === menu.parentId);
+      if (byId) return byId;
+    }
+    const segments = (menu.path ?? '').split('/').filter(Boolean);
+    if (segments.length <= 1) return undefined;
+    const parentPath = `/${segments.slice(0, -1).join('/')}`;
+    return allMenus.find((m) => m.path === parentPath);
+  }
+
   private groupByParent(menus: Menu[]): MenuGroup[] {
-    const byId = new Map(menus.map((m) => [m.id, m]));
-    const roots = menus.filter((m) => !m.parentId || !byId.has(m.parentId));
+    const roots = menus.filter((m) => this.getParentMenu(m, menus) == null);
     return roots.map((menu) => ({
       menu,
-      children: menus.filter((m) => m.parentId === menu.id),
+      children: menus.filter((m) => this.getParentMenu(m, menus)?.id === menu.id),
     }));
+  }
+
+  /** Si el menú es hijo de otro, solo puede asignarse permisos si el padre ya tiene alguno marcado. */
+  isMenuLocked(menu: Menu): boolean {
+    const parent = this.getParentMenu(menu);
+    if (!parent) return false;
+    const parentIds = (parent.menuPermissions ?? []).map((mp) => mp.id!);
+    const current = this.selectedMenuPermissionIds();
+    return !parentIds.some((id) => current.has(id));
   }
 
   private summaryFor(groups: MenuGroup[]): { menuName: string; permissions: string[] }[] {
@@ -128,14 +152,46 @@ export class AssignPermissionsComponent implements OnInit {
     return this.selectedMenuPermissionIds().has(menuPermissionId);
   }
 
+  private findMenuByPermissionId(menuPermissionId: number): Menu | undefined {
+    return this.menus().find((m) => (m.menuPermissions ?? []).some((mp) => mp.id === menuPermissionId));
+  }
+
+  private cascadeUncheckChildren(menu: Menu, ids: Set<number>) {
+    const children = this.menus().filter((m) => this.getParentMenu(m)?.id === menu.id);
+    for (const child of children) {
+      for (const mp of child.menuPermissions ?? []) {
+        ids.delete(mp.id!);
+      }
+      this.cascadeUncheckChildren(child, ids);
+    }
+  }
+
   toggle(menuPermissionId: number, checked: boolean) {
+    const menu = this.findMenuByPermissionId(menuPermissionId);
+
+    if (checked && menu && this.isMenuLocked(menu)) {
+      const parent = this.getParentMenu(menu);
+      this.toastService.showError(`Primero debes asignar permisos en "${parent?.name}".`);
+      return;
+    }
+
     const next = new Set(this.selectedMenuPermissionIds());
     if (checked) {
       next.add(menuPermissionId);
     } else {
       next.delete(menuPermissionId);
     }
+
+    if (!checked && menu && this.isMenuLockedFor(menu, next)) {
+      this.cascadeUncheckChildren(menu, next);
+    }
+
     this.selectedMenuPermissionIds.set(next);
+  }
+
+  private isMenuLockedFor(menu: Menu, ids: Set<number>): boolean {
+    const ownIds = (menu.menuPermissions ?? []).map((mp) => mp.id!);
+    return !ownIds.some((id) => ids.has(id));
   }
 
   isMenuFullyChecked(menu: Menu): boolean {
@@ -153,6 +209,12 @@ export class AssignPermissionsComponent implements OnInit {
   }
 
   toggleMenu(menu: Menu, checked: boolean) {
+    if (checked && this.isMenuLocked(menu)) {
+      const parent = this.getParentMenu(menu);
+      this.toastService.showError(`Primero debes asignar permisos en "${parent?.name}".`);
+      return;
+    }
+
     const next = new Set(this.selectedMenuPermissionIds());
     for (const mp of menu.menuPermissions ?? []) {
       if (checked) {
@@ -161,6 +223,11 @@ export class AssignPermissionsComponent implements OnInit {
         next.delete(mp.id!);
       }
     }
+
+    if (!checked) {
+      this.cascadeUncheckChildren(menu, next);
+    }
+
     this.selectedMenuPermissionIds.set(next);
   }
 

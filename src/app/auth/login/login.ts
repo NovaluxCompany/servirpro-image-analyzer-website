@@ -87,7 +87,10 @@ export class Login {
         // Solo las rutas raíz (un segmento) están registradas en app.routes.ts.
         // Los paths con más de un segmento (ej. /roles/asignar-permisos) son
         // sub-tabs dentro de una página, no rutas navegables por sí solas.
-        const navigablePaths = menuPaths.filter((p) => p.split('/').filter(Boolean).length === 1);
+        // /menu es administrativo y no debe usarse como landing page tras el login.
+        const navigablePaths = menuPaths
+          .filter((p) => p.split('/').filter(Boolean).length === 1)
+          .filter((p) => p !== '/menu');
 
         if (navigablePaths.length === 0) {
           this._tokenService.removeToken();
