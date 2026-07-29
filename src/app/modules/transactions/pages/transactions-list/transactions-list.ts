@@ -6,13 +6,14 @@ import { Transaction } from '../../interfaces/transaction.interface';
 import { TransactionFilters } from '../../interfaces/transaction-filters.interface';
 import { TransactionFiltersComponent } from '../../components/transaction-filters/transaction-filters';
 import { TransactionTableComponent } from '../../components/transaction-table/transaction-table';
+import { ExcelExportModalComponent } from '../../components/excel-export-modal/excel-export-modal';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
 
 @Component({
   selector: 'app-transactions-list',
   standalone: true,
-  imports: [CommonModule, TransactionFiltersComponent, TransactionTableComponent],
+  imports: [CommonModule, TransactionFiltersComponent, TransactionTableComponent, ExcelExportModalComponent],
   templateUrl: './transactions-list.html'
 })
 export class TransactionsListComponent {
@@ -26,6 +27,7 @@ export class TransactionsListComponent {
   transactions = signal<Transaction[]>([]);
   isLoading = signal(false);
   isDownloadingExcel = signal(false);
+  isExportModalVisible = signal(false);
   isDisablingTransaction = signal(false);
   disablingTransactionId = signal<string | null>(null);
   disabledTransactionId = signal<string | null>(null);
@@ -102,18 +104,23 @@ export class TransactionsListComponent {
     this._router.navigate(['/transacciones/crear']);
   }
 
-  downloadExcel(): void {
+  openExportModal(): void {
     if (!this._permission.check('export', undefined, 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
-    if (this.totalItems() === 0) {
-      this._toastService.showError('No hay resultados para descargar con los filtros actuales.');
-      return;
-    }
+    this.isExportModalVisible.set(true);
+  }
 
+  onExportCancelled(): void {
+    this.isExportModalVisible.set(false);
+  }
+
+  onExportConfirmed(range: { dateFrom: string; dateTo: string }): void {
     this.isDownloadingExcel.set(true);
     this.errorMessage.set(null);
     this._toastService.showInfo('Descarga en proceso...');
 
-    this._transactionsService.exportToExcel(this.currentFilters).subscribe({
+    const filters: TransactionFilters = { ...this.currentFilters, dateFrom: range.dateFrom, dateTo: range.dateTo };
+
+    this._transactionsService.exportToExcel(filters).subscribe({
       next: (blob) => {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -129,6 +136,7 @@ export class TransactionsListComponent {
         window.URL.revokeObjectURL(url);
 
         this.isDownloadingExcel.set(false);
+        this.isExportModalVisible.set(false);
         this._toastService.showSuccess('Excel descargado exitosamente');
       },
       error: (error) => {
