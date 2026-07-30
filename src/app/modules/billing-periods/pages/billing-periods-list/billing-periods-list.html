@@ -9,6 +9,9 @@
       </div>
     </div>
 
+    <!-- Filters -->
+    <app-billing-period-filters (filterApplied)="onFilterApplied($event)" />
+
     <!-- Error -->
     @if (errorMessage()) {
     <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100 border border-red-200" role="alert">
@@ -22,6 +25,7 @@
         <table class="w-full text-sm text-left text-gray-600">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Acciones</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Afiliado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Periodo</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Bloque</th>
@@ -37,6 +41,7 @@
             @if (isLoading()) {
             @for (i of [1,2,3,4,5]; track i) {
             <tr class="animate-pulse">
+              <td class="px-4 py-3"><div class="h-5 w-24 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-4 w-40 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-4 w-16 bg-gray-200 rounded"></div></td>
@@ -47,9 +52,15 @@
               <td class="px-4 py-3"><div class="h-5 w-16 bg-gray-200 rounded-full"></div></td>
             </tr>
             }
+            } @else if (!hasSearched()) {
+            <tr>
+              <td colspan="9" class="px-4 py-16 text-center">
+                <p class="text-gray-500 font-medium">Selecciona un rango de fechas y presiona Buscar para ver los periodos de facturación</p>
+              </td>
+            </tr>
             } @else if (billingPeriods().length === 0) {
             <tr>
-              <td colspan="8" class="px-4 py-16 text-center">
+              <td colspan="9" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,9 +75,20 @@
             } @else {
             @for (period of billingPeriods(); track period.id) {
             <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-4 py-3 whitespace-nowrap">
+                @if (period.hasSiigoMatch) {
+                <button
+                  type="button"
+                  (click)="onSendToSiigo(period)"
+                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800"
+                >
+                  Enviar a Siigo
+                </button>
+                }
+              </td>
               <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ clientLabel(period) }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ monthLabel(period.periodMonth) }} {{ period.periodYear }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ period.bloque }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ period.block }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ period.expectedAmount | number:'1.0-0' }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ period.accumulatedAmount | number:'1.0-0' }}</td>
               <td class="px-4 py-3 whitespace-nowrap">
@@ -76,7 +98,7 @@
                 <span class="px-2.5 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full">No</span>
                 }
               </td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ period.siigoInvoiceStatus }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ statusLabel(period.siigoInvoiceStatus) }}</td>
               <td class="px-4 py-3 whitespace-nowrap">
                 @if (period.isNewTransaction) {
                 <span class="px-2.5 py-1 text-xs font-medium text-blue-800 bg-blue-100 rounded-full">Sí</span>
@@ -92,6 +114,56 @@
         </table>
       </div>
     </div>
+
+    <!-- Pagination -->
+    @if (totalPages() > 1) {
+    <div class="flex items-center justify-between mt-4 px-1">
+      <p class="text-sm text-gray-600">
+        {{ totalItems() }} registros &mdash; Página {{ currentPage() }} de {{ totalPages() }}
+      </p>
+
+      <nav class="inline-flex items-center gap-1" aria-label="Paginación">
+        <button
+          type="button"
+          (click)="previousPage()"
+          [disabled]="currentPage() === 1"
+          class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Anterior
+        </button>
+
+        @for (page of pageNumbers; track page) {
+        <button
+          type="button"
+          (click)="goToPage(page)"
+          [class]="page === currentPage()
+            ? 'px-3 py-1.5 text-sm font-semibold text-white bg-blue-700 border border-blue-700 rounded-lg'
+            : 'px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'"
+        >
+          {{ page }}
+        </button>
+        }
+
+        <button
+          type="button"
+          (click)="nextPage()"
+          [disabled]="currentPage() === totalPages()"
+          class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Siguiente
+        </button>
+      </nav>
+    </div>
+    }
+
+    <app-send-to-siigo-modal
+      [isVisible]="showSendModal()"
+      [isLoading]="isLoadingPayload()"
+      [payload]="selectedPayload()"
+      (confirmed)="onConfirmSendToSiigo()"
+      (cancelled)="onCancelSendToSiigo()"
+      (moraChanged)="onMoraChanged($event)"
+    />
 
   </div>
 </div>

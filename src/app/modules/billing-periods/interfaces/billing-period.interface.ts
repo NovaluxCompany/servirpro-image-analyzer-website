@@ -15,13 +15,16 @@ export interface BillingPeriod {
   affiliation?: BillingPeriodAffiliation;
   periodYear: number;
   periodMonth: number;
-  bloque: string;
+  block: string;
   expectedAmount: number;
   accumulatedAmount: number;
   isComplete: boolean;
   siigoInvoiceStatus: string;
   siigoInvoiceValue: number | null;
   isNewTransaction: boolean;
+  mora: number;
+  ganancia: number | null;
   createdAt: string;
   updatedAt: string;
+  hasSiigoMatch?: boolean;
 }
