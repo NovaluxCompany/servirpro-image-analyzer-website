@@ -1,6 +1,6 @@
 import { Component, effect, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { SiigoInvoicePayload } from '../../interfaces/siigo-invoice-payload.interface';
+import { SiigoInvoicePayload, SiigoInvoicePricingBreakdown } from '../../interfaces/siigo-invoice-payload.interface';
 
 const MORA_DEBOUNCE_MS = 400;
 
@@ -14,6 +14,7 @@ export class SendToSiigoModalComponent {
   isVisible = input<boolean>(false);
   isLoading = input<boolean>(false);
   payload = input<SiigoInvoicePayload | null>(null);
+  pricingBreakdown = input<SiigoInvoicePricingBreakdown | null>(null);
 
   confirmed = output<void>();
   cancelled = output<void>();
@@ -29,10 +30,6 @@ export class SendToSiigoModalComponent {
         this.mora.set(0);
       }
     });
-  }
-
-  get payloadJson(): string {
-    return this.payload() ? JSON.stringify(this.payload(), null, 2) : '';
   }
 
   get observations(): string {

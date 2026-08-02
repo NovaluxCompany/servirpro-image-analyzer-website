@@ -25,7 +25,16 @@ export interface SiigoInvoicePayload {
   }>;
 }
 
+export interface SiigoInvoicePricingBreakdown {
+  planValue: number;
+  administracion: number;
+  descuentoAfiliado: number;
+  mora: number;
+  total: number;
+}
+
 export interface SiigoInvoicePayloadPreview {
   hasMatch: boolean;
   payload: SiigoInvoicePayload | null;
+  pricingBreakdown: SiigoInvoicePricingBreakdown | null;
 }

@@ -160,6 +160,7 @@
       [isVisible]="showSendModal()"
       [isLoading]="isLoadingPayload()"
       [payload]="selectedPayload()"
+      [pricingBreakdown]="selectedPricingBreakdown()"
       (confirmed)="onConfirmSendToSiigo()"
       (cancelled)="onCancelSendToSiigo()"
       (moraChanged)="onMoraChanged($event)"

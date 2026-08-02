@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { BillingPeriodsService } from '../../services/billing-periods.service';
 import { BillingPeriod } from '../../interfaces/billing-period.interface';
 import { BillingPeriodFilters } from '../../interfaces/billing-period-filters.interface';
-import { SiigoInvoicePayload } from '../../interfaces/siigo-invoice-payload.interface';
+import { SiigoInvoicePayload, SiigoInvoicePricingBreakdown } from '../../interfaces/siigo-invoice-payload.interface';
 import { BillingPeriodFiltersComponent } from '../../components/billing-period-filters/billing-period-filters';
 import { SendToSiigoModalComponent } from '../../components/send-to-siigo-modal/send-to-siigo-modal';
 import { ToastService } from '../../../../core/service/toast.service';
@@ -21,6 +21,7 @@ export class BillingPeriodsListComponent {
   showSendModal = signal(false);
   isLoadingPayload = signal(false);
   selectedPayload = signal<SiigoInvoicePayload | null>(null);
+  selectedPricingBreakdown = signal<SiigoInvoicePricingBreakdown | null>(null);
   private selectedPeriodId: number | null = null;
 
   readonly pageSize = 10;
@@ -109,6 +110,7 @@ export class BillingPeriodsListComponent {
     this.selectedPeriodId = period.id;
     this.isLoadingPayload.set(true);
     this.selectedPayload.set(null);
+    this.selectedPricingBreakdown.set(null);
     this.showSendModal.set(true);
     this.fetchPayloadPreview(period.id, 0, { closeModalOnMismatch: true });
   }
@@ -132,6 +134,7 @@ export class BillingPeriodsListComponent {
           return;
         }
         this.selectedPayload.set(preview.payload);
+        this.selectedPricingBreakdown.set(preview.pricingBreakdown);
       },
       error: (err) => {
         this.isLoadingPayload.set(false);
@@ -147,6 +150,7 @@ export class BillingPeriodsListComponent {
     // Envío simulado: no se llama realmente a la API de Siigo.
     this.showSendModal.set(false);
     this.selectedPayload.set(null);
+    this.selectedPricingBreakdown.set(null);
     this.selectedPeriodId = null;
     this._toastService.showSuccess('Información enviada a Siigo correctamente');
   }
@@ -154,6 +158,7 @@ export class BillingPeriodsListComponent {
   onCancelSendToSiigo(): void {
     this.showSendModal.set(false);
     this.selectedPayload.set(null);
+    this.selectedPricingBreakdown.set(null);
     this.selectedPeriodId = null;
   }
 

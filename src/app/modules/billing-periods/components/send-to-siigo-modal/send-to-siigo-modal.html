@@ -46,7 +46,32 @@
                 {{ observations }}
               </p>
             }
-            <pre class="max-h-72 overflow-auto text-xs bg-gray-50 border border-gray-200 rounded-lg p-3 text-gray-800">{{ payloadJson }}</pre>
+
+            @if (pricingBreakdown(); as breakdown) {
+              <dl class="space-y-2 text-sm">
+                <div class="flex items-center justify-between">
+                  <dt class="text-gray-600">Valor del plan</dt>
+                  <dd class="font-medium text-gray-900">{{ breakdown.planValue | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
+                </div>
+                <div class="flex items-center justify-between">
+                  <dt class="text-gray-600">Administración</dt>
+                  <dd class="font-medium text-gray-900">{{ breakdown.administracion | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
+                </div>
+                <div class="flex items-center justify-between">
+                  <dt class="text-gray-600">Descuento afiliado</dt>
+                  <dd class="font-medium text-gray-900">- {{ breakdown.descuentoAfiliado | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
+                </div>
+                <div class="flex items-center justify-between">
+                  <dt class="text-gray-600">Mora</dt>
+                  <dd class="font-medium text-gray-900">- {{ breakdown.mora | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
+                </div>
+                <hr class="border-gray-200" />
+                <div class="flex items-center justify-between">
+                  <dt class="text-sm font-semibold text-gray-900">Total a enviar</dt>
+                  <dd class="text-sm font-bold text-blue-700">{{ breakdown.total | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
+                </div>
+              </dl>
+            }
           }
         </section>
       </div>
