@@ -130,6 +130,12 @@ export class AffiliatesPage {
     }
     await pickFirstSearchableSelectOption(this.page, form, 'Asesor');
 
+    // Sucursal y Descuento son opcionales en el formulario, pero se llenan
+    // explícito (en vez de dejarlos vacíos) para que el afiliado de prueba
+    // quede con datos completos, igual que un afiliado real.
+    await pickFirstSearchableSelectOption(this.page, form, 'Sucursal', { timeoutMs: 45_000 });
+    await form.locator('input[formcontrolname="discount"]').fill('0');
+
     // Campo obligatorio (select nativo formControlName="affiliateType"): aunque
     // visualmente ya muestra "Dependiente" como primera opción, el FormControl
     // arranca sin value hasta que se interactúa, así que sin este select

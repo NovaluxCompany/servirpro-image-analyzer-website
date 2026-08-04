@@ -80,36 +80,32 @@ interface PricingEjemploCase {
   planPrice: number;
 }
 
-const PRICING_CASES: PricingEjemploCase[] = [
-  {
-    // Fila 41: "Julián Esteban Vélez Marín" — SOLO ARL, CC, 27 años (real).
-    // Edad/documento se cambian a 17 + CE para esquivar el atajo de
-    // RESOLUCION del clasificador (ver nota arriba) y sí llegar a ORDINARIO,
-    // validando la regla GESTION+ORDINARIO+ARL2 (id=25 en siigo_pricing_rules).
-    sourceRow: 'EJEMPLOS!A41',
-    caseName: 'GestionOrdinarioArl2Puro',
-    agrupadoraText: 'GESTION',
-    planText: 'ARL2',
-    documentType: 'CE',
-    ageYears: 17,
-    genderText: 'Hombre',
-    expectedCategory: 'ORDINARIO',
-    admin: 14000,
-    reserve: 6110,
-    ganancia: 58590,
-    planPrice: 97000,
-  },
-];
+// Fila 41: "Julián Esteban Vélez Marín" — SOLO ARL, CC, 27 años (real).
+// Edad/documento se cambian a 17 + CE para esquivar el atajo de RESOLUCION
+// del clasificador (ver nota arriba) y sí llegar a ORDINARIO, validando la
+// regla GESTION+ORDINARIO+ARL2 (id=25 en siigo_pricing_rules).
+const ARL2_PURO_CASE: PricingEjemploCase = {
+  sourceRow: 'EJEMPLOS!A41',
+  caseName: 'GestionOrdinarioArl2Puro',
+  agrupadoraText: 'GESTION',
+  planText: 'ARL2',
+  documentType: 'CE',
+  ageYears: 17,
+  genderText: 'Hombre',
+  expectedCategory: 'ORDINARIO',
+  admin: 14000,
+  reserve: 6110,
+  ganancia: 58590,
+  planPrice: 97000,
+};
 
 /**
- * Casos ya corridos y validados en una ejecución anterior (12 de las 13
- * filas MENSUALIDADES "normales" de EJEMPLOS — cubren las 4 combinaciones
- * agrupadora+categoría: RESOLUCION/ORDINARIO, RESOLUCION/RESOLUCION,
- * GESTION/ORDINARIO, GESTION/NO ORDINARIO). Quedan comentados a propósito
- * (no se ejecutan en cada corrida) solo como registro de que este trabajo
- * ya se hizo — para volver a correrlos, descomentar y sumarlos a
- * PRICING_CASES con `...OTHER_VALIDATED_CASES`.
- *
+ * Las otras 13 filas MENSUALIDADES "normales" de EJEMPLOS — cubren las 4
+ * combinaciones agrupadora+categoría: RESOLUCION/ORDINARIO,
+ * RESOLUCION/RESOLUCION, GESTION/ORDINARIO, GESTION/NO ORDINARIO. Ya se
+ * habían validado en una ejecución anterior; se reactivaron para correr
+ * junto con la fila 41 en PRICING_CASES.
+ */
 const OTHER_VALIDATED_CASES: PricingEjemploCase[] = [
   {
     // Fila 11: "Édgar Hernán Ospina Duque" — HOMBRE MAYOR 55 AÑOS, CC, 61 años
@@ -307,7 +303,8 @@ const OTHER_VALIDATED_CASES: PricingEjemploCase[] = [
     planPrice: 161000,
   },
 ];
-*/
+
+const PRICING_CASES: PricingEjemploCase[] = [ARL2_PURO_CASE, ...OTHER_VALIDATED_CASES];
 
 /** "$ 125.140" / "125.140" (formato es-CO de CurrencyPipe) -> 125140 */
 function parseCopAmount(text: string): number {

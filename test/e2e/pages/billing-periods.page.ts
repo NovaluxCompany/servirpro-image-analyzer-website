@@ -195,7 +195,12 @@ export class BillingPeriodsPage {
   }
 
   async expectPricingBreakdownVisible(): Promise<void> {
-    await expect(this.modal().getByText('Valor del plan')).toBeVisible({ timeout: 15_000 });
+    // 30s (no 15s): el backend puede tardar más de lo normal en responder
+    // getSiigoInvoicePayloadPreview si está saturado por las llamadas de
+    // fondo a n8n que dispara cada transacción de prueba (ver
+    // pricing-ejemplos-nuevos.spec.ts) — no es que la regla no haga match,
+    // es que la respuesta tarda.
+    await expect(this.modal().getByText('Valor del plan')).toBeVisible({ timeout: 30_000 });
     await expect(this.modal().getByText('Total a enviar')).toBeVisible();
   }
 
