@@ -46,6 +46,8 @@ export interface AffiliateMember {
   pensionName?: string;
   compensationBoxId?: string;
   compensationBoxName?: string;
+  branchId?: string;
+  branchName?: string;
   isActive?: boolean;
   emailSent?: boolean;
   observation?: string;
@@ -111,6 +113,7 @@ export interface CreateAffiliateMemberDto {
   epsId?: number | null;
   pensionId?: number | null;
   compensationBoxId?: number | null;
+  branchId?: number | null;
   isActive?: boolean;
   entryDate?: string;
   arl?: number;

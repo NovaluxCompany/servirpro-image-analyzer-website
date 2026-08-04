@@ -18,6 +18,8 @@ export class BillingPeriodsListComponent {
   private _service = inject(BillingPeriodsService);
   private _toastService = inject(ToastService);
 
+  isDownloadingExcel = signal(false);
+
   showSendModal = signal(false);
   isLoadingPayload = signal(false);
   selectedPayload = signal<SiigoInvoicePayload | null>(null);
@@ -28,7 +30,6 @@ export class BillingPeriodsListComponent {
 
   billingPeriods = signal<BillingPeriod[]>([]);
   isLoading = signal(false);
-  errorMessage = signal<string | null>(null);
   hasSearched = signal(false);
   currentFilters?: BillingPeriodFilters;
 
@@ -54,11 +55,19 @@ export class BillingPeriodsListComponent {
     this.loadBillingPeriods(1);
   }
 
+  onFiltersCleared(): void {
+    this.currentFilters = undefined;
+    this.hasSearched.set(false);
+    this.billingPeriods.set([]);
+    this.currentPage.set(1);
+    this.totalPages.set(0);
+    this.totalItems.set(0);
+  }
+
   loadBillingPeriods(page: number = this.currentPage()): void {
     if (!this.currentFilters) return;
 
     this.isLoading.set(true);
-    this.errorMessage.set(null);
     this._service.getPaginatedBillingPeriods(this.currentFilters, page, this.pageSize).subscribe({
       next: (response) => {
         this.billingPeriods.set(response.data);
@@ -68,7 +77,7 @@ export class BillingPeriodsListComponent {
         this.isLoading.set(false);
       },
       error: (err) => {
-        this.errorMessage.set(err?.message ?? 'No fue posible cargar los periodos de facturación');
+        this._toastService.showError(err?.message ?? 'No fue posible cargar los periodos de facturación');
         this.isLoading.set(false);
       },
     });
@@ -115,15 +124,15 @@ export class BillingPeriodsListComponent {
     this.fetchPayloadPreview(period.id, 0, { closeModalOnMismatch: true });
   }
 
-  onMoraChanged(mora: number): void {
+  onLateFeeChanged(lateFee: number): void {
     if (this.selectedPeriodId === null) return;
-    this.fetchPayloadPreview(this.selectedPeriodId, mora, { closeModalOnMismatch: false });
+    this.fetchPayloadPreview(this.selectedPeriodId, lateFee, { closeModalOnMismatch: false });
   }
 
-  private fetchPayloadPreview(periodId: number, mora: number, options: { closeModalOnMismatch: boolean }): void {
+  private fetchPayloadPreview(periodId: number, lateFee: number, options: { closeModalOnMismatch: boolean }): void {
     this.isLoadingPayload.set(true);
 
-    this._service.getSiigoInvoicePayloadPreview(periodId, mora).subscribe({
+    this._service.getSiigoInvoicePayloadPreview(periodId, lateFee).subscribe({
       next: (preview) => {
         this.isLoadingPayload.set(false);
         if (!preview.hasMatch || !preview.payload) {
@@ -146,13 +155,26 @@ export class BillingPeriodsListComponent {
     });
   }
 
-  onConfirmSendToSiigo(): void {
-    // Envío simulado: no se llama realmente a la API de Siigo.
-    this.showSendModal.set(false);
-    this.selectedPayload.set(null);
-    this.selectedPricingBreakdown.set(null);
-    this.selectedPeriodId = null;
-    this._toastService.showSuccess('Información enviada a Siigo correctamente');
+  onConfirmSendToSiigo(request: { lateFee: number; observations: string }): void {
+    if (this.selectedPeriodId === null) return;
+    const periodId = this.selectedPeriodId;
+
+    this.isLoadingPayload.set(true);
+    this._service.sendToSiigo(periodId, request).subscribe({
+      next: () => {
+        this.isLoadingPayload.set(false);
+        this.showSendModal.set(false);
+        this.selectedPayload.set(null);
+        this.selectedPricingBreakdown.set(null);
+        this.selectedPeriodId = null;
+        this._toastService.showSuccess('Factura creada en Siigo correctamente');
+        this.loadBillingPeriods();
+      },
+      error: (err) => {
+        this.isLoadingPayload.set(false);
+        this._toastService.showError(err?.message ?? 'No fue posible crear la factura en Siigo');
+      },
+    });
   }
 
   onCancelSendToSiigo(): void {
@@ -165,5 +187,32 @@ export class BillingPeriodsListComponent {
   clientLabel(period: BillingPeriod): string {
     const client = period.affiliation?.client;
     return client ? `${client.fullName} (${client.documentNumber})` : `Afiliación #${period.affiliationId}`;
+  }
+
+  downloadExcel(): void {
+    if (!this.currentFilters) return;
+
+    this.isDownloadingExcel.set(true);
+    this._toastService.showInfo('Descarga en proceso...');
+
+    this._service.exportToExcel(this.currentFilters.dateFrom, this.currentFilters.dateTo).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const timestamp = new Date().toISOString().split('T')[0];
+        link.download = `periodos-facturacion_${timestamp}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        this.isDownloadingExcel.set(false);
+        this._toastService.showSuccess('Excel descargado exitosamente');
+      },
+      error: (err) => {
+        this.isDownloadingExcel.set(false);
+        this._toastService.showError(err?.message ?? 'No fue posible descargar el Excel');
+      },
+    });
   }
 }

@@ -1,12 +1,25 @@
 import { Page, expect } from '@playwright/test';
+import path from 'path';
 import { pickFirstSearchableSelectOption, pickFirstComboboxOption } from '../utils/searchable-select';
-import { buildDummyPdf } from '../utils/build-dummy-pdf';
+
+const AFFILIATE_DOCUMENT_FIXTURE = path.resolve(__dirname, '../fixtures/subregiones.pdf');
+
+/** Escapa caracteres especiales de regex (ej. el "+" de planes como "EPS+ARL5+AFP"). */
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 export interface NewAffiliateData {
   documentNumber: string;
   firstName: string;
   lastName: string;
   email: string;
+  /** Tipo de documento (catálogo "Tipo de documento"), ej. "CC", "CE", "PPT". Por defecto usa el primero disponible. */
+  documentType?: string;
+  /** Fecha de nacimiento en formato YYYY-MM-DD (input[type=date]). Opcional. */
+  birthDate?: string;
+  /** Texto del género (catálogo "Género"): "Hombre" o "Mujer" (así aparecen las opciones en el select, no "Masculino"/"Femenino"). Por defecto usa el primero disponible. */
+  genderText?: string;
 }
 
 export class AffiliatesPage {
@@ -33,12 +46,33 @@ export class AffiliatesPage {
   async fillPersonalData(data: NewAffiliateData): Promise<void> {
     const form = this.page.locator('form');
 
+    if (data.documentType) {
+      await pickFirstSearchableSelectOption(this.page, form, 'Tipo de documento', {
+        matchText: new RegExp(`^\\s*${escapeRegExp(data.documentType)}\\s*$`, 'i'),
+        searchText: data.documentType,
+        timeoutMs: 15_000,
+      });
+    }
+
     await form.locator('input[formcontrolname="documentNumber"]').fill(data.documentNumber);
     await form.locator('input[formcontrolname="firstName"]').fill(data.firstName);
     await form.locator('input[formcontrolname="lastName"]').fill(data.lastName);
 
     await pickFirstComboboxOption(this.page, form, 'Referencia');
-    await pickFirstSearchableSelectOption(this.page, form, 'Género');
+
+    if (data.birthDate) {
+      await form.locator('input[formcontrolname="birthDate"]').fill(data.birthDate);
+    }
+
+    if (data.genderText) {
+      await pickFirstSearchableSelectOption(this.page, form, 'Género', {
+        matchText: new RegExp(`^\\s*${escapeRegExp(data.genderText)}\\s*$`, 'i'),
+        searchText: data.genderText,
+        timeoutMs: 15_000,
+      });
+    } else {
+      await pickFirstSearchableSelectOption(this.page, form, 'Género');
+    }
 
     await form.locator('input[formcontrolname="email"]').fill(data.email);
 
@@ -68,25 +102,56 @@ export class AffiliatesPage {
    * compensación si incluye "CCF") — se resuelve dinámicamente con el
    * texto del Plan que realmente quedó seleccionado, no a ciegas.
    */
-  async fillAffiliationData(): Promise<void> {
+  async fillAffiliationData(overrides?: { planText?: string; agrupadoraText?: string }): Promise<void> {
     const form = this.page.locator('form');
 
-    const planText = await pickFirstSearchableSelectOption(this.page, form, 'Plan');
-    await pickFirstSearchableSelectOption(this.page, form, 'Agrupadora');
+    // Match EXACTO para no caer en "EPS+AFP" al buscar "EPS". El <li> del
+    // catálogo interpola {{ opt.label }} en su propia línea del template
+    // Angular, así que su textContent real trae espacios/saltos de línea
+    // alrededor ("\n  EPS\n  ") — el hasText de Playwright con RegExp
+    // compara contra ese texto SIN recortar, así que un regex ^EPS$ estricto
+    // nunca matchea; se permiten espacios opcionales alrededor con \s*.
+    const planText = overrides?.planText
+      ? await pickFirstSearchableSelectOption(this.page, form, 'Plan', {
+          matchText: new RegExp(`^\\s*${escapeRegExp(overrides.planText)}\\s*$`, 'i'),
+          searchText: overrides.planText,
+          timeoutMs: 45_000,
+        })
+      : await pickFirstSearchableSelectOption(this.page, form, 'Plan');
+
+    if (overrides?.agrupadoraText) {
+      await pickFirstSearchableSelectOption(this.page, form, 'Agrupadora', {
+        matchText: new RegExp(`^\\s*${escapeRegExp(overrides.agrupadoraText)}\\s*$`, 'i'),
+        searchText: overrides.agrupadoraText,
+        timeoutMs: 45_000,
+      });
+    } else {
+      await pickFirstSearchableSelectOption(this.page, form, 'Agrupadora');
+    }
     await pickFirstSearchableSelectOption(this.page, form, 'Asesor');
+
+    // Campo obligatorio (select nativo formControlName="affiliateType"): aunque
+    // visualmente ya muestra "Dependiente" como primera opción, el FormControl
+    // arranca sin value hasta que se interactúa, así que sin este select
+    // explícito el formulario queda inválido y el botón de submit no habilita.
+    await form.locator('select[formcontrolname="affiliateType"]').selectOption('DEPENDIENTE');
 
     if (/ARL/i.test(planText)) {
       await form.locator('input[formcontrolname="profession"]').fill('Ingeniero de pruebas');
       await form.locator('input[formcontrolname="arl"]').fill('1');
     }
+    // Mismo margen que Plan/Departamento/Municipio (45s): estos catálogos
+    // también se cargan de forma asíncrona desde el backend al abrir la
+    // sección, y el timeout por defecto (5s) ya demostró ser insuficiente
+    // para catálogos async en este formulario (ver bug de "Plan"/"Género").
     if (/EPS/i.test(planText)) {
-      await pickFirstSearchableSelectOption(this.page, form, 'EPS asignada');
+      await pickFirstSearchableSelectOption(this.page, form, 'EPS asignada', { timeoutMs: 45_000 });
     }
     if (/AFP/i.test(planText)) {
-      await pickFirstSearchableSelectOption(this.page, form, 'AFP');
+      await pickFirstSearchableSelectOption(this.page, form, 'AFP', { timeoutMs: 45_000 });
     }
     if (/CCF/i.test(planText)) {
-      await pickFirstSearchableSelectOption(this.page, form, 'Caja de compensación');
+      await pickFirstSearchableSelectOption(this.page, form, 'Caja de compensación', { timeoutMs: 45_000 });
     }
 
     const today = new Date().toISOString().slice(0, 10);
@@ -94,13 +159,42 @@ export class AffiliatesPage {
 
     // Opcional para casi todos los casos, obligatorio si la agrupadora
     // resultó ser de tipo "Gestión": se adjunta siempre para cubrir ambos
-    // casos sin depender de qué agrupadora tocó al azar.
-    const dummyPdfPath = buildDummyPdf();
-    await form.locator('input[type="file"]').setInputFiles(dummyPdfPath);
+    // casos sin depender de qué agrupadora tocó al azar. Se usa un PDF real
+    // del repo (no uno generado mínimo) porque el backend lo sube a Supabase
+    // y algunos flujos posteriores esperan un archivo con contenido válido.
+    await form.locator('input[type="file"]').setInputFiles(AFFILIATE_DOCUMENT_FIXTURE);
   }
 
   async submit(): Promise<void> {
     await this.page.getByRole('button', { name: /Crear afiliado|Guardar cambios/ }).click();
+  }
+
+  /**
+   * Igual que submit(), pero además captura la respuesta de POST /affiliates
+   * y devuelve el affiliationId creado (necesario para armar un periodo de
+   * facturación de prueba por API, ya que hoy no hay flujo de UI para
+   * conciliar un pago y disparar esa creación automáticamente).
+   */
+  async submitAndGetId(): Promise<number> {
+    const created = await this.submitAndGetCreated();
+    return created.id;
+  }
+
+  /**
+   * Igual que submitAndGetId(), pero también devuelve categoryId — la
+   * clasificación ORDINARIO/NO ORDINARIO/RESOLUCION que el backend resolvió
+   * a partir de birthDate/gender/documentType/plan (ver
+   * AffiliateCategoryClassifierService). Necesario para crear un periodo de
+   * facturación que coincida con la categoría real del afiliado, en vez de
+   * forzar una categoría arbitraria por fuera de esa clasificación.
+   */
+  async submitAndGetCreated(): Promise<{ id: number; categoryId: number | null }> {
+    const [response] = await Promise.all([
+      this.page.waitForResponse((res) => res.url().includes('/affiliates') && res.request().method() === 'POST'),
+      this.submit(),
+    ]);
+    const body = await response.json();
+    return { id: body.id, categoryId: body.categoryId ?? null };
   }
 
   async expectCreatedToastOrModalClosed(): Promise<void> {

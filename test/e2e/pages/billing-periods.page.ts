@@ -10,6 +10,63 @@ export class BillingPeriodsPage {
     await expect(this.page.getByRole('heading', { name: 'Periodos de Facturación' })).toBeVisible();
   }
 
+  /**
+   * Crea un periodo de facturación por API para el affiliationId dado (mes/año
+   * actuales). Hoy no existe flujo de UI para conciliar un pago y disparar esa
+   * creación automáticamente (ver TransactionsService.markLatestBillingPeriodsAsNew,
+   * que no tiene botón equivalente en el frontend), así que se llama directo al
+   * backend con el token guardado por TokenService en localStorage bajo "token"
+   * — mismo patrón que RolesPage.cleanupTestRoles().
+   *
+   * `categoryId` debe ser la categoría (ORDINARIO/NO ORDINARIO/RESOLUCION) real
+   * del afiliado (ver AffiliatesPage.submitAndGetCreated()), NO un string libre:
+   * CreateAffiliateBillingPeriodDto no tiene ningún campo "block" — el
+   * ValidationPipe global (forbidNonWhitelisted) rechaza con 400 cualquier
+   * propiedad que no exista en el DTO.
+   */
+  async createBillingPeriodForAffiliation(
+    affiliationId: number,
+    categoryId: number,
+    expectedAmount: number,
+  ): Promise<number> {
+    const apiUrl = 'http://localhost:3000/api'; // coincide con environment.ts (urlBD)
+    const token = await this.page.evaluate(() => localStorage.getItem('token'));
+    const now = new Date();
+
+    const res = await this.page.request.post(`${apiUrl}/affiliate-billing-periods`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        affiliationId,
+        periodYear: now.getFullYear(),
+        periodMonth: now.getMonth() + 1,
+        categoryId,
+        expectedAmount,
+      },
+    });
+    expect(res.ok(), `No se pudo crear el periodo de facturación de prueba: ${await res.text()}`).toBe(true);
+    const body = await res.json();
+    return body.id;
+  }
+
+  /**
+   * Nombre de la categoría (ORDINARIO/NO ORDINARIO/RESOLUCION) de un periodo
+   * ya creado, tal como quedó guardada en la BD (GET /affiliate-billing-periods/:id
+   * trae la relación `category`). Sirve para verificar temprano, con un mensaje
+   * claro, que la clasificación automática del afiliado dio la categoría
+   * esperada — en vez de descubrirlo indirectamente más tarde como un
+   * "no coincide con ninguna regla de pricing" en la modal de envío.
+   */
+  async getCategoryName(billingPeriodId: number): Promise<string | null> {
+    const apiUrl = 'http://localhost:3000/api';
+    const token = await this.page.evaluate(() => localStorage.getItem('token'));
+    const res = await this.page.request.get(`${apiUrl}/affiliate-billing-periods/${billingPeriodId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.ok(), `No se pudo consultar el periodo de facturación de prueba: ${await res.text()}`).toBe(true);
+    const body = await res.json();
+    return body.category?.name ?? null;
+  }
+
   // --- Filtros ---
 
   async search(options: { dateFrom: string; dateTo: string; status?: BillingPeriodStatus }): Promise<void> {
@@ -68,6 +125,33 @@ export class BillingPeriodsPage {
     return this.rows().filter({ has: this.page.getByRole('button', { name: 'Enviar a Siigo' }) }).first();
   }
 
+  /**
+   * Busca una fila por nombre de afiliado recorriendo páginas con "Siguiente"
+   * si hace falta. La tabla no tiene filtro de nombre/cédula (solo fecha y
+   * estado) y ordena por periodYear/periodMonth sin desempate, así que un
+   * periodo recién creado en el mes actual puede caer en cualquier página
+   * cuando hay muchos otros periodos del mismo mes.
+   */
+  async findRowByAffiliateNameAcrossPages(name: string, maxPages = 10): Promise<Locator> {
+    for (let i = 0; i < maxPages; i++) {
+      const row = this.rowByAffiliateName(name);
+      const found = await row.isVisible().catch(() => false);
+      if (found) return row;
+
+      const nextButton = this.page.getByRole('button', { name: 'Siguiente' });
+      const canGoNext = await nextButton.isEnabled().catch(() => false);
+      if (!canGoNext) break;
+      await nextButton.click();
+      await this.waitForTableLoaded(20_000);
+    }
+    return this.rowByAffiliateName(name);
+  }
+
+  /** Fila cuya columna de afiliado contiene el nombre dado (clientLabel: "Nombre (documento)"). */
+  rowByAffiliateName(name: string): Locator {
+    return this.rows().filter({ hasText: name });
+  }
+
   async clickSendToSiigo(row: Locator): Promise<void> {
     await row.getByRole('button', { name: 'Enviar a Siigo' }).click();
   }
@@ -86,16 +170,28 @@ export class BillingPeriodsPage {
     await expect(this.modal()).toHaveCount(0);
   }
 
-  moraInput(): Locator {
-    return this.modal().locator('#mora-input');
+  lateFeeInput(): Locator {
+    return this.modal().locator('#late-fee-input');
   }
 
-  async setMora(value: number): Promise<void> {
-    await this.moraInput().fill(String(value));
+  async setLateFee(value: number): Promise<void> {
+    await this.lateFeeInput().fill(String(value));
   }
 
   totalRow(): Locator {
     return this.modal().locator('dl div', { hasText: 'Total a enviar' });
+  }
+
+  planValueRow(): Locator {
+    return this.modal().locator('dl div', { hasText: 'Valor del plan' });
+  }
+
+  adminRow(): Locator {
+    return this.modal().locator('dl div', { hasText: 'Administración' });
+  }
+
+  reserveRow(): Locator {
+    return this.modal().locator('dl div', { hasText: 'Reserva' });
   }
 
   async expectPricingBreakdownVisible(): Promise<void> {
@@ -111,17 +207,18 @@ export class BillingPeriodsPage {
     return this.modal().getByRole('button', { name: 'Cancelar' });
   }
 
-  async confirmSend(): Promise<void> {
-    await this.confirmButton().click();
-  }
-
   async cancelSend(): Promise<void> {
     await this.cancelButton().click();
   }
 
-  async expectSendSuccessToast(): Promise<void> {
-    await expect(this.page.getByText('Información enviada a Siigo correctamente')).toBeVisible({ timeout: 15_000 });
-  }
+  /**
+   * NO se agrega un helper de confirmSend()/expectSendSuccessToast() a propósito:
+   * el botón "Confirmar envío" ya llama al endpoint real que crea la factura en
+   * Siigo (POST /affiliate-billing-periods/:id/send-to-siigo). No se debe
+   * automatizar ese click en e2e salvo contra un afiliado de prueba dedicado
+   * (ver instrucciones del equipo sobre nombrar afiliados de prueba
+   * "PruebaFactura" antes de probar este flujo).
+   */
 
   async expectNoMatchErrorToast(): Promise<void> {
     await expect(

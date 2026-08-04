@@ -76,7 +76,7 @@ test.describe('Periodos de Facturación', () => {
       await billingPeriodsPage.expectPricingBreakdownVisible();
 
       // La mora arranca en 0 cada vez que se abre la modal para un periodo nuevo.
-      await expect(billingPeriodsPage.moraInput()).toHaveValue('0');
+      await expect(billingPeriodsPage.lateFeeInput()).toHaveValue('0');
     });
 
     test('editar la mora recalcula el total a enviar', async ({ page }) => {
@@ -86,7 +86,7 @@ test.describe('Periodos de Facturación', () => {
 
       const totalBefore = await billingPeriodsPage.totalRow().innerText();
 
-      await billingPeriodsPage.setMora(1000);
+      await billingPeriodsPage.setLateFee(1000);
 
       // El cambio de mora tiene debounce (400ms) antes de recalcular contra el backend.
       await expect(async () => {
@@ -103,19 +103,15 @@ test.describe('Periodos de Facturación', () => {
       await billingPeriodsPage.cancelSend();
 
       await billingPeriodsPage.expectModalHidden();
-      await expect(page.getByText('Información enviada a Siigo correctamente')).not.toBeVisible();
+      await expect(page.getByText('Factura creada en Siigo correctamente')).not.toBeVisible();
     });
 
-    test('confirmar el envío muestra el toast de éxito y cierra la modal (envío simulado, no llama a Siigo)', async ({ page }) => {
-      const billingPeriodsPage = await openModalOnFirstEligibleRow(page);
-      await billingPeriodsPage.expectModalVisible();
-      await billingPeriodsPage.expectPricingBreakdownVisible();
-
-      await expect(billingPeriodsPage.confirmButton()).toBeEnabled();
-      await billingPeriodsPage.confirmSend();
-
-      await billingPeriodsPage.expectSendSuccessToast();
-      await billingPeriodsPage.expectModalHidden();
-    });
+    // NOTA: a propósito NO hay un test que le dé click a "Confirmar envío".
+    // Ese botón ya llama al endpoint real que crea la factura en Siigo
+    // (POST /affiliate-billing-periods/:id/send-to-siigo) — automatizarlo
+    // en e2e generaría facturas reales en la cuenta de Siigo cada vez que
+    // corra la suite. Si se necesita cubrir ese camino, debe hacerse contra
+    // un afiliado de prueba dedicado y nombrado "PruebaFactura" (ver
+    // convención del equipo), nunca contra datos reales.
   });
 });

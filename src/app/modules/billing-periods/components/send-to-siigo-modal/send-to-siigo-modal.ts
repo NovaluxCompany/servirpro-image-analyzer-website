@@ -2,7 +2,7 @@ import { Component, effect, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SiigoInvoicePayload, SiigoInvoicePricingBreakdown } from '../../interfaces/siigo-invoice-payload.interface';
 
-const MORA_DEBOUNCE_MS = 400;
+const LATE_FEE_DEBOUNCE_MS = 400;
 
 @Component({
   selector: 'app-send-to-siigo-modal',
@@ -16,36 +16,61 @@ export class SendToSiigoModalComponent {
   payload = input<SiigoInvoicePayload | null>(null);
   pricingBreakdown = input<SiigoInvoicePricingBreakdown | null>(null);
 
-  confirmed = output<void>();
+  confirmed = output<{ lateFee: number; observations: string }>();
   cancelled = output<void>();
-  moraChanged = output<number>();
+  lateFeeChanged = output<number>();
 
-  mora = signal<number>(0);
-  private moraDebounceHandle?: ReturnType<typeof setTimeout>;
+  lateFee = signal<number>(0);
+  lateFeeError = signal<string | null>(null);
+  observations = signal<string>('');
+  private lateFeeDebounceHandle?: ReturnType<typeof setTimeout>;
 
   constructor() {
-    // Cada vez que la modal se abre para un nuevo periodo, la mora arranca en 0.
+    // Cada vez que la modal se abre para un nuevo periodo, la mora y las observaciones arrancan vacías.
     effect(() => {
       if (this.isVisible()) {
-        this.mora.set(0);
+        this.lateFee.set(0);
+        this.lateFeeError.set(null);
+        this.observations.set('');
+      }
+    });
+
+    // Cuando llega el payload sugerido, se usa como valor inicial editable de observaciones.
+    effect(() => {
+      const suggested = this.payload()?.observations;
+      if (suggested && !this.observations()) {
+        this.observations.set(suggested);
       }
     });
   }
 
-  get observations(): string {
-    return this.payload()?.observations ?? '';
+  onLateFeeInput(rawValue: string): void {
+    if (rawValue.trim() === '') {
+      this.lateFee.set(0);
+      this.lateFeeError.set(null);
+    } else {
+      const parsed = Number(rawValue);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        this.lateFeeError.set('La mora debe ser un número mayor o igual a 0.');
+        return;
+      }
+      this.lateFee.set(parsed);
+      this.lateFeeError.set(null);
+    }
+
+    clearTimeout(this.lateFeeDebounceHandle);
+    this.lateFeeDebounceHandle = setTimeout(() => this.lateFeeChanged.emit(this.lateFee()), LATE_FEE_DEBOUNCE_MS);
   }
 
-  onMoraInput(rawValue: string): void {
-    const parsed = Number(rawValue);
-    this.mora.set(Number.isFinite(parsed) && parsed >= 0 ? parsed : 0);
-
-    clearTimeout(this.moraDebounceHandle);
-    this.moraDebounceHandle = setTimeout(() => this.moraChanged.emit(this.mora()), MORA_DEBOUNCE_MS);
+  onObservationsInput(rawValue: string): void {
+    this.observations.set(rawValue);
   }
 
   onConfirm(): void {
-    this.confirmed.emit();
+    if (this.lateFeeError()) {
+      return;
+    }
+    this.confirmed.emit({ lateFee: this.lateFee(), observations: this.observations() });
   }
 
   onCancel(): void {

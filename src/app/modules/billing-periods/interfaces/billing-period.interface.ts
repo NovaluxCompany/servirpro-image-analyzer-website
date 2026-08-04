@@ -9,22 +9,34 @@ export interface BillingPeriodAffiliation {
   client?: BillingPeriodClient;
 }
 
+export interface BillingPeriodCategory {
+  id: number;
+  name: string;
+}
+
 export interface BillingPeriod {
   id: number;
   affiliationId: number;
   affiliation?: BillingPeriodAffiliation;
   periodYear: number;
   periodMonth: number;
-  block: string;
+  categoryId?: number | null;
+  category?: BillingPeriodCategory | null;
   expectedAmount: number;
   accumulatedAmount: number;
   isComplete: boolean;
   siigoInvoiceStatus: string;
   siigoInvoiceValue: number | null;
   isNewTransaction: boolean;
-  mora: number;
-  ganancia: number | null;
+  lateFee: number;
+  profit: number | null;
+  reserve: number | null;
+  sentObservation: string | null;
   createdAt: string;
   updatedAt: string;
   hasSiigoMatch?: boolean;
+  planName?: string | null;
+  planPrice?: number | null;
+  adminValue?: number | null;
+  reserveValue?: number | null;
 }

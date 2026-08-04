@@ -26,18 +26,20 @@ export class AffiliateSendEmailModalComponent {
   emails = signal<string[]>([]);
   emailInput = '';
   isLoading = signal(false);
+  emailError = signal<string | null>(null);
 
   addEmail(): void {
     const value = this.emailInput.trim().toLowerCase();
     this.emailInput = '';
+    this.emailError.set(null);
     if (!value) return;
 
     if (!EMAIL_REGEX.test(value)) {
-      this._toast.showError('Correo electrónico inválido.');
+      this.emailError.set('Ingresa un correo electrónico válido (ej: nombre@dominio.com), no una palabra suelta.');
       return;
     }
     if (this.emails().includes(value)) {
-      this._toast.showError('Ese correo ya fue agregado.');
+      this.emailError.set('Ese correo ya fue agregado.');
       return;
     }
     this.emails.set([...this.emails(), value]);
@@ -79,5 +81,6 @@ export class AffiliateSendEmailModalComponent {
   private reset(): void {
     this.emails.set([]);
     this.emailInput = '';
+    this.emailError.set(null);
   }
 }

@@ -5,10 +5,11 @@ export interface SiigoInvoicePayload {
     person_type: 'Person' | 'Company';
     id_type: string;
     identification: string;
+    name: string[];
   };
   seller: number;
-  cost_center: number;
-  currency: { code: string; exchange_rate: number };
+  cost_center?: number;
+  currency?: { code: string; exchange_rate: number };
   observations: string;
   items: Array<{
     code: string;
@@ -28,8 +29,9 @@ export interface SiigoInvoicePayload {
 export interface SiigoInvoicePricingBreakdown {
   planValue: number;
   administracion: number;
+  reserve: number;
   descuentoAfiliado: number;
-  mora: number;
+  lateFee: number;
   total: number;
 }
 

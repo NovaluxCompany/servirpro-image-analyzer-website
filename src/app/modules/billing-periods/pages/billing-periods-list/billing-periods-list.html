@@ -7,17 +7,30 @@
         <h1 class="text-3xl font-bold text-gray-900">Periodos de Facturación</h1>
         <p class="mt-1 text-sm text-gray-500">Consulta de periodos de facturación de afiliados</p>
       </div>
+      <button
+        type="button"
+        (click)="downloadExcel()"
+        [disabled]="!hasSearched() || isDownloadingExcel()"
+        class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-green-700 rounded-lg hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        @if (isDownloadingExcel()) {
+        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+        Descargando...
+        } @else {
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        Descargar terminados (Excel)
+        }
+      </button>
     </div>
 
     <!-- Filters -->
-    <app-billing-period-filters (filterApplied)="onFilterApplied($event)" />
+    <app-billing-period-filters (filterApplied)="onFilterApplied($event)" (cleared)="onFiltersCleared()" />
 
-    <!-- Error -->
-    @if (errorMessage()) {
-    <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100 border border-red-200" role="alert">
-      <span class="font-medium">Error:</span> {{ errorMessage() }}
-    </div>
-    }
 
     <!-- Tabla -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -28,7 +41,13 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Acciones</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Afiliado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Periodo</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Bloque</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Categoría</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Precio del plan</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Administración</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Reserva</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Ganancia</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Observación</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor esperado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor acumulado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Completo</th>
@@ -45,6 +64,12 @@
               <td class="px-4 py-3"><div class="h-4 w-40 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-4 w-16 bg-gray-200 rounded"></div></td>
+              <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
+              <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
+              <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
+              <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
+              <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
+              <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-5 w-16 bg-gray-200 rounded-full"></div></td>
@@ -54,13 +79,13 @@
             }
             } @else if (!hasSearched()) {
             <tr>
-              <td colspan="9" class="px-4 py-16 text-center">
+              <td colspan="15" class="px-4 py-16 text-center">
                 <p class="text-gray-500 font-medium">Selecciona un rango de fechas y presiona Buscar para ver los periodos de facturación</p>
               </td>
             </tr>
             } @else if (billingPeriods().length === 0) {
             <tr>
-              <td colspan="9" class="px-4 py-16 text-center">
+              <td colspan="15" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,11 +101,11 @@
             @for (period of billingPeriods(); track period.id) {
             <tr class="hover:bg-gray-50 transition-colors">
               <td class="px-4 py-3 whitespace-nowrap">
-                @if (period.hasSiigoMatch) {
+                @if (period.hasSiigoMatch && period.siigoInvoiceStatus !== 'INVOICED') {
                 <button
                   type="button"
                   (click)="onSendToSiigo(period)"
-                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800"
+                  class="px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700"
                 >
                   Enviar a Siigo
                 </button>
@@ -88,7 +113,13 @@
               </td>
               <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ clientLabel(period) }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ monthLabel(period.periodMonth) }} {{ period.periodYear }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ period.block }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ period.category?.name ?? 'SIN_CATEGORIA' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ period.planName ?? '-' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ period.planPrice != null ? (period.planPrice | number:'1.0-0') : '-' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ period.adminValue != null ? (period.adminValue | number:'1.0-0') : '-' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ period.reserveValue != null ? (period.reserveValue | number:'1.0-0') : '-' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ period.profit != null ? (period.profit | number:'1.0-0') : '-' }}</td>
+              <td class="px-4 py-3 max-w-xs truncate" [title]="period.sentObservation ?? ''">{{ period.sentObservation ?? '-' }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ period.expectedAmount | number:'1.0-0' }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ period.accumulatedAmount | number:'1.0-0' }}</td>
               <td class="px-4 py-3 whitespace-nowrap">
@@ -161,9 +192,9 @@
       [isLoading]="isLoadingPayload()"
       [payload]="selectedPayload()"
       [pricingBreakdown]="selectedPricingBreakdown()"
-      (confirmed)="onConfirmSendToSiigo()"
+      (confirmed)="onConfirmSendToSiigo($event)"
       (cancelled)="onCancelSendToSiigo()"
-      (moraChanged)="onMoraChanged($event)"
+      (lateFeeChanged)="onLateFeeChanged($event)"
     />
 
   </div>

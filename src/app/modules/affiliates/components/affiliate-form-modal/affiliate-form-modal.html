@@ -362,6 +362,16 @@
                 </app-searchable-select>
               </div>
 
+              <!-- Sucursal -->
+              <div>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                  Sucursal
+                </label>
+                <app-searchable-select formControlName="branchId" [options]="branchOptions"
+                  placeholder="Seleccionar sucursal..." [isInvalid]="isFieldInvalid('branchId')">
+                </app-searchable-select>
+              </div>
+
               <!-- Asesor -->
               <div>
                 <label class="block mb-1.5 text-xs font-semibold text-gray-700">

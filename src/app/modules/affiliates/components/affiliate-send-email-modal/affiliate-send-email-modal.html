@@ -30,6 +30,9 @@
             Agregar
           </button>
         </div>
+        @if (emailError()) {
+          <p class="mt-1 text-xs text-red-500">{{ emailError() }}</p>
+        }
 
         @if (emails().length > 0) {
         <div class="mt-4 flex flex-wrap gap-2">

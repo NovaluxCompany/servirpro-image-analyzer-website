@@ -161,6 +161,7 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha ingreso</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupador</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Observaciones</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Es nuevo</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -216,17 +217,20 @@
               <td class="px-4 py-3">
                 <div class="h-4 w-20 bg-gray-200 rounded"></div>
               </td>
+              <td class="px-4 py-3">
+                <div class="h-5 w-14 bg-gray-200 rounded-full"></div>
+              </td>
             </tr>
             }
             } @else if (errorMessage()) {
             <tr>
-              <td colspan="16" class="px-4 py-16 text-center">
+              <td colspan="17" class="px-4 py-16 text-center">
                 <p class="text-gray-500 font-medium">{{ errorMessage() }}</p>
               </td>
             </tr>
             } @else if (affiliates().length === 0) {
             <tr>
-              <td colspan="16" class="px-4 py-16 text-center">
+              <td colspan="17" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -498,6 +502,19 @@
               <!-- Observaciones -->
               <td class="px-4 py-3 text-gray-600 max-w-xs truncate" [title]="affiliate.observation || ''">
                 {{ affiliate.observation || '-' }}
+              </td>
+
+              <!-- Es nuevo -->
+              <td class="px-4 py-3 whitespace-nowrap">
+                @if (affiliate.isNew) {
+                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
+                  SI
+                </span>
+                } @else {
+                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                  NO
+                </span>
+                }
               </td>
 
             </tr>
