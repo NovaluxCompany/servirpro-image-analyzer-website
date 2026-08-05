@@ -4,7 +4,7 @@ import { Observable, catchError, of, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../../core/service/token.service';
 import { AffiliateMember,CreateAffiliateMemberDto,UpdateAffiliateMemberDto,} from '../interfaces/affiliate-member.interface';
-import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, Department, CityOption, } from '../interfaces/catalog.interface';
+import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, Branch, Department, CityOption, } from '../interfaces/catalog.interface';
 import { PaginatedAffiliatesResponse } from '../interfaces/paginated-affiliates.interface';
 
 export interface AffiliateFilters {
@@ -153,11 +153,11 @@ export class AffiliateMembersService {
   }
 
   // ── Enviar correo vía n8n ──────────────────────────────────────────
-  sendEmail(affiliationId: number): Observable<{ success: boolean; message: string }> {
+  sendEmail(affiliationId: number, emails: string[]): Observable<{ success: boolean; message: string }> {
     return this._http
       .post<{ success: boolean; message: string }>(
         `${environment.urlBD}/affiliates/${affiliationId}/send-email`,
-        {},
+        { emails },
         { headers: this.getHeaders() }
       )
       .pipe(catchError(this.handleError));
@@ -224,6 +224,12 @@ export class AffiliateMembersService {
     const params = new HttpParams().set('departmentCode', departmentCode);
     return this._http
       .get<CityOption[]>(`${environment.urlBD}/cities/dropdown`, { headers: this.getHeaders(), params })
+      .pipe(catchError(() => of([])));
+  }
+
+  getBranchesDropdown(): Observable<Branch[]> {
+    return this._http
+      .get<Branch[]>(`${environment.urlBD}/branches/dropdown`, { headers: this.getHeaders() })
       .pipe(catchError(() => of([])));
   }
 

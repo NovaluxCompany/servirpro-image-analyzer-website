@@ -231,6 +231,10 @@
             <tr>
               <td colspan="7" class="px-4 py-16 text-center text-gray-500">Cargando historial...</td>
             </tr>
+            } @else if (historyPermissionError()) {
+            <tr>
+              <td colspan="7" class="px-4 py-16 text-center text-gray-400">No cuenta con permisos para ver la información de esta tabla</td>
+            </tr>
             } @else if (history().length === 0) {
             <tr>
               <td colspan="7" class="px-4 py-16 text-center text-gray-400">No hay actualizaciones registradas todavía.</td>

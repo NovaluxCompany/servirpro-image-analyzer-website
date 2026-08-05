@@ -118,6 +118,8 @@ export class TransactionsService {
 
     if (error.status === 401) {
       errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
+    } else if (error.status === 403) {
+      errorMessage = 'No tienes permiso para ver esta información.';
     } else if (error.status === 400) {
       if (error.error?.message) {
         if (Array.isArray(error.error.message)) {
@@ -136,6 +138,8 @@ export class TransactionsService {
       errorMessage = 'Error del servidor. Por favor, intenta más tarde.';
     }
 
-    return throwError(() => new Error(errorMessage));
+    const wrapped = new Error(errorMessage) as Error & { status?: number };
+    wrapped.status = error.status;
+    return throwError(() => wrapped);
   }
 }

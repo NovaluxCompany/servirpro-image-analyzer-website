@@ -21,6 +21,7 @@ export interface Menu {
   sortOrder?: number;
   isActive: boolean;
   isSensitive?: boolean;
+  isContainer?: boolean;
   menuPermissions?: MenuPermission[];
   createdAt?: string;
   updatedAt?: string;

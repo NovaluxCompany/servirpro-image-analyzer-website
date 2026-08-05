@@ -104,7 +104,7 @@
       </div>
       }
 
-      @if (errorMessage()) {
+      @if (errorMessage() && !isPermissionError()) {
       <div class="px-5 py-3 bg-red-50 border-b border-red-100 text-sm text-red-700">
         {{ errorMessage() }}
       </div>
@@ -283,7 +283,9 @@
                         d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                  @if (hasActiveFilters()) {
+                  @if (isPermissionError()) {
+                    <p class="text-gray-500 font-medium">No cuenta con permisos para ver la información de esta tabla</p>
+                  } @else if (hasActiveFilters()) {
                     <p class="text-gray-500 font-medium">No hay resultados para los filtros aplicados</p>
                     <button type="button" (click)="clearFilters()" class="text-sm text-blue-600 hover:underline">Limpiar filtros</button>
                   } @else {

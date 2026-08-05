@@ -54,6 +54,7 @@ export class UpdateCompanyList implements OnInit {
   protected readonly historyPage = signal(1);
   protected readonly historyLimit = signal(10);
   protected readonly historyLoading = signal(false);
+  protected readonly historyPermissionError = signal(false);
 
   // Modales
   protected readonly showConfirmationModal = signal(false);
@@ -76,7 +77,7 @@ export class UpdateCompanyList implements OnInit {
   );
 
   protected readonly canViewHistory = computed(() =>
-    this._permission.can('export', '/actualizar-compania') || this._permission.can('view', '/actualizar-compania')
+    this._permission.hasMenuEntry('/actualizar-compania')
   );
 
   protected readonly canExportHistory = computed(() =>
@@ -131,6 +132,8 @@ export class UpdateCompanyList implements OnInit {
     this.loadContext();
     if (this.canViewHistory()) {
       this.loadHistory();
+    } else {
+      this.historyPermissionError.set(true);
     }
   }
 
@@ -342,6 +345,7 @@ export class UpdateCompanyList implements OnInit {
   // ── Historial ──────────────────────────────────────────────────────
   loadHistory(): void {
     this.historyLoading.set(true);
+    this.historyPermissionError.set(false);
     this._service.getHistory(this.historyPage(), this.historyLimit()).subscribe({
       next: (res) => {
         this.history.set(res.data);
@@ -350,7 +354,11 @@ export class UpdateCompanyList implements OnInit {
       },
       error: (err) => {
         this.historyLoading.set(false);
-        this._toast.showError(err.message || 'Error al cargar el historial.');
+        if (err.status === 403) {
+          this.historyPermissionError.set(true);
+        } else {
+          this._toast.showError(err.message || 'Error al cargar el historial.');
+        }
       },
     });
   }

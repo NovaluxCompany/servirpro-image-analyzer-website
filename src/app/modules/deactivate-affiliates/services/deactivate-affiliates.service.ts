@@ -391,10 +391,11 @@ export class DeactivateAffiliatesService {
 
   private handleError(error: any, fallbackMessage: string): Observable<never> {
     const backendMessage = error?.error?.message;
-    if (Array.isArray(backendMessage)) {
-      return throwError(() => new Error(backendMessage.join(' ')));
-    }
+    const message = Array.isArray(backendMessage) ? backendMessage.join(' ') : backendMessage || fallbackMessage;
 
-    return throwError(() => new Error(backendMessage || fallbackMessage));
+    const wrapped = new Error(message) as Error & { status?: number };
+    wrapped.status = error?.status;
+
+    return throwError(() => wrapped);
   }
 }

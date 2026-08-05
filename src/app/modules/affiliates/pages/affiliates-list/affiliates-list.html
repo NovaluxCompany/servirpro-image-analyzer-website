@@ -36,13 +36,6 @@
       </div>
     </div>
 
-    <!-- Error -->
-    @if (errorMessage()) {
-    <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100 border border-red-200" role="alert">
-      <span class="font-medium">Error:</span> {{ errorMessage() }}
-    </div>
-    }
-
     <!-- Filtros -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-4">
       <div class="flex items-center gap-2 mb-3">
@@ -164,9 +157,11 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Municipio</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Departamento</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha nacimiento</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha ingreso</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupador</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Observaciones</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Es nuevo</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -222,11 +217,20 @@
               <td class="px-4 py-3">
                 <div class="h-4 w-20 bg-gray-200 rounded"></div>
               </td>
+              <td class="px-4 py-3">
+                <div class="h-5 w-14 bg-gray-200 rounded-full"></div>
+              </td>
             </tr>
             }
+            } @else if (errorMessage()) {
+            <tr>
+              <td colspan="17" class="px-4 py-16 text-center">
+                <p class="text-gray-500 font-medium">{{ errorMessage() }}</p>
+              </td>
+            </tr>
             } @else if (affiliates().length === 0) {
             <tr>
-              <td colspan="16" class="px-4 py-16 text-center">
+              <td colspan="17" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -298,21 +302,12 @@
                     <!-- Enviar correo -->
                     @if (isGestionAffiliate(affiliate)) {
                     <button type="button" (click)="sendEmail(affiliate); closeDropdown()"
-                      [disabled]="sendingEmailId() === +affiliate.id!"
-                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                      @if (sendingEmailId() === +affiliate.id!) {
-                      <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                      </svg>
-                      En proceso de envio...
-                      } @else {
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round"
                           d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
                       </svg>
                       Enviar correo
-                      }
                     </button>
                     }
 
@@ -489,6 +484,11 @@
                 }
               </td>
 
+              <!-- Fecha nacimiento -->
+              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                {{ (affiliate.birthDate | date:'dd/MM/yyyy') || '&#8212;' }}
+              </td>
+
               <!-- Fecha ingreso -->
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
                 {{ (affiliate.entryDate | date:'dd/MM/yyyy') || '&#8212;' }}
@@ -502,6 +502,19 @@
               <!-- Observaciones -->
               <td class="px-4 py-3 text-gray-600 max-w-xs truncate" [title]="affiliate.observation || ''">
                 {{ affiliate.observation || '-' }}
+              </td>
+
+              <!-- Es nuevo -->
+              <td class="px-4 py-3 whitespace-nowrap">
+                @if (affiliate.isNew) {
+                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
+                  SI
+                </span>
+                } @else {
+                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                  NO
+                </span>
+                }
               </td>
 
             </tr>
@@ -548,3 +561,6 @@
 
 <app-affiliate-status-modal [isVisible]="showStatusModal()" [affiliate]="selectedAffiliate()"
   (confirmed)="onStatusConfirmed()" (cancelled)="onStatusCancelled()" />
+
+<app-affiliate-send-email-modal [isVisible]="showSendEmailModal()" [affiliate]="selectedAffiliate()"
+  (sent)="onEmailSent()" (cancelled)="onEmailModalCancelled()" />
