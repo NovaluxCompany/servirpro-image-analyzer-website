@@ -61,13 +61,15 @@ export class BillingPeriodsService {
       .pipe(catchError(this.handleError));
   }
 
-  // Exports to Excel the periods already sent/finished (INVOICED) within the
-  // given date range. The backend forces the status to INVOICED regardless
-  // of the status filter selected on screen.
-  exportToExcel(dateFrom: string, dateTo: string): Observable<Blob> {
-    const params = new HttpParams()
+  // Exports to Excel the periods within the given date range, honoring the
+  // same filters (status included) applied on screen — with no status
+  // filter, periods of any status/completeness are exported.
+  exportToExcel(dateFrom: string, dateTo: string, status?: string): Observable<Blob> {
+    let params = new HttpParams()
       .set('dateFrom', dateFrom)
       .set('dateTo', dateTo);
+
+    if (status) params = params.set('status', status);
 
     return this._http
       .get(`${this.baseUrl}/export/excel`, { headers: this.getHeaders(), params, responseType: 'blob' })

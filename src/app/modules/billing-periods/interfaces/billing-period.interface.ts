@@ -39,4 +39,5 @@ export interface BillingPeriod {
   planPrice?: number | null;
   adminValue?: number | null;
   reserveValue?: number | null;
+  payrollValue?: number | null;
 }
