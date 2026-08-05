@@ -42,6 +42,42 @@
       </select>
     </div>
 
+    <div>
+      <label for="affiliateName" class="block mb-2 text-sm font-medium text-gray-900">Nombre del afiliado</label>
+      <input
+        type="text"
+        id="affiliateName"
+        formControlName="affiliateName"
+        placeholder="Buscar por nombre..."
+        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+      >
+    </div>
+
+    <div>
+      <label for="documentNumber" class="block mb-2 text-sm font-medium text-gray-900">Cédula</label>
+      <input
+        type="text"
+        id="documentNumber"
+        formControlName="documentNumber"
+        placeholder="Buscar por cédula..."
+        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+      >
+    </div>
+
+    <div>
+      <label for="planId" class="block mb-2 text-sm font-medium text-gray-900">Plan</label>
+      <select
+        id="planId"
+        formControlName="planId"
+        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+      >
+        <option value="">Todos</option>
+        @for (plan of plans(); track plan.id) {
+        <option [value]="plan.id">{{ plan.name }}</option>
+        }
+      </select>
+    </div>
+
     <div class="flex items-end gap-2">
       <button
         type="submit"

@@ -195,7 +195,7 @@ export class BillingPeriodsListComponent {
     this.isDownloadingExcel.set(true);
     this._toastService.showInfo('Descarga en proceso...');
 
-    this._service.exportToExcel(this.currentFilters.dateFrom, this.currentFilters.dateTo, this.currentFilters.status).subscribe({
+    this._service.exportToExcel(this.currentFilters).subscribe({
       next: (blob) => {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
