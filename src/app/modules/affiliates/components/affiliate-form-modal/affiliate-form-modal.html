@@ -348,18 +348,28 @@
                   Empresa
                 </label>
                 <app-searchable-select formControlName="companyId" [options]="companyOptions"
-                  placeholder="Seleccionar empresa...">
+                  placeholder="Seleccionar empresa..."
+                  [class.opacity-60]="isIndependiente" [class.pointer-events-none]="isIndependiente">
                 </app-searchable-select>
+                @if (isIndependiente) {
+                <p class="mt-1 text-xs text-gray-500">No aplica para afiliados independientes.</p>
+                }
               </div>
 
               <!-- Agrupadora -->
               <div>
                 <label class="block mb-1.5 text-xs font-semibold text-gray-700">
-                  Agrupadora <span class="text-red-500">*</span>
+                  Agrupadora @if (!isIndependiente) {
+                  <span class="text-red-500">*</span>
+                  }
                 </label>
                 <app-searchable-select formControlName="grouperId" [options]="grouperOptions"
-                  placeholder="Seleccionar agrupadora..." [isInvalid]="isFieldInvalid('grouperId')">
+                  placeholder="Seleccionar agrupadora..." [isInvalid]="isFieldInvalid('grouperId')"
+                  [class.opacity-60]="isIndependiente" [class.pointer-events-none]="isIndependiente">
                 </app-searchable-select>
+                @if (isIndependiente) {
+                <p class="mt-1 text-xs text-gray-500">No aplica para afiliados independientes.</p>
+                }
               </div>
 
               <!-- Sucursal -->
@@ -461,6 +471,9 @@
                   <span class="text-red-500">*</span>
                   }
                   <span class="ml-1 text-gray-400 font-normal">(Solo PDF · Opcional para todos, obligatorio para Gestión)</span>
+                  @if (isIndependiente) {
+                  <span class="ml-1 text-gray-400 font-normal">— No aplica para afiliados independientes</span>
+                  }
                 </label>
 
                 <!-- Zona de carga -->
@@ -469,7 +482,8 @@
                   [class.border-red-300]="isFieldInvalid('documentFile')"
                   [class.border-green-300]="!!form.get('documentFile')?.value"
                   [class.bg-blue-50\/50]="!form.get('documentFile')?.value"
-                  [class.bg-green-50]="!!form.get('documentFile')?.value">
+                  [class.bg-green-50]="!!form.get('documentFile')?.value"
+                  [class.opacity-60]="isIndependiente" [class.pointer-events-none]="isIndependiente">
 
                   @if (!form.get('documentFile')?.value) {
                   <!-- Estado vacío -->
@@ -499,9 +513,10 @@
                   <input type="file"
                     #fileInput
                     accept=".pdf"
+                    [disabled]="isIndependiente"
                     (change)="onFileSelected($event)"
                     class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    [class.pointer-events-none]="!!form.get('documentFile')?.value" />
+                    [class.pointer-events-none]="!!form.get('documentFile')?.value || isIndependiente" />
                 </div>
 
                 @if (fileError()) {
