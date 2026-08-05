@@ -28,9 +28,10 @@ export interface SiigoInvoicePayload {
 
 export interface SiigoInvoicePricingBreakdown {
   planValue: number;
-  administracion: number;
+  administration: number;
   reserve: number;
-  descuentoAfiliado: number;
+  affiliateDiscount: number;
+  profit: number;
   lateFee: number;
   total: number;
 }
