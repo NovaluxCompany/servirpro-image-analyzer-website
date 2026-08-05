@@ -29,14 +29,14 @@ export class BillingPeriodFiltersComponent {
 
     const values = this.form.value;
 
-    // values.dateFrom/dateTo son "YYYY-MM-DD" (input type="date"). Antes se
-    // armaban con `new Date("YYYY-MM-DD")` (que SIEMPRE se interpreta como
-    // medianoche UTC, sin importar la zona horaria del navegador) y luego
-    // `.setHours(23,59,59,999)` (que sí usa hora LOCAL) — la combinación
-    // corría el rango un día completo hacia atrás en Colombia (UTC-5): un
-    // registro creado "hoy" quedaba fuera hasta buscar con "mañana". Se
-    // arma el ISO directo con el offset fijo de Colombia (-05:00, sin
-    // horario de verano) para no depender de la zona horaria del navegador.
+    // values.dateFrom/dateTo are "YYYY-MM-DD" (input type="date"). They used
+    // to be built with `new Date("YYYY-MM-DD")` (which is ALWAYS interpreted
+    // as UTC midnight, regardless of the browser's timezone) and then
+    // `.setHours(23,59,59,999)` (which does use LOCAL time) — the
+    // combination shifted the range a full day back in Colombia (UTC-5): a
+    // record created "today" was left out until searching with "tomorrow".
+    // The ISO string is now built directly with Colombia's fixed offset
+    // (-05:00, no daylight saving) so it doesn't depend on the browser's timezone.
     const filters: BillingPeriodFilters = {
       dateFrom: `${values.dateFrom}T00:00:00.000-05:00`,
       dateTo: `${values.dateTo}T23:59:59.999-05:00`,

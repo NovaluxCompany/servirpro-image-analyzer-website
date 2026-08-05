@@ -65,7 +65,7 @@
                 </div>
                 <div class="flex items-center justify-between">
                   <dt class="text-gray-600">Administración</dt>
-                  <dd class="font-medium text-gray-900">{{ breakdown.administracion | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
+                  <dd class="font-medium text-gray-900">{{ breakdown.administration | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
                 </div>
                 <div class="flex items-center justify-between">
                   <dt class="text-gray-600">Reserva</dt>
@@ -73,11 +73,15 @@
                 </div>
                 <div class="flex items-center justify-between">
                   <dt class="text-gray-600">Descuento afiliado</dt>
-                  <dd class="font-medium text-gray-900">- {{ breakdown.descuentoAfiliado | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
+                  <dd class="font-medium text-gray-900">- {{ breakdown.affiliateDiscount | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
                 </div>
                 <div class="flex items-center justify-between">
                   <dt class="text-gray-600">Mora</dt>
                   <dd class="font-medium text-gray-900">- {{ breakdown.lateFee | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
+                </div>
+                <div class="flex items-center justify-between">
+                  <dt class="text-gray-600">Ganancia</dt>
+                  <dd class="font-medium text-gray-900">{{ breakdown.profit | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
                 </div>
                 <hr class="border-gray-200" />
                 <div class="flex items-center justify-between">
