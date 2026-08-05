@@ -61,9 +61,9 @@ export class BillingPeriodsService {
       .pipe(catchError(this.handleError));
   }
 
-  // Exporta a Excel los periodos ya enviados/terminados (INVOICED) dentro del
-  // rango de fechas indicado. El backend fuerza el estado a INVOICED sin
-  // importar el filtro de estado seleccionado en pantalla.
+  // Exports to Excel the periods already sent/finished (INVOICED) within the
+  // given date range. The backend forces the status to INVOICED regardless
+  // of the status filter selected on screen.
   exportToExcel(dateFrom: string, dateTo: string): Observable<Blob> {
     const params = new HttpParams()
       .set('dateFrom', dateFrom)
@@ -74,9 +74,9 @@ export class BillingPeriodsService {
       .pipe(catchError((error: HttpErrorResponse) => this.handleBlobError(error)));
   }
 
-  // Con responseType:'blob', el body del error también llega como Blob (no
-  // JSON parseado), así que hay que leerlo como texto y parsearlo aparte
-  // antes de poder mostrar el mensaje real del backend en el toast.
+  // With responseType:'blob', the error body also arrives as a Blob (not
+  // parsed JSON), so it has to be read as text and parsed separately before
+  // the real backend message can be shown in the toast.
   private handleBlobError(error: HttpErrorResponse): Observable<never> {
     if (error.error instanceof Blob) {
       return from(error.error.text()).pipe(
@@ -85,7 +85,7 @@ export class BillingPeriodsService {
           try {
             parsedError = { ...error, error: JSON.parse(text) };
           } catch {
-            // texto no era JSON válido, se usa el error original
+            // text wasn't valid JSON, use the original error
           }
           return this.handleError(parsedError);
         }),

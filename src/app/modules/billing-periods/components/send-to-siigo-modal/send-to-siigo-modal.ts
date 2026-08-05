@@ -26,7 +26,7 @@ export class SendToSiigoModalComponent {
   private lateFeeDebounceHandle?: ReturnType<typeof setTimeout>;
 
   constructor() {
-    // Cada vez que la modal se abre para un nuevo periodo, la mora y las observaciones arrancan vacías.
+    // Every time the modal opens for a new period, late fee and observations start empty.
     effect(() => {
       if (this.isVisible()) {
         this.lateFee.set(0);
@@ -35,7 +35,7 @@ export class SendToSiigoModalComponent {
       }
     });
 
-    // Cuando llega el payload sugerido, se usa como valor inicial editable de observaciones.
+    // When the suggested payload arrives, it's used as the initial editable value for observations.
     effect(() => {
       const suggested = this.payload()?.observations;
       if (suggested && !this.observations()) {
