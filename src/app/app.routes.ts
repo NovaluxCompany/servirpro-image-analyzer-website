@@ -34,6 +34,11 @@ export const routes: Routes = [
                 loadChildren: () => import('./modules/roles/roles.routes').then(m => m.rolesRoutes)
             },
             {
+                path: 'periodos-facturacion',
+                canActivate: [roleGuard],
+                loadChildren: () => import('./modules/billing-periods/billing-periods.routes').then(m => m.billingPeriodsRoutes)
+            },
+            {
                 path: 'desactivar-afiliados',
                 canActivate: [roleGuard],
                 loadChildren: () => import('./modules/deactivate-affiliates/deactivate-affiliates.routes').then(m => m.deactivateAffiliatesRoutes)

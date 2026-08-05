@@ -6,13 +6,15 @@ import { Transaction } from '../../interfaces/transaction.interface';
 import { TransactionFilters } from '../../interfaces/transaction-filters.interface';
 import { TransactionFiltersComponent } from '../../components/transaction-filters/transaction-filters';
 import { TransactionTableComponent } from '../../components/transaction-table/transaction-table';
+import { ExportExcelModalComponent } from '../../components/export-excel-modal/export-excel-modal';
+import { PlansManagerModalComponent } from '../../components/plans-manager-modal/plans-manager-modal';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
 
 @Component({
   selector: 'app-transactions-list',
   standalone: true,
-  imports: [CommonModule, TransactionFiltersComponent, TransactionTableComponent],
+  imports: [CommonModule, TransactionFiltersComponent, TransactionTableComponent, ExportExcelModalComponent, PlansManagerModalComponent],
   templateUrl: './transactions-list.html'
 })
 export class TransactionsListComponent {
@@ -32,6 +34,8 @@ export class TransactionsListComponent {
   errorMessage = signal<string | null>(null);
   isPermissionError = signal(false);
   currentFilters?: TransactionFilters;
+  showExportModal = signal(false);
+  showPlansModal = signal(false);
 
   currentPage = signal(1);
   totalPages = signal(0);
@@ -108,25 +112,34 @@ export class TransactionsListComponent {
     this._router.navigate(['/transacciones/crear']);
   }
 
+  onManagePlans(): void {
+    if (!this._permission.check('edit', '/transacciones', 'Tu rol no tiene permiso para gestionar planes.')) return;
+    this.showPlansModal.set(true);
+  }
+
   downloadExcel(): void {
     if (!this._permission.check('export', undefined, 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
-    if (this.totalItems() === 0) {
-      this._toastService.showError('No hay resultados para descargar con los filtros actuales.');
-      return;
-    }
+    this.showExportModal.set(true);
+  }
 
+  onExportCancelled(): void {
+    this.showExportModal.set(false);
+  }
+
+  onExportConfirmed(range: { dateFrom: string; dateTo: string }): void {
     this.isDownloadingExcel.set(true);
     this.errorMessage.set(null);
     this._toastService.showInfo('Descarga en proceso...');
 
-    this._transactionsService.exportToExcel(this.currentFilters).subscribe({
+    const filters: TransactionFilters = { ...this.currentFilters, dateFrom: range.dateFrom, dateTo: range.dateTo };
+
+    this._transactionsService.exportToExcel(filters).subscribe({
       next: (blob) => {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
 
-        const timestamp = new Date().toISOString().split('T')[0];
-        link.download = `transacciones_${timestamp}.xlsx`;
+        link.download = `transacciones_${range.dateFrom}_a_${range.dateTo}.xlsx`;
 
         document.body.appendChild(link);
         link.click();
@@ -135,6 +148,7 @@ export class TransactionsListComponent {
         window.URL.revokeObjectURL(url);
 
         this.isDownloadingExcel.set(false);
+        this.showExportModal.set(false);
         this._toastService.showSuccess('Excel descargado exitosamente');
       },
       error: (error) => {

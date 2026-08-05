@@ -5,6 +5,7 @@ import { AffiliateMembersService, AffiliateFilters } from '../../services/affili
 import { AffiliateMember } from '../../interfaces/affiliate-member.interface';
 import { AffiliateFormModalComponent } from '../../components/affiliate-form-modal/affiliate-form-modal';
 import { AffiliateStatusModalComponent } from '../../components/affiliate-status-modal/affiliate-status-modal';
+import { AffiliateSendEmailModalComponent } from '../../components/affiliate-send-email-modal/affiliate-send-email-modal';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
@@ -14,7 +15,7 @@ import { debounceTime, Subject } from 'rxjs';
 @Component({
   selector: 'app-affiliates-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, SearchableSelectComponent],
+  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, SearchableSelectComponent],
   templateUrl: './affiliates-list.html',
 })
 export class AffiliatesListComponent implements OnInit {
@@ -50,11 +51,9 @@ export class AffiliatesListComponent implements OnInit {
   // ── Modales ───────────────────────────────────────────────────────
   showFormModal = signal(false);
   showStatusModal = signal(false);
+  showSendEmailModal = signal(false);
   formMode = signal<'create' | 'edit'>('create');
   selectedAffiliate = signal<AffiliateMember | null>(null);
-
-  // ── Email ─────────────────────────────────────────────────────────
-  sendingEmailId = signal<number | null>(null);
 
   // ── Siigo ─────────────────────────────────────────────────────────
   syncingSiigoId = signal<number | null>(null);
@@ -335,22 +334,19 @@ export class AffiliatesListComponent implements OnInit {
       return;
     }
 
-    const affiliationId = Number(affiliate.id);
-    if (!affiliationId || this.sendingEmailId() !== null) return;
+    this.selectedAffiliate.set(affiliate);
+    this.showSendEmailModal.set(true);
+  }
 
-    this.sendingEmailId.set(affiliationId);
-    this._toast.showInfo('En proceso de envio de correo...');
-    this._service.sendEmail(affiliationId).subscribe({
-      next: () => {
-        this._toast.showSuccess('Correo enviado correctamente');
-        this.loadAffiliates();
-        this.sendingEmailId.set(null);
-      },
-      error: (err) => {
-        this._toast.showError(err.message ?? 'No se pudo enviar el correo');
-        this.sendingEmailId.set(null);
-      },
-    });
+  onEmailSent(): void {
+    this.showSendEmailModal.set(false);
+    this.selectedAffiliate.set(null);
+    this.loadAffiliates();
+  }
+
+  onEmailModalCancelled(): void {
+    this.showSendEmailModal.set(false);
+    this.selectedAffiliate.set(null);
   }
 
   syncToSiigo(affiliate: AffiliateMember): void {

@@ -14,6 +14,7 @@ export interface Advisor extends CatalogItem {}
 export interface EpsItem extends CatalogItem {}
 export interface Pension extends CatalogItem {}
 export interface CompensationBox extends CatalogItem {}
+export interface Branch extends CatalogItem {}
 
 export interface Department {
   code: string;
@@ -36,4 +37,5 @@ export interface AffiliateCatalogs {
   epsList: EpsItem[];
   pensions: Pension[];
   compensationBoxes: CompensationBox[];
+  branches: Branch[];
 }
