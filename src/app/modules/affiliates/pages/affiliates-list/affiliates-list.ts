@@ -56,8 +56,7 @@ export class AffiliatesListComponent implements OnInit {
   selectedAffiliate = signal<AffiliateMember | null>(null);
 
   // ── Siigo ─────────────────────────────────────────────────────────
-  syncingSiigoId = signal<number | null>(null);
-
+  syncingSiigoId = signal<number | null>(null);  sendingEmailId = signal<number | null>(null);
   // ── Dropdown acciones ─────────────────────────────────────────────
   openDropdownId = signal<string | null>(null);
   dropdownPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -329,8 +328,32 @@ export class AffiliatesListComponent implements OnInit {
     return isGestion && hasDocument;
   }
 
+  isDependiente(affiliate: AffiliateMember): boolean {
+    return (affiliate.affiliateType ?? '').toUpperCase() === 'DEPENDIENTE';
+  }
+
   sendEmail(affiliate: AffiliateMember): void {
     if (!this._permission.check('send_email', undefined, 'Tu rol no tiene permiso para enviar correos de afiliación.')) {
+      return;
+    }
+
+    if (this.isDependiente(affiliate)) {
+      const affiliationId = Number(affiliate.id);
+      if (!affiliationId || this.sendingEmailId() !== null) return;
+
+      this.sendingEmailId.set(affiliationId);
+      this._toast.showInfo('Enviando correo al afiliado dependiente...');
+      this._service.sendEmail(affiliationId, []).subscribe({
+        next: () => {
+          this._toast.showSuccess('Correo enviado correctamente');
+          this.sendingEmailId.set(null);
+          this.loadAffiliates();
+        },
+        error: (err) => {
+          this._toast.showError(err.message ?? 'No se pudo enviar el correo');
+          this.sendingEmailId.set(null);
+        },
+      });
       return;
     }
 
