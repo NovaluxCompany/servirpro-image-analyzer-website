@@ -299,6 +299,23 @@ export class AffiliateFormModalComponent implements OnInit {
     return this.form.get('affiliateType')?.value === 'INDEPENDIENTE';
   }
 
+  // Campos que quedan bloqueados (deshabilitados y sin validadores) cuando el
+  // afiliado es INDEPENDIENTE. No deben poder bloquear el botón de guardar.
+  private readonly independentBlockedFields = ['companyId', 'grouperId', 'documentFile'];
+
+  // No se usa directamente `form.invalid`: aunque los controles bloqueados están
+  // deshabilitados (lo que ya debería excluirlos de la validez del FormGroup),
+  // se recalcula explícitamente ignorándolos para blindar el botón de guardar
+  // ante cualquier caso donde ese control siga marcado como inválido.
+  get isSubmitDisabled(): boolean {
+    if (this.isLoading()) return true;
+    if (!this.isIndependiente) return this.form.invalid;
+
+    return Object.entries(this.form.controls).some(
+      ([key, control]) => !this.independentBlockedFields.includes(key) && control.invalid,
+    );
+  }
+
   private validateAffiliateType(): void {
     const companyControl = this.form.get('companyId');
     const grouperControl = this.form.get('grouperId');
@@ -673,7 +690,7 @@ export class AffiliateFormModalComponent implements OnInit {
       this.errorMessage.set('Ya existe un afiliado con ese número de documento.');
       return;
     }
-    if (this.form.invalid) {
+    if (this.isSubmitDisabled) {
       this.form.markAllAsTouched();
       return;
     }
