@@ -199,6 +199,7 @@ export class AffiliateFormModalComponent implements OnInit {
           if (this.fileInputRef?.nativeElement) {
             this.fileInputRef.nativeElement.value = '';
           }
+          this.validateAffiliateType();
         }
       }
     });
@@ -292,6 +293,42 @@ export class AffiliateFormModalComponent implements OnInit {
     return label.includes('GESTIÓN') || label.includes('GESTION');
   }
 
+  // Los afiliados INDEPENDIENTE no pertenecen a ninguna empresa/agrupadora ni
+  // requieren documento de soporte: esos campos quedan bloqueados y vacíos.
+  get isIndependiente(): boolean {
+    return this.form.get('affiliateType')?.value === 'INDEPENDIENTE';
+  }
+
+  private validateAffiliateType(): void {
+    const companyControl = this.form.get('companyId');
+    const grouperControl = this.form.get('grouperId');
+    const fileControl = this.form.get('documentFile');
+
+    if (this.isIndependiente) {
+      companyControl?.disable({ emitEvent: false });
+      companyControl?.setValue('', { emitEvent: false });
+
+      grouperControl?.disable({ emitEvent: false });
+      grouperControl?.setValue('', { emitEvent: false });
+      grouperControl?.clearValidators();
+      grouperControl?.updateValueAndValidity({ emitEvent: false });
+
+      this.selectedGrouperLabel = '';
+      this.clearFile();
+      fileControl?.disable({ emitEvent: false });
+      fileControl?.clearValidators();
+      fileControl?.updateValueAndValidity({ emitEvent: false });
+    } else {
+      companyControl?.enable({ emitEvent: false });
+
+      grouperControl?.enable({ emitEvent: false });
+      grouperControl?.setValidators([Validators.required]);
+      grouperControl?.updateValueAndValidity({ emitEvent: false });
+
+      this.validateDocumentFile();
+    }
+  }
+
   ngOnInit() {
     this.form.get('planId')?.valueChanges.subscribe(value => {
       this.updatePlanLogic(value);
@@ -332,6 +369,10 @@ export class AffiliateFormModalComponent implements OnInit {
       if (city) {
         this.form.get('municipality')?.setValue(city.cityName, { emitEvent: false });
       }
+    });
+
+    this.form.get('affiliateType')?.valueChanges.subscribe(() => {
+      this.validateAffiliateType();
     });
   }
 
@@ -485,7 +526,7 @@ export class AffiliateFormModalComponent implements OnInit {
           const selectedGrouper = this.groupers().find(g => String(g.id) === String(a.grouperId));
           this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
         }
-        this.validateDocumentFile();
+        this.validateAffiliateType();
 
         this.formReady.set(true);
       },
