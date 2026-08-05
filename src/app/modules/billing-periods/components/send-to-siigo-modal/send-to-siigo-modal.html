@@ -72,6 +72,10 @@
                   <dd class="font-medium text-gray-900">{{ breakdown.reserve | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
                 </div>
                 <div class="flex items-center justify-between">
+                  <dt class="text-gray-600">Planilla</dt>
+                  <dd class="font-medium text-gray-900">{{ breakdown.payroll | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
+                </div>
+                <div class="flex items-center justify-between">
                   <dt class="text-gray-600">Descuento afiliado</dt>
                   <dd class="font-medium text-gray-900">- {{ breakdown.affiliateDiscount | currency:'COP':'symbol-narrow':'1.0-0' }}</dd>
                 </div>

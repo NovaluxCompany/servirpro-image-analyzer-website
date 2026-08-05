@@ -30,6 +30,7 @@ export interface SiigoInvoicePricingBreakdown {
   planValue: number;
   administration: number;
   reserve: number;
+  payroll: number;
   affiliateDiscount: number;
   profit: number;
   lateFee: number;

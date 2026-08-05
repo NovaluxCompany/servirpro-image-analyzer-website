@@ -1,7 +1,9 @@
-import { Component, output } from '@angular/core';
+import { Component, inject, OnInit, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BillingPeriodFilters } from '../../interfaces/billing-period-filters.interface';
+import { AffiliateMembersService } from '../../../affiliates/services/affiliate-members.service';
+import { Plan } from '../../../affiliates/interfaces/catalog.interface';
 
 @Component({
   selector: 'app-billing-period-filters',
@@ -9,17 +11,27 @@ import { BillingPeriodFilters } from '../../interfaces/billing-period-filters.in
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './billing-period-filters.html'
 })
-export class BillingPeriodFiltersComponent {
+export class BillingPeriodFiltersComponent implements OnInit {
   filterApplied = output<BillingPeriodFilters>();
   cleared = output<void>();
 
   private _fb = new FormBuilder();
+  private _affiliateMembersService = inject(AffiliateMembersService);
+
+  plans = signal<Plan[]>([]);
 
   form = this._fb.group({
     dateFrom: ['', Validators.required],
     dateTo: ['', Validators.required],
     status: [''],
+    affiliateName: [''],
+    documentNumber: [''],
+    planId: [''],
   });
+
+  ngOnInit(): void {
+    this._affiliateMembersService.getPlans().subscribe((plans) => this.plans.set(plans));
+  }
 
   onSearch(): void {
     if (this.form.invalid) {
@@ -42,6 +54,9 @@ export class BillingPeriodFiltersComponent {
       dateTo: `${values.dateTo}T23:59:59.999-05:00`,
     };
     if (values.status) filters.status = values.status;
+    if (values.affiliateName) filters.affiliateName = values.affiliateName;
+    if (values.documentNumber) filters.documentNumber = values.documentNumber;
+    if (values.planId) filters.planId = Number(values.planId);
 
     this.filterApplied.emit(filters);
   }
