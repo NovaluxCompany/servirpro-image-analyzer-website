@@ -30,6 +30,7 @@ export interface BillingPeriod {
   isNewTransaction: boolean;
   lateFee: number;
   profit: number | null;
+  totalSent: number | null;
   reserve: number | null;
   sentObservation: string | null;
   createdAt: string;
@@ -40,4 +41,5 @@ export interface BillingPeriod {
   adminValue?: number | null;
   reserveValue?: number | null;
   payrollValue?: number | null;
+  profitValue?: number | null;
 }

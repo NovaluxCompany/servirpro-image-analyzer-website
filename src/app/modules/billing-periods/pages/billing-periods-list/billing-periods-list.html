@@ -48,6 +48,7 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Reserva</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Planilla</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Ganancia</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Total Enviado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Observación</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor esperado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor acumulado</th>
@@ -74,6 +75,7 @@
               <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
+              <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-5 w-16 bg-gray-200 rounded-full"></div></td>
               <td class="px-4 py-3"><div class="h-5 w-20 bg-gray-200 rounded-full"></div></td>
               <td class="px-4 py-3"><div class="h-5 w-16 bg-gray-200 rounded-full"></div></td>
@@ -81,13 +83,13 @@
             }
             } @else if (!hasSearched()) {
             <tr>
-              <td colspan="16" class="px-4 py-16 text-center">
+              <td colspan="17" class="px-4 py-16 text-center">
                 <p class="text-gray-500 font-medium">Selecciona un rango de fechas y presiona Buscar para ver los periodos de facturación</p>
               </td>
             </tr>
             } @else if (billingPeriods().length === 0) {
             <tr>
-              <td colspan="16" class="px-4 py-16 text-center">
+              <td colspan="17" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,7 +123,8 @@
               <td class="px-4 py-3 whitespace-nowrap">{{ period.adminValue != null ? (period.adminValue | number:'1.0-0') : '-' }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ period.reserveValue != null ? (period.reserveValue | number:'1.0-0') : '-' }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ period.payrollValue != null ? (period.payrollValue | number:'1.0-0') : '-' }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ period.profit != null ? (period.profit | number:'1.0-0') : '-' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ period.profitValue != null ? (period.profitValue | number:'1.0-0') : '-' }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ period.totalSent != null ? (period.totalSent | number:'1.0-0') : '-' }}</td>
               <td class="px-4 py-3 max-w-xs truncate" [title]="period.sentObservation ?? ''">{{ period.sentObservation ?? '-' }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ period.expectedAmount | number:'1.0-0' }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ period.accumulatedAmount | number:'1.0-0' }}</td>
