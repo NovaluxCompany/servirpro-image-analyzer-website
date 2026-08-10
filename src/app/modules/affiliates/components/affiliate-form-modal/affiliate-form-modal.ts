@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AffiliateMembersService } from '../../services/affiliate-members.service';
 import { ToastService } from '../../../../core/service/toast.service';
+import { PermissionService } from '../../../../core/service/permission.service';
 import { AffiliateMember, CreateAffiliateMemberDto } from '../../interfaces/affiliate-member.interface';
 import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, Branch, Department, CityOption } from '../../interfaces/catalog.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
@@ -18,6 +19,12 @@ export class AffiliateFormModalComponent implements OnInit {
   private _fb = inject(FormBuilder);
   private _service = inject(AffiliateMembersService);
   private _toast = inject(ToastService);
+  private _permission = inject(PermissionService);
+
+  // La fecha de ingreso es automática (se fija al crear y al habilitar al afiliado).
+  // Solo los roles con el permiso 'edit_entry_date' sobre /afiliados —Administrador
+  // por defecto— pueden corregirla a mano; el backend lo vuelve a validar.
+  readonly canEditEntryDate = this._permission.can('edit_entry_date', '/afiliados');
 
   isVisible = input<boolean>(false);
   mode = input<'create' | 'edit'>('create');
@@ -181,8 +188,8 @@ export class AffiliateFormModalComponent implements OnInit {
           });
           this.form.get('entryDate')?.setValue(this.todayDate());
           this.form.get('companyEntryDate')?.setValue(this.todayDate());
-          // In create mode: entryDate is automatic (disabled), companyEntryDate is freely editable
-          this.form.get('entryDate')?.disable({ emitEvent: false });
+          // In create mode: entryDate is automatic (solo editable con permiso), companyEntryDate is freely editable
+          this.applyEntryDatePermission();
           this.form.get('companyEntryDate')?.enable({ emitEvent: false });
           // El bloqueo de plan por afiliado activo solo aplica en edición
           this.form.get('planId')?.enable({ emitEvent: false });
@@ -258,19 +265,32 @@ export class AffiliateFormModalComponent implements OnInit {
     }
   }
 
+  /**
+   * Habilita el input de fecha de ingreso solo si el rol tiene el permiso
+   * 'edit_entry_date' sobre /afiliados. Para el resto sigue siendo un campo
+   * automático de solo lectura, igual que antes.
+   */
+  private applyEntryDatePermission(): void {
+    const entryDateControl = this.form.get('entryDate');
+    if (this.canEditEntryDate) {
+      entryDateControl?.enable({ emitEvent: false });
+    } else {
+      entryDateControl?.disable({ emitEvent: false });
+    }
+  }
+
   validateDocumentFile() {
     const fileControl = this.form.get('documentFile');
     if (!fileControl) return;
 
-    const label = this.selectedGrouperLabel || '';
     const existingDoc = this.affiliate()?.documents?.[0];
     const existingDisplayName = existingDoc?.fileName?.split('/').pop() || existingDoc?.fileName || '';
 
     // El campo de archivo siempre está habilitado sin importar la agrupadora
     fileControl.enable({ emitEvent: false });
 
-    // Solo es obligatorio para GESTIÓN
-    if (label.includes('GESTIÓN') || label.includes('GESTION')) {
+    // Obligatorio para afiliados INDEPENDIENTE y para la agrupadora GESTIÓN
+    if (this.isDocumentRequired) {
       fileControl.setValidators([Validators.required]);
     } else {
       // Para cualquier otra agrupadora: opcional (sin validadores)
@@ -293,15 +313,21 @@ export class AffiliateFormModalComponent implements OnInit {
     return label.includes('GESTIÓN') || label.includes('GESTION');
   }
 
-  // Los afiliados INDEPENDIENTE no pertenecen a ninguna empresa/agrupadora ni
-  // requieren documento de soporte: esos campos quedan bloqueados y vacíos.
+  // Los afiliados INDEPENDIENTE no pertenecen a ninguna empresa/agrupadora: esos
+  // campos quedan bloqueados y vacíos. El documento de soporte, en cambio, es
+  // obligatorio para ellos (no tienen empresa que respalde la afiliación).
   get isIndependiente(): boolean {
     return this.form.get('affiliateType')?.value === 'INDEPENDIENTE';
   }
 
+  // El PDF es obligatorio para los afiliados INDEPENDIENTE y para la agrupadora GESTIÓN.
+  get isDocumentRequired(): boolean {
+    return this.isIndependiente || this.isGestionGrouper;
+  }
+
   // Campos que quedan bloqueados (deshabilitados y sin validadores) cuando el
   // afiliado es INDEPENDIENTE. No deben poder bloquear el botón de guardar.
-  private readonly independentBlockedFields = ['companyId', 'grouperId', 'documentFile'];
+  private readonly independentBlockedFields = ['companyId', 'grouperId'];
 
   // No se usa directamente `form.invalid`: aunque los controles bloqueados están
   // deshabilitados (lo que ya debería excluirlos de la validez del FormGroup),
@@ -319,7 +345,6 @@ export class AffiliateFormModalComponent implements OnInit {
   private validateAffiliateType(): void {
     const companyControl = this.form.get('companyId');
     const grouperControl = this.form.get('grouperId');
-    const fileControl = this.form.get('documentFile');
 
     if (this.isIndependiente) {
       companyControl?.disable({ emitEvent: false });
@@ -331,19 +356,17 @@ export class AffiliateFormModalComponent implements OnInit {
       grouperControl?.updateValueAndValidity({ emitEvent: false });
 
       this.selectedGrouperLabel = '';
-      this.clearFile();
-      fileControl?.disable({ emitEvent: false });
-      fileControl?.clearValidators();
-      fileControl?.updateValueAndValidity({ emitEvent: false });
     } else {
       companyControl?.enable({ emitEvent: false });
 
       grouperControl?.enable({ emitEvent: false });
       grouperControl?.setValidators([Validators.required]);
       grouperControl?.updateValueAndValidity({ emitEvent: false });
-
-      this.validateDocumentFile();
     }
+
+    // El documento se recalcula en ambos casos: para INDEPENDIENTE pasa a ser
+    // obligatorio y el archivo ya cargado se conserva (antes se borraba).
+    this.validateDocumentFile();
   }
 
   ngOnInit() {
@@ -601,8 +624,9 @@ export class AffiliateFormModalComponent implements OnInit {
       certCcf: a.certCcf ?? false,
     }, { emitEvent: false });
 
-    // In edit mode: entryDate is fixed (disable to prevent editing), companyEntryDate is editable (enable)
-    this.form.get('entryDate')?.disable({ emitEvent: false });
+    // In edit mode: entryDate solo se habilita para roles con permiso 'edit_entry_date';
+    // companyEntryDate siempre es editable.
+    this.applyEntryDatePermission();
     this.form.get('companyEntryDate')?.enable({ emitEvent: false });
 
     const existingDoc = a.documents?.[0];
@@ -741,8 +765,11 @@ export class AffiliateFormModalComponent implements OnInit {
       affiliateType: raw.affiliateType as 'INDEPENDIENTE' | 'DEPENDIENTE' | undefined,
       // companyEntryDate comes from its own form control (disabled), NOT from entryDate
       companyEntryDate: raw.companyEntryDate || this.toLocalDateStr(this.todayDate()),
-      // entryDate only sent on create; in edit mode the backend ignores it (only set on create/enable)
-      entryDate: this.isEdit ? undefined : (raw.entryDate || this.toLocalDateStr(this.todayDate())),
+      // Al crear, entryDate siempre viaja (por defecto hoy). En edición solo se envía
+      // si el rol tiene permiso para corregirla: si no, el backend rechazaría el cambio.
+      entryDate: this.isEdit
+        ? (this.canEditEntryDate ? (raw.entryDate || undefined) : undefined)
+        : (raw.entryDate || this.toLocalDateStr(this.todayDate())),
       arl: raw.arl ?? undefined,
       observation: raw.observation?.trim() || undefined,
       ...(this.isEdit ? {
