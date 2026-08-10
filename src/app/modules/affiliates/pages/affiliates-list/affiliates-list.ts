@@ -328,6 +328,16 @@ export class AffiliatesListComponent implements OnInit {
     return isGestion && hasDocument;
   }
 
+  isIndependienteAffiliate(affiliate: AffiliateMember): boolean {
+    return (affiliate.affiliateType ?? '').toUpperCase() === 'INDEPENDIENTE';
+  }
+
+  // El envío de correo aplica a agrupadora GESTIÓN (con documento) y a afiliados
+  // INDEPENDIENTE (no tienen agrupadora, pero sí requieren documento propio).
+  canSendEmail(affiliate: AffiliateMember): boolean {
+    return this.isGestionAffiliate(affiliate) || this.isIndependienteAffiliate(affiliate);
+  }
+
   isDependiente(affiliate: AffiliateMember): boolean {
     return (affiliate.affiliateType ?? '').toUpperCase() === 'DEPENDIENTE';
   }

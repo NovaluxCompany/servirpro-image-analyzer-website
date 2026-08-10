@@ -300,7 +300,7 @@
                     }
 
                     <!-- Enviar correo -->
-                    @if (isGestionAffiliate(affiliate)) {
+                    @if (canSendEmail(affiliate)) {
                     <button type="button" (click)="sendEmail(affiliate); closeDropdown()"
                       [disabled]="sendingEmailId() === +affiliate.id!"
                       class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -377,7 +377,7 @@
                   -
                 } @else if (affiliate.emailSent) {
                   SI
-                } @else if (isGestionAffiliate(affiliate)) {
+                } @else if (canSendEmail(affiliate)) {
                   NO
                 } @else {
                   -
