@@ -41,8 +41,12 @@ export class TransactionsListComponent {
   totalPages = signal(0);
   totalItems = signal(0);
 
+  transactionsLocked = signal(false);
+  isTogglingLock = signal(false);
+
   ngOnInit(): void {
     this.loadTransactions();
+    this.loadLockStatus();
 
     // Mostrar mensaje de éxito si viene de creación
     const navigation = this._router.getCurrentNavigation();
@@ -50,6 +54,45 @@ export class TransactionsListComponent {
     if (state?.['successMessage']) {
       this._toastService.showSuccess(state['successMessage']);
     }
+  }
+
+  get canLockTransactions(): boolean {
+    return this._permission.can('lock', '/transacciones');
+  }
+
+  loadLockStatus(): void {
+    this._transactionsService.getLockStatus().subscribe({
+      next: (res) => this.transactionsLocked.set(res.locked),
+      // Si falla la consulta (ej. rol sin acceso al menú), se asume desbloqueado
+      // para no ocultar el flujo normal a nadie por un error de red.
+      error: () => this.transactionsLocked.set(false),
+    });
+  }
+
+  toggleTransactionsLock(): void {
+    if (!this.canLockTransactions) {
+      this._toastService.showError('No tienes permiso para bloquear/desbloquear transacciones.');
+      return;
+    }
+
+    const next = !this.transactionsLocked();
+    this.isTogglingLock.set(true);
+
+    this._transactionsService.setLockStatus(next).subscribe({
+      next: (res) => {
+        this.transactionsLocked.set(res.locked);
+        this.isTogglingLock.set(false);
+        this._toastService.showSuccess(
+          res.locked
+            ? 'Transacciones bloqueadas: nadie podrá crear nuevos pagos hasta que las desbloquees.'
+            : 'Transacciones desbloqueadas.',
+        );
+      },
+      error: (error) => {
+        this.isTogglingLock.set(false);
+        this._toastService.showError(error?.message ?? 'Error al cambiar el bloqueo de transacciones.');
+      },
+    });
   }
 
   loadTransactions(filters?: TransactionFilters, page: number = this.currentPage()): void {
@@ -109,6 +152,10 @@ export class TransactionsListComponent {
 
   onCreateTransaction(): void {
     if (!this._permission.check('create', '/transacciones', 'Tu rol no tiene permiso para crear transacciones.')) return;
+    if (this.transactionsLocked()) {
+      this._toastService.showError('La creación de transacciones está bloqueada temporalmente por el administrador.');
+      return;
+    }
     this._router.navigate(['/transacciones/crear']);
   }
 

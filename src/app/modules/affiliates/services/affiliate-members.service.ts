@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, catchError, of, switchMap, throwError } from 'rxjs';
+import { Observable, catchError, from, of, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../../core/service/token.service';
 import { AffiliateMember,CreateAffiliateMemberDto,UpdateAffiliateMemberDto,} from '../interfaces/affiliate-member.interface';
@@ -16,6 +16,8 @@ export interface AffiliateFilters {
   advisor?: string;
   isActive?: boolean;
   grupo?: string;
+  entryDateFrom?: string;
+  entryDateTo?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -40,6 +42,8 @@ export class AffiliateMembersService {
     if (filters.advisor) params = params.set('advisor', filters.advisor);
     if (filters.isActive !== undefined) params = params.set('isActive', String(filters.isActive));
     if (filters.grupo) params = params.set('grupo', filters.grupo);
+    if (filters.entryDateFrom) params = params.set('entryDateFrom', filters.entryDateFrom);
+    if (filters.entryDateTo) params = params.set('entryDateTo', filters.entryDateTo);
 
     return this._http
       .get<PaginatedAffiliatesResponse>(`${this.baseUrl}`, {
@@ -47,6 +51,20 @@ export class AffiliateMembersService {
         params,
       })
       .pipe(catchError(this.handleError));
+  }
+
+  // ── Verificar si un número de documento ya tiene una afiliación (activa o no) ──
+  // Reutiliza el endpoint existente email-status/:cedula, que ya busca por
+  // documento sin filtrar por estado. 404 significa "no existe" (no es un error real).
+  checkDocumentExists(documentNumber: string): Observable<{ exists: boolean; isActive: boolean } | null> {
+    return this._http
+      .get<{ affiliationId: number; isActive: boolean }>(`${this.baseUrl}/email-status/${documentNumber}`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(
+        switchMap((res) => of({ exists: true, isActive: res.isActive })),
+        catchError(() => of({ exists: false, isActive: false })),
+      );
   }
 
   // ── Referencias disponibles ───────────────────────────────────────
@@ -64,9 +82,9 @@ export class AffiliateMembersService {
   }
 
   // ── Subir documento a afiliado existente ───────────────────────────────────
-  uploadDocument(affiliateId: string | number, file: File): Observable<any> {
+  uploadDocuments(affiliateId: string | number, files: File[]): Observable<any> {
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach((file) => formData.append('files', file));
     const token = this._tokenService.getToken();
     const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
     return this._http
@@ -142,6 +160,8 @@ export class AffiliateMembersService {
       params = params.set('isActive', String(filters.isActive));
     }
     if (filters.grupo) params = params.set('grupo', filters.grupo);
+    if (filters.entryDateFrom) params = params.set('entryDateFrom', filters.entryDateFrom);
+    if (filters.entryDateTo) params = params.set('entryDateTo', filters.entryDateTo);
 
     return this._http
       .get(`${this.baseUrl}/export/excel`, {
@@ -149,15 +169,37 @@ export class AffiliateMembersService {
         params,
         responseType: 'blob',
       })
-      .pipe(catchError(this.handleError));
+      .pipe(catchError((error) => this.handleBlobError(error)));
   }
 
+  // Con responseType 'blob', un error 400 con cuerpo JSON (ej. "no hay resultados
+  // para esos filtros") llega como Blob en error.error, no como objeto parseado —
+  // hay que leerlo como texto y parsearlo antes de poder mostrar el mensaje real.
+  private handleBlobError = (error: any): Observable<never> => {
+    const blob: Blob | undefined = error?.error;
+    if (blob instanceof Blob && blob.type?.includes('json')) {
+      return from(blob.text()).pipe(
+        switchMap((text: string) => {
+          try {
+            error.error = JSON.parse(text);
+          } catch {
+            // deja error.error como venía si no es JSON parseable
+          }
+          return this.handleError(error);
+        }),
+      );
+    }
+    return this.handleError(error);
+  };
+
   // ── Enviar correo vía n8n ──────────────────────────────────────────
-  sendEmail(affiliationId: number, emails: string[]): Observable<{ success: boolean; message: string }> {
+  // emails=undefined (Dependiente/Gestión): el backend usa el correo registrado
+  // del afiliado por defecto. emails=[...] (Independiente): se envía solo a esos.
+  sendEmail(affiliationId: number, emails: string[] | undefined, observation?: string): Observable<{ success: boolean; message: string }> {
     return this._http
       .post<{ success: boolean; message: string }>(
         `${environment.urlBD}/affiliates/${affiliationId}/send-email`,
-        { emails },
+        { emails, observation },
         { headers: this.getHeaders() }
       )
       .pipe(catchError(this.handleError));

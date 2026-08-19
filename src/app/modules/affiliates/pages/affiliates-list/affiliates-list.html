@@ -122,6 +122,20 @@
           </select>
         </div>
 
+        <!-- Fecha de ingreso: Desde -->
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Ingreso desde</label>
+          <input type="date" [(ngModel)]="filterEntryDateFrom" (ngModelChange)="onDropdownFilterChange()"
+            class="w-full px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white h-[38px]">
+        </div>
+
+        <!-- Fecha de ingreso: Hasta -->
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Ingreso hasta</label>
+          <input type="date" [(ngModel)]="filterEntryDateTo" (ngModelChange)="onDropdownFilterChange()"
+            class="w-full px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white h-[38px]">
+        </div>
+
       </div>
     </div>
 
@@ -268,6 +282,16 @@
                     [style.top.px]="dropdownPos().top"
                     [style.left.px]="dropdownPos().left">
 
+                    <!-- Ver información -->
+                    <button type="button" (click)="openInfo(affiliate); closeDropdown()"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 transition-colors">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      Ver información
+                    </button>
+
                     <!-- Editar -->
                     <button type="button" (click)="openEdit(affiliate); closeDropdown()"
                       class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors">
@@ -341,8 +365,8 @@
                     </button>
                     }
 
-                    <!-- Descargar documento -->
-                    @if (affiliate.documents && affiliate.documents.length > 0) {
+                    <!-- Descargar documento(s) -->
+                    @if (affiliate.documents && affiliate.documents.length === 1) {
                     <button type="button" (click)="downloadDocument(affiliate); closeDropdown()"
                       class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-emerald-700 hover:bg-emerald-50 transition-colors">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -350,6 +374,15 @@
                           d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                       </svg>
                       Descargar documento
+                    </button>
+                    } @else if (affiliate.documents && affiliate.documents.length > 1) {
+                    <button type="button" (click)="openDocuments(affiliate); closeDropdown()"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-emerald-700 hover:bg-emerald-50 transition-colors">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                      Ver documentos ({{ affiliate.documents.length }})
                     </button>
                     }
 
@@ -407,11 +440,11 @@
 
               <!-- Eps -->
               <td class="px-4 py-3 whitespace-nowrap">
-  @if (affiliate.epsName && affiliate.epsName !== 'N/A') {
-    <span [class]="affiliate.certEps
-      ? 'px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded whitespace-nowrap'
-      : 'text-gray-400 font-normal whitespace-nowrap'">
+  @if (planHasEps(affiliate) && affiliate.epsName && affiliate.epsName !== 'N/A') {
+    <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
       {{ affiliate.epsName }}
+      <span [title]="affiliate.certEps ? 'Con certificado' : 'Sin certificado'"
+        [class]="affiliate.certEps ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500'"></span>
     </span>
   } @else {
     <span class="text-gray-400 font-semibold">&#8212;</span>
@@ -425,11 +458,11 @@
 
               <!-- Nivel de Arl -->
               <td class="px-4 py-3 whitespace-nowrap">
-                @if (affiliate.arl != null) {
-                  <span [class]="affiliate.certArl
-                    ? 'px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded whitespace-nowrap'
-                    : 'text-gray-400 font-normal whitespace-nowrap'">
+                @if (planHasArl(affiliate)) {
+                  <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
                     ARL {{ affiliate.arl }}
+                    <span [title]="affiliate.certArl ? 'Con certificado' : 'Sin certificado'"
+                      [class]="affiliate.certArl ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500'"></span>
                   </span>
                 } @else {
                   <span class="text-gray-400 font-semibold">&#8212;</span>
@@ -438,11 +471,11 @@
 
               <!-- Caja -->
               <td class="px-4 py-3 whitespace-nowrap">
-                @if (affiliate.compensationBoxName && affiliate.compensationBoxName !== '-' && affiliate.compensationBoxName !== 'N/A') {
-                  <span [class]="affiliate.certCcf
-                    ? 'px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded whitespace-nowrap'
-                    : 'text-gray-400 font-normal whitespace-nowrap'">
+                @if (planHasCcf(affiliate) && affiliate.compensationBoxName && affiliate.compensationBoxName !== '-' && affiliate.compensationBoxName !== 'N/A') {
+                  <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
                     {{ affiliate.compensationBoxName }}
+                    <span [title]="affiliate.certCcf ? 'Con certificado' : 'Sin certificado'"
+                      [class]="affiliate.certCcf ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500'"></span>
                   </span>
                 } @else {
                   <span class="text-gray-400 font-semibold">&#8212;</span>
@@ -451,11 +484,11 @@
 
               <!-- Pensión -->
               <td class="px-4 py-3 whitespace-nowrap">
-                @if (affiliate.pensionName && affiliate.pensionName !== '-' && affiliate.pensionName !== 'N/A') {
-                  <span [class]="affiliate.certPension
-                    ? 'px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded whitespace-nowrap'
-                    : 'text-gray-400 font-normal whitespace-nowrap'">
+                @if (planHasPension(affiliate) && affiliate.pensionName && affiliate.pensionName !== '-' && affiliate.pensionName !== 'N/A') {
+                  <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
                     {{ affiliate.pensionName }}
+                    <span [title]="affiliate.certPension ? 'Con certificado' : 'Sin certificado'"
+                      [class]="affiliate.certPension ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500'"></span>
                   </span>
                 } @else {
                   <span class="text-gray-400 font-semibold">&#8212;</span>
@@ -565,6 +598,10 @@
 </div>
 
 <!-- Modales -->
+<app-affiliate-info-modal [isVisible]="showInfoModal()" [affiliate]="selectedAffiliate()" (closed)="onInfoClosed()" />
+
+<app-affiliate-documents-modal [isVisible]="showDocumentsModal()" [affiliate]="selectedAffiliate()" (closed)="onDocumentsClosed()" />
+
 <app-affiliate-form-modal [isVisible]="showFormModal()" [mode]="formMode()" [affiliate]="selectedAffiliate()"
   [existingAffiliates]="allAffiliatesForModal" (saved)="onFormSaved()" (closed)="onFormClosed()" />
 
@@ -572,4 +609,7 @@
   (confirmed)="onStatusConfirmed()" (cancelled)="onStatusCancelled()" />
 
 <app-affiliate-send-email-modal [isVisible]="showSendEmailModal()" [affiliate]="selectedAffiliate()"
+  (sent)="onEmailSent()" (cancelled)="onEmailModalCancelled()" />
+
+<app-affiliate-send-email-observation-modal [isVisible]="showSendEmailObservationModal()" [affiliate]="selectedAffiliate()"
   (sent)="onEmailSent()" (cancelled)="onEmailModalCancelled()" />
