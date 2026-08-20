@@ -25,7 +25,12 @@ export class LayoutComponent {
   private _toastService = inject(ToastService);
   private _authService = inject(AuthService);
 
-  isSidebarOpen = signal(true);
+  /** Pin manual (usado en móvil, vía el botón hamburguesa/backdrop). Colapsado por defecto. */
+  isSidebarOpen = signal(false);
+  /** true mientras el mouse está sobre el sidebar (expande temporalmente en desktop). */
+  isSidebarHovered = signal(false);
+  /** Estado visual real del sidebar: expandido si está fijado abierto o en hover. */
+  isSidebarExpanded = computed(() => this.isSidebarOpen() || this.isSidebarHovered());
   currentRoute = signal('');
 
   /** Ruta previa a la actual (solo se pisa en navegaciones reales, ya validadas por el roleGuard). */
@@ -133,6 +138,14 @@ export class LayoutComponent {
 
   toggleSidebar(): void {
     this.isSidebarOpen.set(!this.isSidebarOpen());
+  }
+
+  onSidebarMouseEnter(): void {
+    this.isSidebarHovered.set(true);
+  }
+
+  onSidebarMouseLeave(): void {
+    this.isSidebarHovered.set(false);
   }
 
   logout(): void {
