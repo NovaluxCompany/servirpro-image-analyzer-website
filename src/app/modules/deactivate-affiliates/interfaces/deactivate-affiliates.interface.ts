@@ -7,6 +7,7 @@ export interface DeactivateAffiliateFilters {
   advisor?: string;
   company?: string;
   grouper?: string;
+  reason?: string;
 }
 
 

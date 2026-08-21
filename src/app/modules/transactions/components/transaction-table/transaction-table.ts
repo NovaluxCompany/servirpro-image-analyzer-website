@@ -2,11 +2,12 @@ import { Component, HostListener, effect, input, output, signal } from '@angular
 import { CommonModule } from '@angular/common';
 import { Transaction } from '../../interfaces/transaction.interface';
 import { TransactionStatusBadgeComponent } from '../transaction-status-badge/transaction-status-badge';
+import { TableScrollComponent } from '../../../../shared/components/table-scroll/table-scroll';
 
 @Component({
   selector: 'app-transaction-table',
   standalone: true,
-  imports: [CommonModule, TransactionStatusBadgeComponent],
+  imports: [CommonModule, TransactionStatusBadgeComponent, TableScrollComponent],
   templateUrl: './transaction-table.html'
 })
 export class TransactionTableComponent {

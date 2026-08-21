@@ -2,26 +2,33 @@ import { Component, inject, signal, OnInit, computed, HostListener } from '@angu
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AffiliateMembersService, AffiliateFilters } from '../../services/affiliate-members.service';
-import { AffiliateMember } from '../../interfaces/affiliate-member.interface';
+import { AffiliateMember, AffiliateDocument } from '../../interfaces/affiliate-member.interface';
 import { AffiliateFormModalComponent } from '../../components/affiliate-form-modal/affiliate-form-modal';
 import { AffiliateStatusModalComponent } from '../../components/affiliate-status-modal/affiliate-status-modal';
 import { AffiliateSendEmailModalComponent } from '../../components/affiliate-send-email-modal/affiliate-send-email-modal';
+import { AffiliateInfoModalComponent } from '../../components/affiliate-info-modal/affiliate-info-modal';
+import { AffiliateDocumentsModalComponent } from '../../components/affiliate-documents-modal/affiliate-documents-modal';
+import { AffiliateSendEmailObservationModalComponent } from '../../components/affiliate-send-email-observation-modal/affiliate-send-email-observation-modal';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { ConfigGeneralService } from '../../../../core/service/config-general.service';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
+import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
+import { TableScrollComponent } from '../../../../shared/components/table-scroll/table-scroll';
 import { Department } from '../../interfaces/catalog.interface';
 import { debounceTime, Subject } from 'rxjs';
 
 @Component({
   selector: 'app-affiliates-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, SearchableSelectComponent],
+  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './affiliates-list.html',
 })
 export class AffiliatesListComponent implements OnInit {
   private _service = inject(AffiliateMembersService);
   private _toast = inject(ToastService);
   private _permission = inject(PermissionService);
+  private _configGeneralService = inject(ConfigGeneralService);
 
   // ── Datos ─────────────────────────────────────────────────────────
   affiliates = signal<AffiliateMember[]>([]);
@@ -31,7 +38,7 @@ export class AffiliatesListComponent implements OnInit {
 
   // ── Paginación backend ────────────────────────────────────────────
   currentPage = signal(1);
-  pageSize = signal(10);
+  pageSize = signal(MIN_PAGE_SIZE);
   totalItems = signal(0);
   totalPages = signal(0);
 
@@ -42,6 +49,9 @@ export class AffiliatesListComponent implements OnInit {
   filterAdvisor = '';
   filterIsActive = '';
   filterGrupo = '';
+  filterEntryDateFrom = '';
+  filterEntryDateTo = '';
+  filterPaymentStatus = '';
   advisorOptions = signal<SelectOption[]>([]);
   referenceOptions = signal<SelectOption[]>([]);
   private departmentNameByCode = new Map<string, string>();
@@ -52,15 +62,22 @@ export class AffiliatesListComponent implements OnInit {
   showFormModal = signal(false);
   showStatusModal = signal(false);
   showSendEmailModal = signal(false);
+  showSendEmailObservationModal = signal(false);
+  showInfoModal = signal(false);
+  showDocumentsModal = signal(false);
   formMode = signal<'create' | 'edit'>('create');
   selectedAffiliate = signal<AffiliateMember | null>(null);
 
   // ── Siigo ─────────────────────────────────────────────────────────
-  syncingSiigoId = signal<number | null>(null);
-
+  syncingSiigoId = signal<number | null>(null);  sendingEmailId = signal<number | null>(null);
   // ── Dropdown acciones ─────────────────────────────────────────────
   openDropdownId = signal<string | null>(null);
-  dropdownPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
+  dropdownPos = signal<{ top: number | null; bottom: number | null; left: number; maxHeight: number }>({
+    top: 0,
+    bottom: null,
+    left: 0,
+    maxHeight: 400,
+  });
 
   toggleDropdown(id: string, buttonEl: HTMLElement): void {
     if (this.openDropdownId() === id) {
@@ -68,7 +85,24 @@ export class AffiliatesListComponent implements OnInit {
       return;
     }
     const rect = buttonEl.getBoundingClientRect();
-    this.dropdownPos.set({ top: rect.bottom + 4, left: rect.left });
+
+    // El menú puede tener entre 4 y ~9 ítems según el plan/estado del
+    // afiliado (certificados + correo + Siigo + documentos), así que no se
+    // puede adivinar su altura para decidir la posición. En vez de eso: si
+    // no hay espacio razonable debajo del botón pero sí arriba, se ancla por
+    // "bottom" (crece hacia arriba con su altura real, como un menú
+    // contextual) y siempre se limita su alto máximo al espacio disponible
+    // real, con scroll propio como respaldo si aun así no alcanza.
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const opensUpward = spaceBelow < 200 && spaceAbove > spaceBelow;
+
+    this.dropdownPos.set({
+      top: opensUpward ? null : rect.bottom + 4,
+      bottom: opensUpward ? window.innerHeight - rect.top + 4 : null,
+      left: rect.left,
+      maxHeight: Math.max(120, (opensUpward ? spaceAbove : spaceBelow) - 12),
+    });
     this.openDropdownId.set(id);
   }
 
@@ -87,8 +121,21 @@ export class AffiliatesListComponent implements OnInit {
       this.currentPage.set(1);
       this.loadAffiliates();
     });
-    this.loadAffiliates();
+    this._configGeneralService.getValue(REGISTROS_POR_PAGINA_KEY).subscribe({
+      next: (value) => {
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed) && parsed >= MIN_PAGE_SIZE) this.pageSize.set(parsed);
+        this.loadAffiliates();
+      },
+      error: () => this.loadAffiliates(),
+    });
     this.loadFilterOptions();
+  }
+
+  onPageSizeChange(newSize: number): void {
+    this.pageSize.set(newSize);
+    this.currentPage.set(1);
+    this.loadAffiliates();
   }
 
   private buildFilters(): AffiliateFilters {
@@ -101,6 +148,9 @@ export class AffiliatesListComponent implements OnInit {
       advisor: this.filterAdvisor || undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
+      entryDateFrom: this.filterEntryDateFrom || undefined,
+      entryDateTo: this.filterEntryDateTo || undefined,
+      paymentStatus: this.filterPaymentStatus === 'paid' || this.filterPaymentStatus === 'unpaid' ? this.filterPaymentStatus : undefined,
     };
   }
 
@@ -156,12 +206,15 @@ export class AffiliatesListComponent implements OnInit {
     this.filterAdvisor = '';
     this.filterIsActive = '';
     this.filterGrupo = '';
+    this.filterEntryDateFrom = '';
+    this.filterEntryDateTo = '';
+    this.filterPaymentStatus = '';
     this.currentPage.set(1);
     this.loadAffiliates();
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterIsActive || this.filterGrupo);
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -199,6 +252,26 @@ export class AffiliatesListComponent implements OnInit {
     this.showFormModal.set(true);
   }
 
+  openInfo(affiliate: AffiliateMember): void {
+    this.selectedAffiliate.set(affiliate);
+    this.showInfoModal.set(true);
+  }
+
+  onInfoClosed(): void {
+    this.showInfoModal.set(false);
+    this.selectedAffiliate.set(null);
+  }
+
+  openDocuments(affiliate: AffiliateMember): void {
+    this.selectedAffiliate.set(affiliate);
+    this.showDocumentsModal.set(true);
+  }
+
+  onDocumentsClosed(): void {
+    this.showDocumentsModal.set(false);
+    this.selectedAffiliate.set(null);
+  }
+
   openStatusToggle(affiliate: AffiliateMember): void {
     const message = affiliate.isActive
       ? 'Tu rol no tiene permiso para deshabilitar afiliados.'
@@ -231,12 +304,15 @@ export class AffiliatesListComponent implements OnInit {
     this.selectedAffiliate.set(null);
   }
 
-  downloadDocument(affiliate: AffiliateMember): void {
+  downloadDocument(affiliate: AffiliateMember, doc?: AffiliateDocument): void {
     if (!affiliate.id || !affiliate.documents || affiliate.documents.length === 0) return;
-    const doc = affiliate.documents[0];
-    const documentId = doc.id;
-    const ext = doc.fileName.includes('.') ? doc.fileName.split('.').pop() : '';
-    const downloadName = ext ? `${affiliate.documentNumber}.${ext}` : affiliate.documentNumber;
+    const target = doc ?? affiliate.documents[0];
+    const documentId = target.id;
+    const ext = target.fileName.includes('.') ? target.fileName.split('.').pop() : '';
+    // Si hay más de un documento, se agrega la posición al nombre para no
+    // sobrescribir el archivo anterior al descargar varios del mismo afiliado.
+    const suffix = affiliate.documents.length > 1 ? `_${affiliate.documents.indexOf(target) + 1}` : '';
+    const downloadName = ext ? `${affiliate.documentNumber}${suffix}.${ext}` : `${affiliate.documentNumber}${suffix}`;
 
     this._toast.showInfo('Descarga en proceso...');
 
@@ -277,6 +353,9 @@ export class AffiliatesListComponent implements OnInit {
       advisor: this.filterAdvisor || undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
+      entryDateFrom: this.filterEntryDateFrom || undefined,
+      entryDateTo: this.filterEntryDateTo || undefined,
+      paymentStatus: this.filterPaymentStatus === 'paid' || this.filterPaymentStatus === 'unpaid' ? this.filterPaymentStatus : undefined,
     };
 
     this._service.exportToExcel(exportFilters).subscribe({
@@ -329,23 +408,95 @@ export class AffiliatesListComponent implements OnInit {
     return isGestion && hasDocument;
   }
 
+  isIndependienteAffiliate(affiliate: AffiliateMember): boolean {
+    return (affiliate.affiliateType ?? '').toUpperCase() === 'INDEPENDIENTE';
+  }
+
+  // El envío de correo aplica a agrupadora GESTIÓN (con documento) y a afiliados
+  // INDEPENDIENTE (no tienen agrupadora, pero sí requieren documento propio).
+  canSendEmail(affiliate: AffiliateMember): boolean {
+    return this.isGestionAffiliate(affiliate) || this.isIndependienteAffiliate(affiliate);
+  }
+
+  // Los nombres de plan son compuestos (ej: 'EPS+ARL2+CCF+AFP'): esa es la única fuente
+  // de verdad de qué beneficios aplican. No basta con que el campo tenga valor (arl
+  // llega en 0 por defecto, no null, aunque el plan no incluya ARL).
+  private planIncludes(affiliate: AffiliateMember, token: string): boolean {
+    return (affiliate.planName || '').toUpperCase().includes(token);
+  }
+
+  planHasEps(affiliate: AffiliateMember): boolean {
+    return this.planIncludes(affiliate, 'EPS');
+  }
+
+  planHasArl(affiliate: AffiliateMember): boolean {
+    return this.planIncludes(affiliate, 'ARL');
+  }
+
+  planHasCcf(affiliate: AffiliateMember): boolean {
+    return this.planIncludes(affiliate, 'CCF');
+  }
+
+  planHasPension(affiliate: AffiliateMember): boolean {
+    return this.planIncludes(affiliate, 'AFP');
+  }
+
+  // ── Check de documentos (EPS/ARL/CCF/Pensión) inline desde la tabla ────
+  // Antes solo se podía marcar el certificado abriendo el modal de edición
+  // completo; esto permite alternarlo directo desde la afiliación en la fila.
+  togglingCertId = signal<string | null>(null);
+
+  toggleCert(affiliate: AffiliateMember, field: 'certArl' | 'certEps' | 'certPension' | 'certCcf'): void {
+    if (!this._permission.check('edit', undefined, 'Tu rol no tiene permiso para editar afiliados.')) return;
+    if (!affiliate.id || this.togglingCertId() !== null) return;
+
+    const newValue = !affiliate[field];
+    this.togglingCertId.set(affiliate.id);
+    this._service
+      .updateAffiliate(affiliate.id, {
+        documentNumber: affiliate.documentNumber,
+        cityCode: affiliate.cityCode,
+        [field]: newValue,
+      })
+      .subscribe({
+        next: () => {
+          affiliate[field] = newValue;
+          this.togglingCertId.set(null);
+          this._toast.showSuccess('Certificado actualizado');
+        },
+        error: (err) => {
+          this._toast.showError(err.message ?? 'No se pudo actualizar el certificado');
+          this.togglingCertId.set(null);
+        },
+      });
+  }
+
   sendEmail(affiliate: AffiliateMember): void {
     if (!this._permission.check('send_email', undefined, 'Tu rol no tiene permiso para enviar correos de afiliación.')) {
       return;
     }
 
     this.selectedAffiliate.set(affiliate);
-    this.showSendEmailModal.set(true);
+    // Elegir varios correos destino es exclusivo de Independiente. Para Gestión
+    // (y cualquier otro Dependiente elegible) solo se pide la observación del
+    // correo; el envío va siempre al correo registrado del afiliado.
+    if (this.isIndependienteAffiliate(affiliate)) {
+      this.showSendEmailModal.set(true);
+    } else {
+      this.showSendEmailObservationModal.set(true);
+    }
   }
 
   onEmailSent(): void {
     this.showSendEmailModal.set(false);
+    this.showSendEmailObservationModal.set(false);
     this.selectedAffiliate.set(null);
     this.loadAffiliates();
   }
 
   onEmailModalCancelled(): void {
     this.showSendEmailModal.set(false);
+    this.showSendEmailObservationModal.set(false);
     this.selectedAffiliate.set(null);
   }
 

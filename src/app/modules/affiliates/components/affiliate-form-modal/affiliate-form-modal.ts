@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AffiliateMembersService } from '../../services/affiliate-members.service';
 import { ToastService } from '../../../../core/service/toast.service';
+import { PermissionService } from '../../../../core/service/permission.service';
 import { AffiliateMember, CreateAffiliateMemberDto } from '../../interfaces/affiliate-member.interface';
 import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, Branch, Department, CityOption } from '../../interfaces/catalog.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
@@ -18,6 +19,12 @@ export class AffiliateFormModalComponent implements OnInit {
   private _fb = inject(FormBuilder);
   private _service = inject(AffiliateMembersService);
   private _toast = inject(ToastService);
+  private _permission = inject(PermissionService);
+
+  // La fecha de ingreso es automática (se fija al crear y al habilitar al afiliado).
+  // Solo los roles con el permiso 'edit_entry_date' sobre /afiliados —Administrador
+  // por defecto— pueden corregirla a mano; el backend lo vuelve a validar.
+  readonly canEditEntryDate = this._permission.can('edit_entry_date', '/afiliados');
 
   isVisible = input<boolean>(false);
   mode = input<'create' | 'edit'>('create');
@@ -29,6 +36,7 @@ export class AffiliateFormModalComponent implements OnInit {
 
   isLoading = signal(false);
   duplicateDocument = signal(false);
+  duplicateDocumentMessage = signal<string | null>(null);
   errorMessage = signal<string | null>(null);
   fileError = signal<string | null>(null);
   catalogsLoading = signal(true);
@@ -56,7 +64,6 @@ export class AffiliateFormModalComponent implements OnInit {
 
   section1Open = true
   section2Open = true
-  section3Open = true
 
   readonly documentTypeOptions: SelectOption[] = [
     { value: 'CC', label: 'CC' },
@@ -72,10 +79,6 @@ export class AffiliateFormModalComponent implements OnInit {
 
   toggleSection2() {
     this.section2Open = !this.section2Open;
-  }
-
-  toggleSection3() {
-    this.section3Open = !this.section3Open;
   }
 
   // SelectOption arrays for searchable dropdowns
@@ -152,6 +155,7 @@ export class AffiliateFormModalComponent implements OnInit {
     discount: [<number | null>null],
     affiliateType: ['DEPENDIENTE', Validators.required],
     isNew: [false],
+    referralType: [''],
     entryDate: [{ value: '', disabled: true }],
     observation: ['', Validators.maxLength(2000)],
     documentFile: [<File | string | null>null],
@@ -181,8 +185,8 @@ export class AffiliateFormModalComponent implements OnInit {
           });
           this.form.get('entryDate')?.setValue(this.todayDate());
           this.form.get('companyEntryDate')?.setValue(this.todayDate());
-          // In create mode: entryDate is automatic (disabled), companyEntryDate is freely editable
-          this.form.get('entryDate')?.disable({ emitEvent: false });
+          // In create mode: entryDate is automatic (solo editable con permiso), companyEntryDate is freely editable
+          this.applyEntryDatePermission();
           this.form.get('companyEntryDate')?.enable({ emitEvent: false });
           // El bloqueo de plan por afiliado activo solo aplica en edición
           this.form.get('planId')?.enable({ emitEvent: false });
@@ -191,14 +195,16 @@ export class AffiliateFormModalComponent implements OnInit {
           this.form.get('documentFile')?.clearValidators();
           this.form.get('documentFile')?.updateValueAndValidity({ emitEvent: false });
           this.duplicateDocument.set(false);
+          this.duplicateDocumentMessage.set(null);
           this.errorMessage.set(null);
-          this.selectedFile = null;
+          this.selectedFiles = [];
           this.existingDocumentId = null;
           this.keepExistingDocument = true;
           this.fileError.set(null);
           if (this.fileInputRef?.nativeElement) {
             this.fileInputRef.nativeElement.value = '';
           }
+          this.validateAffiliateType();
         }
       }
     });
@@ -257,19 +263,32 @@ export class AffiliateFormModalComponent implements OnInit {
     }
   }
 
+  /**
+   * Habilita el input de fecha de ingreso solo si el rol tiene el permiso
+   * 'edit_entry_date' sobre /afiliados. Para el resto sigue siendo un campo
+   * automático de solo lectura, igual que antes.
+   */
+  private applyEntryDatePermission(): void {
+    const entryDateControl = this.form.get('entryDate');
+    if (this.canEditEntryDate) {
+      entryDateControl?.enable({ emitEvent: false });
+    } else {
+      entryDateControl?.disable({ emitEvent: false });
+    }
+  }
+
   validateDocumentFile() {
     const fileControl = this.form.get('documentFile');
     if (!fileControl) return;
 
-    const label = this.selectedGrouperLabel || '';
     const existingDoc = this.affiliate()?.documents?.[0];
     const existingDisplayName = existingDoc?.fileName?.split('/').pop() || existingDoc?.fileName || '';
 
     // El campo de archivo siempre está habilitado sin importar la agrupadora
     fileControl.enable({ emitEvent: false });
 
-    // Solo es obligatorio para GESTIÓN
-    if (label.includes('GESTIÓN') || label.includes('GESTION')) {
+    // Obligatorio para afiliados INDEPENDIENTE y para la agrupadora GESTIÓN
+    if (this.isDocumentRequired) {
       fileControl.setValidators([Validators.required]);
     } else {
       // Para cualquier otra agrupadora: opcional (sin validadores)
@@ -290,6 +309,62 @@ export class AffiliateFormModalComponent implements OnInit {
   get isGestionGrouper(): boolean {
     const label = this.selectedGrouperLabel || '';
     return label.includes('GESTIÓN') || label.includes('GESTION');
+  }
+
+  // Los afiliados INDEPENDIENTE no pertenecen a ninguna empresa/agrupadora: esos
+  // campos quedan bloqueados y vacíos. El documento de soporte, en cambio, es
+  // obligatorio para ellos (no tienen empresa que respalde la afiliación).
+  get isIndependiente(): boolean {
+    return this.form.get('affiliateType')?.value === 'INDEPENDIENTE';
+  }
+
+  // El PDF es obligatorio para los afiliados INDEPENDIENTE y para la agrupadora GESTIÓN.
+  get isDocumentRequired(): boolean {
+    return this.isIndependiente || this.isGestionGrouper;
+  }
+
+  // Campos que quedan bloqueados (deshabilitados y sin validadores) cuando el
+  // afiliado es INDEPENDIENTE. No deben poder bloquear el botón de guardar.
+  private readonly independentBlockedFields = ['companyId', 'grouperId'];
+
+  // No se usa directamente `form.invalid`: aunque los controles bloqueados están
+  // deshabilitados (lo que ya debería excluirlos de la validez del FormGroup),
+  // se recalcula explícitamente ignorándolos para blindar el botón de guardar
+  // ante cualquier caso donde ese control siga marcado como inválido.
+  get isSubmitDisabled(): boolean {
+    if (this.isLoading()) return true;
+    if (!this.isIndependiente) return this.form.invalid;
+
+    return Object.entries(this.form.controls).some(
+      ([key, control]) => !this.independentBlockedFields.includes(key) && control.invalid,
+    );
+  }
+
+  private validateAffiliateType(): void {
+    const companyControl = this.form.get('companyId');
+    const grouperControl = this.form.get('grouperId');
+
+    if (this.isIndependiente) {
+      companyControl?.disable({ emitEvent: false });
+      companyControl?.setValue('', { emitEvent: false });
+
+      grouperControl?.disable({ emitEvent: false });
+      grouperControl?.setValue('', { emitEvent: false });
+      grouperControl?.clearValidators();
+      grouperControl?.updateValueAndValidity({ emitEvent: false });
+
+      this.selectedGrouperLabel = '';
+    } else {
+      companyControl?.enable({ emitEvent: false });
+
+      grouperControl?.enable({ emitEvent: false });
+      grouperControl?.setValidators([Validators.required]);
+      grouperControl?.updateValueAndValidity({ emitEvent: false });
+    }
+
+    // El documento se recalcula en ambos casos: para INDEPENDIENTE pasa a ser
+    // obligatorio y el archivo ya cargado se conserva (antes se borraba).
+    this.validateDocumentFile();
   }
 
   ngOnInit() {
@@ -332,6 +407,10 @@ export class AffiliateFormModalComponent implements OnInit {
       if (city) {
         this.form.get('municipality')?.setValue(city.cityName, { emitEvent: false });
       }
+    });
+
+    this.form.get('affiliateType')?.valueChanges.subscribe(() => {
+      this.validateAffiliateType();
     });
   }
 
@@ -485,7 +564,7 @@ export class AffiliateFormModalComponent implements OnInit {
           const selectedGrouper = this.groupers().find(g => String(g.id) === String(a.grouperId));
           this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
         }
-        this.validateDocumentFile();
+        this.validateAffiliateType();
 
         this.formReady.set(true);
       },
@@ -498,7 +577,7 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   private patchForm(a: AffiliateMember): void {
-    this.selectedFile = null;
+    this.selectedFiles = [];
     this.existingDocumentId = a.documents?.[0]?.id ?? null;
     this.keepExistingDocument = true;
     this.fileError.set(null);
@@ -530,6 +609,7 @@ export class AffiliateFormModalComponent implements OnInit {
       isActive: a.isActive ?? true,
       discount: a.discount ?? null,
       affiliateType: a.affiliateType ?? 'DEPENDIENTE',
+      referralType: a.referralType ?? '',
       companyEntryDate: this.toLocalDateStr(a.companyEntryDate ?? this.todayDate()),
       entryDate: this.toLocalDateStr(a.entryDate),
       arl: a.arl ?? null,
@@ -543,8 +623,9 @@ export class AffiliateFormModalComponent implements OnInit {
       certCcf: a.certCcf ?? false,
     }, { emitEvent: false });
 
-    // In edit mode: entryDate is fixed (disable to prevent editing), companyEntryDate is editable (enable)
-    this.form.get('entryDate')?.disable({ emitEvent: false });
+    // In edit mode: entryDate solo se habilita para roles con permiso 'edit_entry_date';
+    // companyEntryDate siempre es editable.
+    this.applyEntryDatePermission();
     this.form.get('companyEntryDate')?.enable({ emitEvent: false });
 
     const existingDoc = a.documents?.[0];
@@ -558,48 +639,60 @@ export class AffiliateFormModalComponent implements OnInit {
     this.errorMessage.set(null);
   }
 
-  selectedFile: File | null = null;
+  selectedFiles: File[] = [];
   existingDocumentId: number | null = null;
   private keepExistingDocument = true;
   @ViewChild('fileInput') fileInputRef?: ElementRef<HTMLInputElement>;
 
   private static readonly ALLOWED_FILE_TYPES = ['application/pdf'];
   private static readonly MAX_FILE_SIZE_MB = 10;
+  private static readonly MAX_FILES = 100;
+
+  private updateDocumentFileControl(): void {
+    const value = this.selectedFiles.length > 0 ? this.selectedFiles.map((f) => f.name).join(', ') : null;
+    this.form.get('documentFile')?.setValue(value, { emitEvent: false });
+  }
 
   onFileSelected(event: any): void {
-    const file: File | null = event.target.files?.[0] ?? null;
+    const files: File[] = Array.from(event.target.files ?? []);
     this.fileError.set(null);
+    if (files.length === 0) return;
 
-    if (!file) {
-      this.selectedFile = null;
-      this.form.get('documentFile')?.setValue(null, { emitEvent: false });
-      return;
-    }
-
-    if (!AffiliateFormModalComponent.ALLOWED_FILE_TYPES.includes(file.type)) {
-      this.fileError.set('Solo se permiten archivos en formato PDF.');
-      this.selectedFile = null;
-      this.form.get('documentFile')?.setValue(null, { emitEvent: false });
+    if (this.selectedFiles.length + files.length > AffiliateFormModalComponent.MAX_FILES) {
+      this.fileError.set(`Puedes adjuntar máximo ${AffiliateFormModalComponent.MAX_FILES} archivos.`);
       event.target.value = '';
       return;
     }
 
     const maxBytes = AffiliateFormModalComponent.MAX_FILE_SIZE_MB * 1024 * 1024;
-     if (file.size > maxBytes) {
-      this.fileError.set(`El archivo no puede superar ${AffiliateFormModalComponent.MAX_FILE_SIZE_MB} MB.`);
-      this.selectedFile = null;
-      this.form.get('documentFile')?.setValue(null, { emitEvent: false });
-      event.target.value = '';
-      return;
+    for (const file of files) {
+      if (!AffiliateFormModalComponent.ALLOWED_FILE_TYPES.includes(file.type)) {
+        this.fileError.set('Solo se permiten archivos en formato PDF.');
+        event.target.value = '';
+        return;
+      }
+      if (file.size > maxBytes) {
+        this.fileError.set(`Cada archivo no puede superar ${AffiliateFormModalComponent.MAX_FILE_SIZE_MB} MB.`);
+        event.target.value = '';
+        return;
+      }
     }
 
-    this.selectedFile = file;
+    this.selectedFiles = [...this.selectedFiles, ...files];
     this.keepExistingDocument = false;
-    this.form.get('documentFile')?.setValue(file.name, { emitEvent: false });
+    this.updateDocumentFileControl();
+    event.target.value = '';
+  }
+
+  removeFile(index: number): void {
+    this.selectedFiles = this.selectedFiles.filter((_, i) => i !== index);
+    this.keepExistingDocument = false;
+    this.fileError.set(null);
+    this.updateDocumentFileControl();
   }
 
   clearFile(): void {
-    this.selectedFile = null;
+    this.selectedFiles = [];
     this.keepExistingDocument = false;
     this.fileError.set(null);
     this.form.get('documentFile')?.setValue(null, { emitEvent: false });
@@ -609,17 +702,45 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   onDocumentNumberBlur(): void {
+    // Chequeo instantáneo con lo ya cargado en la página actual (feedback inmediato)...
     this.checkDuplicate();
+    // ...y chequeo contra el backend (cubre afiliados fuera de la página actual/paginación,
+    // y afiliados desactivados) para no descubrir el duplicado recién al enviar el formulario.
+    this.checkDuplicateRemote();
   }
 
   private checkDuplicate(): void {
     const docNumber = this.form.value.documentNumber?.trim();
-    if (!docNumber) { this.duplicateDocument.set(false); return; }
+    if (!docNumber) { this.duplicateDocument.set(false); this.duplicateDocumentMessage.set(null); return; }
     const currentDocNumber = this.affiliate()?.documentNumber?.trim();
     const exists = this.existingAffiliates().some(
       (a) => a.documentNumber?.trim() === docNumber && a.documentNumber?.trim() !== currentDocNumber
     );
     this.duplicateDocument.set(exists);
+    if (exists) {
+      this.duplicateDocumentMessage.set('Ya existe un afiliado con este número de documento.');
+    } else {
+      this.duplicateDocumentMessage.set(null);
+    }
+  }
+
+  private checkDuplicateRemote(): void {
+    const docNumber = this.form.value.documentNumber?.trim();
+    const currentDocNumber = this.affiliate()?.documentNumber?.trim();
+    if (!docNumber || docNumber === currentDocNumber) return;
+
+    this._service.checkDocumentExists(docNumber).subscribe((res) => {
+      // Si mientras tanto el usuario ya cambió el campo, ignorar esta respuesta tardía.
+      if (this.form.value.documentNumber?.trim() !== docNumber) return;
+      if (res?.exists) {
+        this.duplicateDocument.set(true);
+        this.duplicateDocumentMessage.set(
+          res.isActive
+            ? 'Ya existe un afiliado activo con este número de documento.'
+            : 'Ya existe un afiliado con este número de documento, pero está desactivado. Reactívalo en vez de crear uno nuevo.',
+        );
+      }
+    });
   }
 
   onClose(): void {
@@ -629,13 +750,42 @@ export class AffiliateFormModalComponent implements OnInit {
   onSubmit(): void {
     this.checkDuplicate();
     if (this.duplicateDocument()) {
-      this.errorMessage.set('Ya existe un afiliado con ese número de documento.');
+      // El mensaje ya se muestra debajo del campo de documento (duplicateDocumentMessage);
+      // no se repite en el banner de errorMessage para no duplicar el aviso.
       return;
     }
-    if (this.form.invalid) {
+    if (this.isSubmitDisabled) {
       this.form.markAllAsTouched();
       return;
     }
+
+    // Chequeo final y autoritativo contra el backend (cubre afiliados fuera de la
+    // página actual y desactivados) antes de construir y enviar el DTO — así el
+    // usuario nunca llena todo el formulario para enterarse del duplicado al final.
+    const docNumber = this.form.value.documentNumber?.trim();
+    const currentDocNumber = this.affiliate()?.documentNumber?.trim();
+
+    if (docNumber && docNumber !== currentDocNumber) {
+      this.isLoading.set(true);
+      this._service.checkDocumentExists(docNumber).subscribe((res) => {
+        if (res?.exists) {
+          this.isLoading.set(false);
+          this.duplicateDocument.set(true);
+          this.duplicateDocumentMessage.set(
+            res.isActive
+              ? 'Ya existe un afiliado activo con este número de documento.'
+              : 'Ya existe un afiliado con este número de documento, pero está desactivado. Reactívalo en vez de crear uno nuevo.',
+          );
+          return;
+        }
+        this.proceedWithSubmit();
+      });
+    } else {
+      this.proceedWithSubmit();
+    }
+  }
+
+  private proceedWithSubmit(): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
@@ -681,10 +831,14 @@ export class AffiliateFormModalComponent implements OnInit {
       isActive: raw.isActive ?? true,
       discount: toNumberOrNull(raw.discount) ?? undefined,
       affiliateType: raw.affiliateType as 'INDEPENDIENTE' | 'DEPENDIENTE' | undefined,
+      referralType: (raw.referralType || undefined) as 'NUEVO' | 'REINGRESO' | 'REFERIDO' | undefined,
       // companyEntryDate comes from its own form control (disabled), NOT from entryDate
       companyEntryDate: raw.companyEntryDate || this.toLocalDateStr(this.todayDate()),
-      // entryDate only sent on create; in edit mode the backend ignores it (only set on create/enable)
-      entryDate: this.isEdit ? undefined : (raw.entryDate || this.toLocalDateStr(this.todayDate())),
+      // Al crear, entryDate siempre viaja (por defecto hoy). En edición solo se envía
+      // si el rol tiene permiso para corregirla: si no, el backend rechazaría el cambio.
+      entryDate: this.isEdit
+        ? (this.canEditEntryDate ? (raw.entryDate || undefined) : undefined)
+        : (raw.entryDate || this.toLocalDateStr(this.todayDate())),
       arl: raw.arl ?? undefined,
       observation: raw.observation?.trim() || undefined,
       ...(this.isEdit ? {
@@ -722,11 +876,11 @@ export class AffiliateFormModalComponent implements OnInit {
         };
 
         const uploadNewFile = () => {
-          if (this.selectedFile && affiliateId) {
-            this._service.uploadDocument(affiliateId, this.selectedFile).subscribe({
+          if (this.selectedFiles.length > 0 && affiliateId) {
+            this._service.uploadDocuments(affiliateId, this.selectedFiles).subscribe({
               next: () => finalize(),
               error: () => {
-                this.fileError.set('El afiliado fue guardado, pero no se pudo subir el documento. Inténtalo nuevamente.');
+                this.fileError.set('El afiliado fue guardado, pero no se pudieron subir los documentos. Inténtalo nuevamente.');
                 finalize();
               },
             });

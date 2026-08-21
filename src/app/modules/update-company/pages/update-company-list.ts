@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../../core/service/toast.service';
 import { PermissionService } from '../../../core/service/permission.service';
 import { UpdateCompanyService } from '../services/update-company.service';
+import { TableScrollComponent } from '../../../shared/components/table-scroll/table-scroll';
 import {
   ValidationResponse,
   ExecutionResponse,
@@ -14,7 +15,7 @@ import {
 @Component({
   selector: 'app-update-company-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TableScrollComponent],
   templateUrl: './update-company-list.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

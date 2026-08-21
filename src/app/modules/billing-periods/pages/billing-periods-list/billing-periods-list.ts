@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BillingPeriodsService } from '../../services/billing-periods.service';
 import { BillingPeriod } from '../../interfaces/billing-period.interface';
@@ -7,16 +7,20 @@ import { SiigoInvoicePayload, SiigoInvoicePricingBreakdown } from '../../interfa
 import { BillingPeriodFiltersComponent } from '../../components/billing-period-filters/billing-period-filters';
 import { SendToSiigoModalComponent } from '../../components/send-to-siigo-modal/send-to-siigo-modal';
 import { ToastService } from '../../../../core/service/toast.service';
+import { ConfigGeneralService } from '../../../../core/service/config-general.service';
+import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
+import { TableScrollComponent } from '../../../../shared/components/table-scroll/table-scroll';
 
 @Component({
   selector: 'app-billing-periods-list',
   standalone: true,
-  imports: [CommonModule, BillingPeriodFiltersComponent, SendToSiigoModalComponent],
+  imports: [CommonModule, BillingPeriodFiltersComponent, SendToSiigoModalComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './billing-periods-list.html',
 })
-export class BillingPeriodsListComponent {
+export class BillingPeriodsListComponent implements OnInit {
   private _service = inject(BillingPeriodsService);
   private _toastService = inject(ToastService);
+  private _configGeneralService = inject(ConfigGeneralService);
 
   isDownloadingExcel = signal(false);
 
@@ -26,7 +30,7 @@ export class BillingPeriodsListComponent {
   selectedPricingBreakdown = signal<SiigoInvoicePricingBreakdown | null>(null);
   private selectedPeriodId: number | null = null;
 
-  readonly pageSize = 10;
+  pageSize = signal(MIN_PAGE_SIZE);
 
   billingPeriods = signal<BillingPeriod[]>([]);
   isLoading = signal(false);
@@ -36,6 +40,22 @@ export class BillingPeriodsListComponent {
   currentPage = signal(1);
   totalPages = signal(0);
   totalItems = signal(0);
+
+  ngOnInit(): void {
+    this._configGeneralService.getValue(REGISTROS_POR_PAGINA_KEY).subscribe({
+      next: (value) => {
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed) && parsed >= MIN_PAGE_SIZE) this.pageSize.set(parsed);
+      },
+      error: () => {},
+    });
+  }
+
+  onPageSizeChange(newSize: number): void {
+    this.pageSize.set(newSize);
+    this.currentPage.set(1);
+    if (this.currentFilters) this.loadBillingPeriods(1);
+  }
 
   private readonly monthNames = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -68,7 +88,7 @@ export class BillingPeriodsListComponent {
     if (!this.currentFilters) return;
 
     this.isLoading.set(true);
-    this._service.getPaginatedBillingPeriods(this.currentFilters, page, this.pageSize).subscribe({
+    this._service.getPaginatedBillingPeriods(this.currentFilters, page, this.pageSize()).subscribe({
       next: (response) => {
         this.billingPeriods.set(response.data);
         this.currentPage.set(response.page);
@@ -195,7 +215,7 @@ export class BillingPeriodsListComponent {
     this.isDownloadingExcel.set(true);
     this._toastService.showInfo('Descarga en proceso...');
 
-    this._service.exportToExcel(this.currentFilters.dateFrom, this.currentFilters.dateTo).subscribe({
+    this._service.exportToExcel(this.currentFilters).subscribe({
       next: (blob) => {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');

@@ -6,17 +6,21 @@ import { RoleFormModalComponent } from '../../components/role-form-modal/role-fo
 import { AssignPermissionsComponent } from '../../components/assign-permissions/assign-permissions.component';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { ConfigGeneralService } from '../../../../core/service/config-general.service';
+import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
+import { TableScrollComponent } from '../../../../shared/components/table-scroll/table-scroll';
 
 @Component({
   selector: 'app-role-list',
   standalone: true,
-  imports: [CommonModule, RoleFormModalComponent, AssignPermissionsComponent],
+  imports: [CommonModule, RoleFormModalComponent, AssignPermissionsComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './role-list.component.html',
 })
 export class RoleListComponent implements OnInit {
   private rolesService = inject(RolesService);
   private toastService = inject(ToastService);
   private permissionService = inject(PermissionService);
+  private configGeneralService = inject(ConfigGeneralService);
   protected Math = Math;
 
   canViewRoles = computed(() => this.permissionService.hasMenuEntry('/roles'));
@@ -28,7 +32,7 @@ export class RoleListComponent implements OnInit {
   roles = signal<Role[]>([]);
   totalItems = signal(0);
   currentPage = signal(1);
-  pageSize = signal(10);
+  pageSize = signal(MIN_PAGE_SIZE);
   showFormModal = signal(false);
   selectedRole = signal<Role | null>(null);
   isLoading = signal(false);
@@ -45,6 +49,19 @@ export class RoleListComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.configGeneralService.getValue(REGISTROS_POR_PAGINA_KEY).subscribe({
+      next: (value) => {
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed) && parsed >= MIN_PAGE_SIZE) this.pageSize.set(parsed);
+        this.loadRoles();
+      },
+      error: () => this.loadRoles(),
+    });
+  }
+
+  onPageSizeChange(newSize: number) {
+    this.pageSize.set(newSize);
+    this.currentPage.set(1);
     this.loadRoles();
   }
 

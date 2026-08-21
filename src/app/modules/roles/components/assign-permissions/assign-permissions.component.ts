@@ -143,7 +143,9 @@ export class AssignPermissionsComponent implements OnInit {
     const id = roleId ? Number(roleId) : null;
     this.selectedRoleId.set(id);
     const role = this.selectedRole();
-    const grantedIds = (role?.roleMenuPermissions ?? []).map((rmp) => rmp.menuPermissionId);
+    const grantedIds = (role?.roleMenuPermissions ?? [])
+      .map((rmp) => rmp.menuPermissionId)
+      .filter((id): id is number => id != null);
     this.originalMenuPermissionIds.set(new Set(grantedIds));
     this.selectedMenuPermissionIds.set(new Set(grantedIds));
   }
@@ -248,7 +250,7 @@ export class AssignPermissionsComponent implements OnInit {
     if (!role?.id) return;
 
     this.isSaving.set(true);
-    const menuPermissionIds = Array.from(this.selectedMenuPermissionIds());
+    const menuPermissionIds = Array.from(this.selectedMenuPermissionIds()).filter((id) => id != null);
 
     this.rolesService.update(role.id, { menuPermissionIds }).subscribe({
       next: (updated) => {

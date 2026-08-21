@@ -1,8 +1,12 @@
-import { Page, expect } from '@playwright/test';
+import { Page, Locator, expect } from '@playwright/test';
 import path from 'path';
 import { pickFirstSearchableSelectOption, pickFirstComboboxOption } from '../utils/searchable-select';
 
 const AFFILIATE_DOCUMENT_FIXTURE = path.resolve(__dirname, '../fixtures/subregiones.pdf');
+const AFFILIATE_DOCUMENT_FIXTURE_2 = path.resolve(__dirname, '../fixtures/generated/dummy-affiliate-document.pdf');
+
+/** Dos PDF reales del repo, para probar la carga de VARIOS documentos a la vez. */
+export const AFFILIATE_DOCUMENT_FIXTURES_MULTIPLE = [AFFILIATE_DOCUMENT_FIXTURE, AFFILIATE_DOCUMENT_FIXTURE_2];
 
 /** Escapa caracteres especiales de regex (ej. el "+" de planes como "EPS+ARL5+AFP"). */
 function escapeRegExp(text: string): string {
@@ -102,7 +106,14 @@ export class AffiliatesPage {
    * compensación si incluye "CCF") — se resuelve dinámicamente con el
    * texto del Plan que realmente quedó seleccionado, no a ciegas.
    */
-  async fillAffiliationData(overrides?: { planText?: string; agrupadoraText?: string }): Promise<void> {
+  async fillAffiliationData(overrides?: {
+    planText?: string;
+    agrupadoraText?: string;
+    /** "" (sin especificar, default) | "NUEVO" | "REINGRESO" | "REFERIDO" */
+    referralType?: '' | 'NUEVO' | 'REINGRESO' | 'REFERIDO';
+    /** Rutas de los PDF a adjuntar. Por defecto sube un único archivo de prueba. */
+    documentFiles?: string[];
+  }): Promise<void> {
     const form = this.page.locator('form');
 
     // Match EXACTO para no caer en "EPS+AFP" al buscar "EPS". El <li> del
@@ -163,12 +174,16 @@ export class AffiliatesPage {
     const today = new Date().toISOString().slice(0, 10);
     await form.locator('input[formcontrolname="companyEntryDate"]').fill(today);
 
+    if (overrides?.referralType !== undefined) {
+      await form.locator('select[formcontrolname="referralType"]').selectOption(overrides.referralType);
+    }
+
     // Opcional para casi todos los casos, obligatorio si la agrupadora
     // resultó ser de tipo "Gestión": se adjunta siempre para cubrir ambos
     // casos sin depender de qué agrupadora tocó al azar. Se usa un PDF real
     // del repo (no uno generado mínimo) porque el backend lo sube a Supabase
     // y algunos flujos posteriores esperan un archivo con contenido válido.
-    await form.locator('input[type="file"]').setInputFiles(AFFILIATE_DOCUMENT_FIXTURE);
+    await form.locator('input[type="file"]').setInputFiles(overrides?.documentFiles ?? [AFFILIATE_DOCUMENT_FIXTURE]);
   }
 
   async submit(): Promise<void> {
@@ -234,5 +249,115 @@ export class AffiliatesPage {
     const row = this.rowByName(name);
     await row.locator('button[title="Acciones"]').click();
     await this.page.getByRole('button', { name: 'Editar' }).click();
+  }
+
+  /** Valor actual del select "Origen del afiliado" en el formulario abierto (crear o editar). */
+  async getReferralTypeValue(): Promise<string> {
+    return this.page.locator('form').locator('select[formcontrolname="referralType"]').inputValue();
+  }
+
+  /**
+   * Abre el dropdown de acciones de una fila y clickea la acción pedida.
+   * El menú de acciones se renderiza `fixed` fuera de la fila (ver
+   * affiliates-list.html), así que el botón de la acción se busca a nivel
+   * de página, no dentro del `row` — igual que openEditForRow().
+   */
+  async openRowAction(name: string, actionLabel: string | RegExp): Promise<void> {
+    const row = this.rowByName(name);
+    await row.locator('button[title="Acciones"]').click();
+    await this.page.getByRole('button', { name: actionLabel }).click();
+  }
+
+  // ── Filtros ───────────────────────────────────────────────────────
+
+  private get entryDateFromInput(): Locator {
+    return this.page.locator('label:text("Ingreso desde")').locator('xpath=following-sibling::input[@type="date"]');
+  }
+
+  private get entryDateToInput(): Locator {
+    return this.page.locator('label:text("Ingreso hasta")').locator('xpath=following-sibling::input[@type="date"]');
+  }
+
+  /** Filtra por rango de fecha de ingreso (formato YYYY-MM-DD). */
+  async filterByEntryDateRange(from: string, to: string): Promise<void> {
+    await this.entryDateFromInput.fill(from);
+    await this.waitForTableLoaded();
+    await this.entryDateToInput.fill(to);
+    await this.waitForTableLoaded();
+  }
+
+  async clearEntryDateRangeFilter(): Promise<void> {
+    await this.entryDateFromInput.fill('');
+    await this.entryDateToInput.fill('');
+    await this.waitForTableLoaded();
+  }
+
+  /** Filtra por estado de pago del mes: 'paid' | 'unpaid' | '' (Todos). */
+  async filterByPaymentStatus(status: 'paid' | 'unpaid' | ''): Promise<void> {
+    await this.page
+      .locator('label:text("Pago del mes")')
+      .locator('xpath=following-sibling::select')
+      .selectOption(status);
+    await this.waitForTableLoaded();
+  }
+
+  get emptyStateMessage(): Locator {
+    return this.page.getByText('No se encontraron afiliados');
+  }
+
+  // ── Enviar correo (con observación) ──────────────────────────────
+
+  async sendEmailForRow(name: string, observation?: string): Promise<void> {
+    await this.openRowAction(name, 'Enviar correo');
+    const modal = this.page.locator('.fixed.inset-0.z-50', { hasText: 'Enviar correo de afiliación' });
+    await expect(modal.getByRole('heading', { name: 'Enviar correo de afiliación' })).toBeVisible();
+
+    if (observation) {
+      await modal.locator('textarea').fill(observation);
+    }
+
+    const [response] = await Promise.all([
+      this.page.waitForResponse(
+        (res) => /\/affiliates\/\d+\/send-email/.test(res.url()) && res.request().method() === 'POST'
+      ),
+      modal.getByRole('button', { name: 'Enviar correo' }).click(),
+    ]);
+    expect(response.ok()).toBe(true);
+  }
+
+  // ── Documentos (múltiples) ───────────────────────────────────────
+
+  private get documentsModal(): Locator {
+    return this.page.locator('.fixed.inset-0.z-50', { hasText: 'Documentos' });
+  }
+
+  async openDocumentsForRow(name: string): Promise<void> {
+    await this.openRowAction(name, /Ver documentos/);
+    await expect(this.documentsModal.getByRole('heading', { name: 'Documentos' })).toBeVisible();
+  }
+
+  documentRows(): Locator {
+    return this.documentsModal.locator('button[title="Descargar"]');
+  }
+
+  // ── Desactivar con razón ─────────────────────────────────────────
+
+  async deactivateRowWithReason(name: string, reason: string): Promise<void> {
+    await this.openRowAction(name, 'Desactivar');
+    await expect(this.page.getByRole('heading', { name: 'Desactivar Afiliado' })).toBeVisible();
+
+    await this.page.getByPlaceholder('Ej: No realizó el pago del mes').fill(reason);
+
+    const [response] = await Promise.all([
+      this.page.waitForResponse(
+        (res) => /\/affiliates\/\d+\/toggle/.test(res.url()) && res.request().method() === 'PATCH'
+      ),
+      this.page.getByRole('button', { name: /Sí, deshabilitar/ }).click(),
+    ]);
+    expect(response.ok()).toBe(true);
+  }
+
+  async expectRowDisabled(name: string): Promise<void> {
+    await expect(this.rowByName(name).getByText('Deshabilitado')).toBeVisible();
   }
 }

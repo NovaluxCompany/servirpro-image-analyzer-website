@@ -50,6 +50,10 @@
         } @else {
         <p class="mt-3 text-xs text-gray-400 italic">Aún no has agregado ningún correo.</p>
         }
+
+        <label class="block mt-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Observación para el correo (opcional)</label>
+        <textarea [(ngModel)]="observation" rows="3" placeholder="Observación específica para este envío..."
+          class="w-full mt-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none text-sm resize-none"></textarea>
       </div>
 
       <!-- Footer -->

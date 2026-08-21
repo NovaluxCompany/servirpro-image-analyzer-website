@@ -41,11 +41,19 @@ export class BillingPeriodsService {
       .set('dateFrom', filters.dateFrom)
       .set('dateTo', filters.dateTo);
 
-    if (filters.status) params = params.set('status', filters.status);
+    params = this.appendOptionalFilters(params, filters);
 
     return this._http
       .get<PaginatedResponse<BillingPeriod>>(`${this.baseUrl}/paginated`, { headers: this.getHeaders(), params })
       .pipe(catchError(this.handleError));
+  }
+
+  private appendOptionalFilters(params: HttpParams, filters: BillingPeriodFilters): HttpParams {
+    if (filters.status) params = params.set('status', filters.status);
+    if (filters.affiliateName) params = params.set('affiliateName', filters.affiliateName);
+    if (filters.documentNumber) params = params.set('documentNumber', filters.documentNumber);
+    if (filters.planId) params = params.set('planId', filters.planId.toString());
+    return params;
   }
 
   getSiigoInvoicePayloadPreview(id: number, lateFee: number = 0): Observable<SiigoInvoicePayloadPreview> {
@@ -61,13 +69,16 @@ export class BillingPeriodsService {
       .pipe(catchError(this.handleError));
   }
 
-  // Exports to Excel the periods already sent/finished (INVOICED) within the
-  // given date range. The backend forces the status to INVOICED regardless
-  // of the status filter selected on screen.
-  exportToExcel(dateFrom: string, dateTo: string): Observable<Blob> {
-    const params = new HttpParams()
-      .set('dateFrom', dateFrom)
-      .set('dateTo', dateTo);
+  // Exports to Excel the periods within the given date range, honoring the
+  // same filters applied on screen (status, affiliate name, document number,
+  // plan) — with no filters beyond the dates, periods of any
+  // status/completeness are exported.
+  exportToExcel(filters: BillingPeriodFilters): Observable<Blob> {
+    let params = new HttpParams()
+      .set('dateFrom', filters.dateFrom)
+      .set('dateTo', filters.dateTo);
+
+    params = this.appendOptionalFilters(params, filters);
 
     return this._http
       .get(`${this.baseUrl}/export/excel`, { headers: this.getHeaders(), params, responseType: 'blob' })

@@ -8,17 +8,53 @@
           Gestión de comprobantes de pago procesados por IA
         </p>
       </div>
-      <button
-        type="button"
-        (click)="onCreateTransaction()"
-        class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Nueva transacción
-      </button>
+      <div class="flex items-center gap-2">
+        @if (canLockTransactions) {
+          <button
+            type="button"
+            (click)="toggleTransactionsLock()"
+            [disabled]="isTogglingLock()"
+            [class]="transactionsLocked()
+              ? 'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+              : 'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'"
+          >
+            @if (isTogglingLock()) {
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+            } @else {
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                @if (transactionsLocked()) {
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                } @else {
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                }
+              </svg>
+            }
+            {{ isTogglingLock() ? 'Procesando...' : (transactionsLocked() ? 'Desbloquear transacciones' : 'Bloquear transacciones') }}
+          </button>
+        }
+        <button
+          type="button"
+          (click)="onCreateTransaction()"
+          [disabled]="transactionsLocked()"
+          [title]="transactionsLocked() ? 'Bloqueado temporalmente por el administrador' : ''"
+          class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Nueva transacción
+        </button>
+      </div>
     </div>
+
+    @if (transactionsLocked()) {
+      <div class="p-4 mb-6 text-sm text-amber-900 bg-amber-100 border border-amber-200 rounded-lg" role="alert">
+        <span class="font-medium">Transacciones bloqueadas:</span> el administrador bloqueó temporalmente la creación de nuevos pagos.
+      </div>
+    }
 
     <div class="flex justify-end mb-4" *ngIf="false">
       <button type="button" (click)="onManagePlans()"
@@ -69,6 +105,9 @@
     }
 
     <!-- Table -->
+    <div class="flex items-center justify-end mb-2 px-1">
+      <app-page-size-control [pageSize]="pageSize()" (pageSizeChange)="onPageSizeChange($event)" />
+    </div>
     <app-transaction-table
       [transactions]="transactions()"
       [isLoading]="isLoading()"

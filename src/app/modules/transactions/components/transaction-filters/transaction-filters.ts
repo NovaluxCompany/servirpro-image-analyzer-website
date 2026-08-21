@@ -28,8 +28,10 @@ export class TransactionFiltersComponent {
     const filters: TransactionFilters = {};
     const values = this.form.value;
 
-    if (values.dateFrom) filters.dateFrom = new Date(values.dateFrom).toISOString();
-    if (values.dateTo) filters.dateTo = new Date(values.dateTo).toISOString();
+    // Se envía tal cual ('YYYY-MM-DD'), sin convertir a UTC: el backend interpreta
+    // el rango en hora de Colombia (ver startOfColombiaDay/endOfColombiaDay).
+    if (values.dateFrom) filters.dateFrom = values.dateFrom;
+    if (values.dateTo) filters.dateTo = values.dateTo;
     if (values.reference) filters.reference = values.reference;
     if (values.affiliate) filters.affiliate = values.affiliate;
     if (values.idNumber) filters.idNumber = values.idNumber;

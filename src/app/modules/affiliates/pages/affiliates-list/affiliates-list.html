@@ -122,6 +122,30 @@
           </select>
         </div>
 
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Pago del mes</label>
+          <select [(ngModel)]="filterPaymentStatus" (ngModelChange)="onDropdownFilterChange()"
+            class="w-full px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white h-[38px]">
+            <option value="">Todos</option>
+            <option value="paid">Pagado</option>
+            <option value="unpaid">No pagado</option>
+          </select>
+        </div>
+
+        <!-- Fecha de ingreso: Desde -->
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Ingreso desde</label>
+          <input type="date" [(ngModel)]="filterEntryDateFrom" (ngModelChange)="onDropdownFilterChange()"
+            class="w-full px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white h-[38px]">
+        </div>
+
+        <!-- Fecha de ingreso: Hasta -->
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Ingreso hasta</label>
+          <input type="date" [(ngModel)]="filterEntryDateTo" (ngModelChange)="onDropdownFilterChange()"
+            class="w-full px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white h-[38px]">
+        </div>
+
       </div>
     </div>
 
@@ -136,15 +160,16 @@
           &nbsp;&mdash;&nbsp; Pagina {{ currentPage() }} de {{ totalPages() }}
           }
         </p>
+        <app-page-size-control [pageSize]="pageSize()" (pageSizeChange)="onPageSizeChange($event)" />
       </div>
 
-      <div class="overflow-x-auto overflow-y-auto max-h-[calc(100vh-22rem)]">
+      <app-table-scroll>
         <table class="w-full text-sm text-left text-gray-600">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Acción</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado de correo</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado / Correo</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Es nuevo</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Tipo de documento</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Eps</th>
@@ -154,14 +179,12 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Pensión</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Municipio</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Departamento</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Municipio / Depto</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha nacimiento</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha ingreso</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupador</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Observaciones</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Es nuevo</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -224,13 +247,13 @@
             }
             } @else if (errorMessage()) {
             <tr>
-              <td colspan="17" class="px-4 py-16 text-center">
+              <td colspan="18" class="px-4 py-16 text-center">
                 <p class="text-gray-500 font-medium">{{ errorMessage() }}</p>
               </td>
             </tr>
             } @else if (affiliates().length === 0) {
             <tr>
-              <td colspan="17" class="px-4 py-16 text-center">
+              <td colspan="18" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -264,9 +287,21 @@
                   </button>
 
                   @if (openDropdownId() === (affiliate.id ?? affiliate.documentNumber)) {
-                  <div class="fixed z-50 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1"
+                  <div class="fixed z-50 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 overflow-y-auto"
                     [style.top.px]="dropdownPos().top"
-                    [style.left.px]="dropdownPos().left">
+                    [style.bottom.px]="dropdownPos().bottom"
+                    [style.left.px]="dropdownPos().left"
+                    [style.max-height.px]="dropdownPos().maxHeight">
+
+                    <!-- Ver información -->
+                    <button type="button" (click)="openInfo(affiliate); closeDropdown()"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 transition-colors">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      Ver información
+                    </button>
 
                     <!-- Editar -->
                     <button type="button" (click)="openEdit(affiliate); closeDropdown()"
@@ -299,15 +334,58 @@
                     </button>
                     }
 
+                    <!-- Certificados: solo aparece el certificado del/los beneficios que trae el plan -->
+                    @if (planHasEps(affiliate)) {
+                    <button type="button" (click)="toggleCert(affiliate, 'certEps'); closeDropdown()"
+                      [disabled]="togglingCertId() === affiliate.id"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                      <span [class]="affiliate.certEps ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500'"></span>
+                      {{ affiliate.certEps ? 'Desmarcar' : 'Marcar' }} certificado EPS
+                    </button>
+                    }
+                    @if (planHasArl(affiliate)) {
+                    <button type="button" (click)="toggleCert(affiliate, 'certArl'); closeDropdown()"
+                      [disabled]="togglingCertId() === affiliate.id"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                      <span [class]="affiliate.certArl ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500'"></span>
+                      {{ affiliate.certArl ? 'Desmarcar' : 'Marcar' }} certificado ARL
+                    </button>
+                    }
+                    @if (planHasCcf(affiliate)) {
+                    <button type="button" (click)="toggleCert(affiliate, 'certCcf'); closeDropdown()"
+                      [disabled]="togglingCertId() === affiliate.id"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                      <span [class]="affiliate.certCcf ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500'"></span>
+                      {{ affiliate.certCcf ? 'Desmarcar' : 'Marcar' }} certificado CCF
+                    </button>
+                    }
+                    @if (planHasPension(affiliate)) {
+                    <button type="button" (click)="toggleCert(affiliate, 'certPension'); closeDropdown()"
+                      [disabled]="togglingCertId() === affiliate.id"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                      <span [class]="affiliate.certPension ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500'"></span>
+                      {{ affiliate.certPension ? 'Desmarcar' : 'Marcar' }} certificado Pensión
+                    </button>
+                    }
+
                     <!-- Enviar correo -->
-                    @if (isGestionAffiliate(affiliate)) {
+                    @if (canSendEmail(affiliate)) {
                     <button type="button" (click)="sendEmail(affiliate); closeDropdown()"
-                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                      </svg>
-                      Enviar correo
+                      [disabled]="sendingEmailId() === +affiliate.id!"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      @if (sendingEmailId() === +affiliate.id!) {
+                        <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                        Enviando correo...
+                      } @else {
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                        </svg>
+                        Enviar correo
+                      }
                     </button>
                     }
 
@@ -332,8 +410,8 @@
                     </button>
                     }
 
-                    <!-- Descargar documento -->
-                    @if (affiliate.documents && affiliate.documents.length > 0) {
+                    <!-- Descargar documento(s) -->
+                    @if (affiliate.documents && affiliate.documents.length === 1) {
                     <button type="button" (click)="downloadDocument(affiliate); closeDropdown()"
                       class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-emerald-700 hover:bg-emerald-50 transition-colors">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -342,6 +420,15 @@
                       </svg>
                       Descargar documento
                     </button>
+                    } @else if (affiliate.documents && affiliate.documents.length > 1) {
+                    <button type="button" (click)="openDocuments(affiliate); closeDropdown()"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-emerald-700 hover:bg-emerald-50 transition-colors">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                      Ver documentos ({{ affiliate.documents.length }})
+                    </button>
                     }
 
                   </div>
@@ -349,29 +436,43 @@
                 </div>
               </td>
 
-              <!-- Estado (habilitado / deshabilitado) -->
-              <td class="px-4 py-3 whitespace-nowrap">
-                @if (affiliate.isActive) {
-                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded-full">
-                  Habilitado
-                </span>
-                } @else {
-                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full">
-                  Deshabilitado
-                </span>
-                }
+              <!-- Estado (habilitado / deshabilitado) + Estado de correo -->
+              <td class="px-4 py-3">
+                <div class="flex flex-col items-start gap-1 max-w-[110px]">
+                  @if (affiliate.isActive) {
+                  <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded-full max-w-full truncate" title="Habilitado">
+                    Habilitado
+                  </span>
+                  } @else {
+                  <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full max-w-full truncate" title="Deshabilitado">
+                    Deshabilitado
+                  </span>
+                  }
+                  <span class="text-[11px] text-gray-500 truncate max-w-full" title="Estado de correo">
+                    Correo:
+                    @if (!affiliate.isActive) {
+                      -
+                    } @else if (affiliate.emailSent) {
+                      SI
+                    } @else if (canSendEmail(affiliate)) {
+                      NO
+                    } @else {
+                      -
+                    }
+                  </span>
+                </div>
               </td>
 
-              <!-- Estado de correo -->
-              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                @if (!affiliate.isActive) {
-                  -
-                } @else if (affiliate.emailSent) {
+              <!-- Es nuevo -->
+              <td class="px-4 py-3 whitespace-nowrap">
+                @if (affiliate.isNew) {
+                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
                   SI
-                } @else if (isGestionAffiliate(affiliate)) {
-                  NO
+                </span>
                 } @else {
-                  -
+                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                  NO
+                </span>
                 }
               </td>
 
@@ -398,11 +499,12 @@
 
               <!-- Eps -->
               <td class="px-4 py-3 whitespace-nowrap">
-  @if (affiliate.epsName && affiliate.epsName !== 'N/A') {
-    <span [class]="affiliate.certEps
-      ? 'px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded whitespace-nowrap'
-      : 'text-gray-400 font-normal whitespace-nowrap'">
+  @if (planHasEps(affiliate) && affiliate.epsName && affiliate.epsName !== 'N/A') {
+    <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
       {{ affiliate.epsName }}
+      <button type="button" (click)="toggleCert(affiliate, 'certEps')" [disabled]="togglingCertId() === affiliate.id"
+        [title]="affiliate.certEps ? 'Con certificado (clic para desmarcar)' : 'Sin certificado (clic para marcar)'"
+        [class]="affiliate.certEps ? 'w-2 h-2 rounded-full bg-green-500 disabled:opacity-50' : 'w-2 h-2 rounded-full bg-red-500 disabled:opacity-50'"></button>
     </span>
   } @else {
     <span class="text-gray-400 font-semibold">&#8212;</span>
@@ -416,11 +518,12 @@
 
               <!-- Nivel de Arl -->
               <td class="px-4 py-3 whitespace-nowrap">
-                @if (affiliate.arl != null) {
-                  <span [class]="affiliate.certArl
-                    ? 'px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded whitespace-nowrap'
-                    : 'text-gray-400 font-normal whitespace-nowrap'">
+                @if (planHasArl(affiliate)) {
+                  <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
                     ARL {{ affiliate.arl }}
+                    <button type="button" (click)="toggleCert(affiliate, 'certArl')" [disabled]="togglingCertId() === affiliate.id"
+                      [title]="affiliate.certArl ? 'Con certificado (clic para desmarcar)' : 'Sin certificado (clic para marcar)'"
+                      [class]="affiliate.certArl ? 'w-2 h-2 rounded-full bg-green-500 disabled:opacity-50' : 'w-2 h-2 rounded-full bg-red-500 disabled:opacity-50'"></button>
                   </span>
                 } @else {
                   <span class="text-gray-400 font-semibold">&#8212;</span>
@@ -429,11 +532,12 @@
 
               <!-- Caja -->
               <td class="px-4 py-3 whitespace-nowrap">
-                @if (affiliate.compensationBoxName && affiliate.compensationBoxName !== '-' && affiliate.compensationBoxName !== 'N/A') {
-                  <span [class]="affiliate.certCcf
-                    ? 'px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded whitespace-nowrap'
-                    : 'text-gray-400 font-normal whitespace-nowrap'">
+                @if (planHasCcf(affiliate) && affiliate.compensationBoxName && affiliate.compensationBoxName !== '-' && affiliate.compensationBoxName !== 'N/A') {
+                  <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
                     {{ affiliate.compensationBoxName }}
+                    <button type="button" (click)="toggleCert(affiliate, 'certCcf')" [disabled]="togglingCertId() === affiliate.id"
+                      [title]="affiliate.certCcf ? 'Con certificado (clic para desmarcar)' : 'Sin certificado (clic para marcar)'"
+                      [class]="affiliate.certCcf ? 'w-2 h-2 rounded-full bg-green-500 disabled:opacity-50' : 'w-2 h-2 rounded-full bg-red-500 disabled:opacity-50'"></button>
                   </span>
                 } @else {
                   <span class="text-gray-400 font-semibold">&#8212;</span>
@@ -442,11 +546,12 @@
 
               <!-- Pensión -->
               <td class="px-4 py-3 whitespace-nowrap">
-                @if (affiliate.pensionName && affiliate.pensionName !== '-' && affiliate.pensionName !== 'N/A') {
-                  <span [class]="affiliate.certPension
-                    ? 'px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded whitespace-nowrap'
-                    : 'text-gray-400 font-normal whitespace-nowrap'">
+                @if (planHasPension(affiliate) && affiliate.pensionName && affiliate.pensionName !== '-' && affiliate.pensionName !== 'N/A') {
+                  <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
                     {{ affiliate.pensionName }}
+                    <button type="button" (click)="toggleCert(affiliate, 'certPension')" [disabled]="togglingCertId() === affiliate.id"
+                      [title]="affiliate.certPension ? 'Con certificado (clic para desmarcar)' : 'Sin certificado (clic para marcar)'"
+                      [class]="affiliate.certPension ? 'w-2 h-2 rounded-full bg-green-500 disabled:opacity-50' : 'w-2 h-2 rounded-full bg-red-500 disabled:opacity-50'"></button>
                   </span>
                 } @else {
                   <span class="text-gray-400 font-semibold">&#8212;</span>
@@ -463,14 +568,12 @@
                 {{ affiliate.reference || '&#8212;' }}
               </td>
 
-              <!-- Municipio -->
-              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ affiliate.municipality || '&#8212;' }}
-              </td>
-
-              <!-- Departamento -->
-              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ getDepartmentName(affiliate.departmentCode) }}
+              <!-- Municipio + Departamento -->
+              <td class="px-4 py-3 text-gray-600">
+                <div class="flex flex-col max-w-[130px]">
+                  <span class="truncate" [title]="affiliate.municipality || '—'">{{ affiliate.municipality || '&#8212;' }}</span>
+                  <span class="text-xs text-gray-400 truncate" [title]="getDepartmentName(affiliate.departmentCode)">{{ getDepartmentName(affiliate.departmentCode) }}</span>
+                </div>
               </td>
 
               <!-- Empresa -->
@@ -504,25 +607,12 @@
                 {{ affiliate.observation || '-' }}
               </td>
 
-              <!-- Es nuevo -->
-              <td class="px-4 py-3 whitespace-nowrap">
-                @if (affiliate.isNew) {
-                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
-                  SI
-                </span>
-                } @else {
-                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
-                  NO
-                </span>
-                }
-              </td>
-
             </tr>
             }
             }
           </tbody>
         </table>
-      </div>
+      </app-table-scroll>
 
       <!-- Paginacion -->
       @if (totalPages() > 1) {
@@ -556,6 +646,10 @@
 </div>
 
 <!-- Modales -->
+<app-affiliate-info-modal [isVisible]="showInfoModal()" [affiliate]="selectedAffiliate()" (closed)="onInfoClosed()" />
+
+<app-affiliate-documents-modal [isVisible]="showDocumentsModal()" [affiliate]="selectedAffiliate()" (closed)="onDocumentsClosed()" />
+
 <app-affiliate-form-modal [isVisible]="showFormModal()" [mode]="formMode()" [affiliate]="selectedAffiliate()"
   [existingAffiliates]="allAffiliatesForModal" (saved)="onFormSaved()" (closed)="onFormClosed()" />
 
@@ -563,4 +657,7 @@
   (confirmed)="onStatusConfirmed()" (cancelled)="onStatusCancelled()" />
 
 <app-affiliate-send-email-modal [isVisible]="showSendEmailModal()" [affiliate]="selectedAffiliate()"
+  (sent)="onEmailSent()" (cancelled)="onEmailModalCancelled()" />
+
+<app-affiliate-send-email-observation-modal [isVisible]="showSendEmailObservationModal()" [affiliate]="selectedAffiliate()"
   (sent)="onEmailSent()" (cancelled)="onEmailModalCancelled()" />
