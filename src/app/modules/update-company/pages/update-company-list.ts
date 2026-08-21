@@ -3,8 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../../core/service/toast.service';
 import { PermissionService } from '../../../core/service/permission.service';
+import { ConfigGeneralService } from '../../../core/service/config-general.service';
 import { UpdateCompanyService } from '../services/update-company.service';
 import { TableScrollComponent } from '../../../shared/components/table-scroll/table-scroll';
+import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../shared/components/page-size-control/page-size-control';
 import {
   ValidationResponse,
   ExecutionResponse,
@@ -15,7 +17,7 @@ import {
 @Component({
   selector: 'app-update-company-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, TableScrollComponent],
+  imports: [CommonModule, FormsModule, TableScrollComponent, PageSizeControlComponent],
   templateUrl: './update-company-list.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -23,6 +25,7 @@ export class UpdateCompanyList implements OnInit {
   private readonly _service = inject(UpdateCompanyService);
   private readonly _toast = inject(ToastService);
   private readonly _permission = inject(PermissionService);
+  private readonly _configGeneralService = inject(ConfigGeneralService);
 
   // Referencia al input de archivo nativo (vive dentro de un bloque @if,
   // por lo que el modal de confirmación —en otro bloque @if— no puede ver
@@ -53,7 +56,7 @@ export class UpdateCompanyList implements OnInit {
   protected readonly history = signal<HistoryRow[]>([]);
   protected readonly historyTotal = signal(0);
   protected readonly historyPage = signal(1);
-  protected readonly historyLimit = signal(10);
+  protected readonly historyLimit = signal(MIN_PAGE_SIZE);
   protected readonly historyLoading = signal(false);
   protected readonly historyPermissionError = signal(false);
 
@@ -131,11 +134,26 @@ export class UpdateCompanyList implements OnInit {
 
   ngOnInit(): void {
     this.loadContext();
-    if (this.canViewHistory()) {
-      this.loadHistory();
-    } else {
+
+    if (!this.canViewHistory()) {
       this.historyPermissionError.set(true);
+      return;
     }
+
+    this._configGeneralService.getValue(REGISTROS_POR_PAGINA_KEY).subscribe({
+      next: (value) => {
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed) && parsed >= MIN_PAGE_SIZE) this.historyLimit.set(parsed);
+        this.loadHistory();
+      },
+      error: () => this.loadHistory(),
+    });
+  }
+
+  onPageSizeChange(newSize: number): void {
+    this.historyLimit.set(newSize);
+    this.historyPage.set(1);
+    if (this.canViewHistory()) this.loadHistory();
   }
 
   loadContext(): void {

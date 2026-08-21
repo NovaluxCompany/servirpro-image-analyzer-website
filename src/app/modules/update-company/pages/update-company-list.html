@@ -208,9 +208,12 @@
     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
       <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
         <p class="text-sm font-semibold text-gray-700">Historial de actualizaciones</p>
-        <p class="text-sm text-gray-500">
-          Total: <span class="font-semibold text-gray-800">{{ historyTotal() }}</span>
-        </p>
+        <div class="flex items-center gap-4">
+          <p class="text-sm text-gray-500">
+            Total: <span class="font-semibold text-gray-800">{{ historyTotal() }}</span>
+          </p>
+          <app-page-size-control [pageSize]="historyLimit()" (pageSizeChange)="onPageSizeChange($event)" />
+        </div>
       </div>
 
       <app-table-scroll>
