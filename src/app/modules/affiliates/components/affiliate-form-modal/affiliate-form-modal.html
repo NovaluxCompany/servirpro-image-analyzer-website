@@ -112,7 +112,7 @@
               <p class="mt-1 text-xs text-red-500">Campo requerido (max. 11 caracteres)</p>
               }
               @if (duplicateDocument()) {
-              <p class="mt-1 text-xs text-red-500 font-semibold">Ya existe un afiliado con este numero de documento.</p>
+              <p class="mt-1 text-xs text-red-500 font-semibold">{{ duplicateDocumentMessage() || 'Ya existe un afiliado con este número de documento.' }}</p>
               }
             </div>
 
@@ -334,6 +334,18 @@
               </div>
               }
 
+              <!-- Origen del afiliado (Nuevo / Reingreso / Referido) -->
+              <div>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Origen del afiliado</label>
+                <select formControlName="referralType"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  <option value="">Sin especificar</option>
+                  <option value="NUEVO">Nuevo</option>
+                  <option value="REINGRESO">Reingreso</option>
+                  <option value="REFERIDO">Referido</option>
+                </select>
+              </div>
+
               <!-- Profesion -->
               <div>
                 <label class="block mb-1.5 text-xs font-semibold text-gray-700">Profesion @if
@@ -475,49 +487,62 @@
                   @if (isDocumentRequired) {
                   <span class="text-red-500">*</span>
                   }
-                  <span class="ml-1 text-gray-400 font-normal">(Solo PDF · Obligatorio para Independientes y Gestión, opcional para el resto)</span>
+                  <span class="ml-1 text-gray-400 font-normal">(Solo PDF · varios archivos permitidos · Obligatorio para Independientes y Gestión, opcional para el resto)</span>
                 </label>
 
-                <!-- Zona de carga -->
-                <div class="relative mt-1 flex flex-col items-center justify-center gap-1.5 border-2 border-dashed rounded-xl px-6 py-4 transition-colors"
-                  [class.border-blue-300]="!form.get('documentFile')?.value && !isFieldInvalid('documentFile')"
+                <!-- Zona de carga: siempre es el botón para agregar (más) archivos -->
+                <label
+                  class="relative mt-1 flex items-center justify-center gap-2 border-2 border-dashed rounded-xl px-4 py-3 transition-colors cursor-pointer hover:bg-gray-100"
                   [class.border-red-300]="isFieldInvalid('documentFile')"
-                  [class.border-green-300]="!!form.get('documentFile')?.value"
-                  [class.bg-blue-50\/50]="!form.get('documentFile')?.value"
-                  [class.bg-green-50]="!!form.get('documentFile')?.value">
-
-                  @if (!form.get('documentFile')?.value) {
-                  <!-- Estado vacío -->
-                  <svg class="w-7 h-7 text-blue-400"
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  [class.border-gray-300]="!isFieldInvalid('documentFile')"
+                  [class.bg-gray-50]="!isFieldInvalid('documentFile')">
+                  <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <p class="text-xs font-semibold text-blue-600">
-                    Haz clic para seleccionar un PDF o arrástralo aquí
-                  </p>
-                  <p class="text-xs text-gray-400">Máximo 10 MB (Solo PDF)</p>
-                  } @else {
-                  <!-- Archivo seleccionado -->
-                  <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p class="text-xs font-semibold text-green-700 text-center break-all px-2">{{ form.get('documentFile')?.value }}</p>
-                  <button type="button" (click)="clearFile()"
-                    class="mt-1 text-xs text-red-500 hover:text-red-700 underline transition-colors">
-                    Quitar archivo
-                  </button>
-                  }
-
-                  <!-- Input oculto sobre toda la zona -->
+                  <span class="text-xs font-semibold text-gray-600">
+                    {{ selectedFiles.length > 0 ? 'Agregar otro PDF' : 'Haz clic para seleccionar uno o más PDF' }}
+                  </span>
+                  <span class="text-xs text-gray-400">(máx. 10 MB c/u)</span>
                   <input type="file"
                     #fileInput
                     accept=".pdf"
+                    multiple
                     (change)="onFileSelected($event)"
-                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    [class.pointer-events-none]="!!form.get('documentFile')?.value" />
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                </label>
+
+                <!-- Archivos seleccionados: lista aparte (no compite con el input de arriba),
+                     compacta y con scroll propio para que funcione igual de bien con 2 que con
+                     100 archivos sin que la modal crezca sin control. -->
+                @if (selectedFiles.length > 0) {
+                <div class="mt-2 border border-gray-200 rounded-lg overflow-hidden">
+                  <div class="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b border-gray-200">
+                    <span class="text-xs font-semibold text-gray-500">{{ selectedFiles.length }} archivo(s) seleccionado(s)</span>
+                    @if (selectedFiles.length > 1) {
+                    <button type="button" (click)="clearFile()"
+                      class="text-xs text-red-500 hover:text-red-700 underline transition-colors">
+                      Quitar todos
+                    </button>
+                    }
+                  </div>
+                  <div class="max-h-48 overflow-y-auto divide-y divide-gray-100">
+                    @for (file of selectedFiles; track file.name + $index) {
+                    <div class="flex items-center gap-2 pl-2 pr-3 py-1.5 hover:bg-gray-50 transition-colors">
+                      <span class="text-xs text-gray-400 w-6 text-right shrink-0">{{ $index + 1 }}</span>
+                      <span class="flex-1 min-w-0 text-xs font-medium text-gray-700 truncate">{{ file.name }}</span>
+                      <span class="text-xs text-gray-400 shrink-0">{{ (file.size / 1024 / 1024).toFixed(1) }} MB</span>
+                      <button type="button" (click)="removeFile($index)" title="Quitar archivo"
+                        class="text-gray-400 hover:text-red-600 transition-colors shrink-0">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    }
+                  </div>
                 </div>
+                }
 
                 @if (fileError()) {
                 <p class="mt-1.5 text-xs text-red-500 flex items-center gap-1">
@@ -553,121 +578,6 @@
           </div> <!-- Fin P-4 -->
           }
         </div>
-
-        <!-- SECCION 3: DATOS DE DOCUMENTACIÓN (solo en modo edición) -->
-        @if (isEdit) {
-        <div class="border border-gray-200 rounded-xl overflow-hidden mt-6 bg-white shadow-sm">
-
-          <button type="button" (click)="toggleSection3()"
-            class="w-full flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors border-b border-blue-100 focus:outline-none">
-            <div class="flex items-center gap-3">
-              <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                <span class="text-xs font-bold text-white">3</span>
-              </div>
-              <h3 class="font-semibold text-blue-800 text-sm">Datos de Documentación</h3>
-            </div>
-            <svg class="w-5 h-5 text-blue-600 transition-transform duration-300" [class.rotate-180]="section3Open"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          @if (section3Open) {
-          <div class="p-4">
-            <p class="text-xs text-gray-500 mb-4">
-              Marca los certificados recibidos. Solo están disponibles los servicios incluidos en el plan del afiliado.
-            </p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-
-              <!-- Certificado ARL -->
-              <label class="flex items-center gap-3 p-3 rounded-lg border transition-colors"
-                [class.border-blue-200]="selectedPlanLabel.includes('ARL')"
-                [class.bg-blue-50]="selectedPlanLabel.includes('ARL')"
-                [class.border-gray-200]="!selectedPlanLabel.includes('ARL')"
-                [class.bg-gray-50]="!selectedPlanLabel.includes('ARL')"
-                [class.opacity-50]="!selectedPlanLabel.includes('ARL')"
-                [class.cursor-not-allowed]="!selectedPlanLabel.includes('ARL')"
-                [class.cursor-pointer]="selectedPlanLabel.includes('ARL')">
-                <input type="checkbox" formControlName="certArl"
-                  class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  [class.cursor-not-allowed]="!selectedPlanLabel.includes('ARL')">
-                <div>
-                  <p class="text-sm font-medium text-gray-800">Certificado de ARL</p>
-                  <p class="text-xs text-gray-500">
-                    @if (selectedPlanLabel.includes('ARL')) { Disponible según el plan }
-                    @else { No aplica para este plan }
-                  </p>
-                </div>
-              </label>
-
-              <!-- Certificado EPS -->
-              <label class="flex items-center gap-3 p-3 rounded-lg border transition-colors"
-                [class.border-blue-200]="selectedPlanLabel.includes('EPS')"
-                [class.bg-blue-50]="selectedPlanLabel.includes('EPS')"
-                [class.border-gray-200]="!selectedPlanLabel.includes('EPS')"
-                [class.bg-gray-50]="!selectedPlanLabel.includes('EPS')"
-                [class.opacity-50]="!selectedPlanLabel.includes('EPS')"
-                [class.cursor-not-allowed]="!selectedPlanLabel.includes('EPS')"
-                [class.cursor-pointer]="selectedPlanLabel.includes('EPS')">
-                <input type="checkbox" formControlName="certEps"
-                  class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  [class.cursor-not-allowed]="!selectedPlanLabel.includes('EPS')">
-                <div>
-                  <p class="text-sm font-medium text-gray-800">Certificado de EPS</p>
-                  <p class="text-xs text-gray-500">
-                    @if (selectedPlanLabel.includes('EPS')) { Disponible según el plan }
-                    @else { No aplica para este plan }
-                  </p>
-                </div>
-              </label>
-
-              <!-- Certificado de Pensión -->
-              <label class="flex items-center gap-3 p-3 rounded-lg border transition-colors"
-                [class.border-blue-200]="selectedPlanLabel.includes('AFP')"
-                [class.bg-blue-50]="selectedPlanLabel.includes('AFP')"
-                [class.border-gray-200]="!selectedPlanLabel.includes('AFP')"
-                [class.bg-gray-50]="!selectedPlanLabel.includes('AFP')"
-                [class.opacity-50]="!selectedPlanLabel.includes('AFP')"
-                [class.cursor-not-allowed]="!selectedPlanLabel.includes('AFP')"
-                [class.cursor-pointer]="selectedPlanLabel.includes('AFP')">
-                <input type="checkbox" formControlName="certPension"
-                  class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  [class.cursor-not-allowed]="!selectedPlanLabel.includes('AFP')">
-                <div>
-                  <p class="text-sm font-medium text-gray-800">Certificado de Pensión</p>
-                  <p class="text-xs text-gray-500">
-                    @if (selectedPlanLabel.includes('AFP')) { Disponible según el plan }
-                    @else { No aplica para este plan }
-                  </p>
-                </div>
-              </label>
-
-              <!-- Certificado Caja de Compensación -->
-              <label class="flex items-center gap-3 p-3 rounded-lg border transition-colors"
-                [class.border-blue-200]="selectedPlanLabel.includes('CCF')"
-                [class.bg-blue-50]="selectedPlanLabel.includes('CCF')"
-                [class.border-gray-200]="!selectedPlanLabel.includes('CCF')"
-                [class.bg-gray-50]="!selectedPlanLabel.includes('CCF')"
-                [class.opacity-50]="!selectedPlanLabel.includes('CCF')"
-                [class.cursor-not-allowed]="!selectedPlanLabel.includes('CCF')"
-                [class.cursor-pointer]="selectedPlanLabel.includes('CCF')">
-                <input type="checkbox" formControlName="certCcf"
-                  class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  [class.cursor-not-allowed]="!selectedPlanLabel.includes('CCF')">
-                <div>
-                  <p class="text-sm font-medium text-gray-800">Certificado de Caja de Compensación</p>
-                  <p class="text-xs text-gray-500">
-                    @if (selectedPlanLabel.includes('CCF')) { Disponible según el plan }
-                    @else { No aplica para este plan }
-                  </p>
-                </div>
-              </label>
-
-            </div>
-          </div>
-          }
-        </div>
-        }
 
         <!-- Footer -->
         <div

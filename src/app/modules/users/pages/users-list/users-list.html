@@ -93,9 +93,10 @@
             &nbsp;&mdash;&nbsp; Página {{ currentPage() }} de {{ totalPages() }}
             }
           </p>
+          <app-page-size-control [pageSize]="pageSize()" (pageSizeChange)="onPageSizeChange($event)" />
         </div>
 
-        <div class="overflow-x-auto overflow-y-auto max-h-[calc(100vh-24rem)]">
+        <app-table-scroll>
 
           <!-- ══════════════════════════════════════ TAB USUARIOS ══ -->
           @if (activeTab() === 'usuarios') {
@@ -343,7 +344,7 @@
           </table>
           }
 
-        </div>
+        </app-table-scroll>
 
         <!-- Paginación -->
         @if (!isLoading() && totalPages() > 1) {

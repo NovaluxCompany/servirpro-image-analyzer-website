@@ -15,6 +15,9 @@ import { SystemUser } from '../../interfaces/user.interface';
 import { RolesService } from '../../../roles/services/roles.service';
 import { Role } from '../../../roles/interfaces/role.interface';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { ConfigGeneralService } from '../../../../core/service/config-general.service';
+import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
+import { TableScrollComponent } from '../../../../shared/components/table-scroll/table-scroll';
 
 type UsersTab = 'usuarios' | 'asignar-rol';
 
@@ -30,7 +33,7 @@ type UserModal =
 @Component({
   selector: 'app-users-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './users-list.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -39,6 +42,7 @@ export class UsersListComponent implements OnInit {
   private _toast = inject(ToastService);
   private _rolesService = inject(RolesService);
   private _permissionService = inject(PermissionService);
+  private _configGeneralService = inject(ConfigGeneralService);
 
   protected readonly roles = signal<Role[]>([]);
 
@@ -120,7 +124,7 @@ export class UsersListComponent implements OnInit {
 
   // ── Paginación ────────────────────────────────────────────────────
   protected readonly currentPage = signal(1);
-  protected readonly pageSize = signal(10);
+  protected readonly pageSize = signal(MIN_PAGE_SIZE);
 
   // ── Computed ──────────────────────────────────────────────────────
   protected readonly filteredUsers = computed(() => {
@@ -167,8 +171,20 @@ export class UsersListComponent implements OnInit {
       this._toast.showError('Tu rol no tiene permisos sobre este módulo.');
       return;
     }
+    this._configGeneralService.getValue(REGISTROS_POR_PAGINA_KEY).subscribe({
+      next: (value) => {
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed) && parsed >= MIN_PAGE_SIZE) this.pageSize.set(parsed);
+      },
+      error: () => {},
+    });
     this.loadUsers();
     this.loadRoles();
+  }
+
+  protected onPageSizeChange(newSize: number): void {
+    this.pageSize.set(newSize);
+    this.currentPage.set(1);
   }
 
   // ── Carga de roles ───────────────────────────────────────────────

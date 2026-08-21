@@ -4,28 +4,45 @@ import { MenusService } from '../services/menus.service';
 import { Menu } from '../interfaces/menu.interface';
 import { MenuForModal } from '../components/menu-for-modal/menu-for-modal';
 import { ToastService } from '../../../core/service/toast.service';
+import { ConfigGeneralService } from '../../../core/service/config-general.service';
+import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../shared/components/page-size-control/page-size-control';
+import { TableScrollComponent } from '../../../shared/components/table-scroll/table-scroll';
 
 @Component({
   selector: 'app-menu',
   standalone: true,
-  imports: [CommonModule, MenuForModal],
+  imports: [CommonModule, MenuForModal, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './menu-list.html',
 })
 export class MenuComponent implements OnInit {
   private menusService = inject(MenusService);
   private toastService = inject(ToastService);
+  private configGeneralService = inject(ConfigGeneralService);
   protected Math = Math;
 
   menus = signal<Menu[]>([]);
   totalItems = signal(0);
   currentPage = signal(1);
-  pageSize = signal(10);
+  pageSize = signal(MIN_PAGE_SIZE);
   showFormModal = signal(false);
   selectedMenu = signal<Menu | null>(null);
   isLoading = signal(false);
   menuToDelete = signal<Menu | null>(null);
 
   ngOnInit() {
+    this.configGeneralService.getValue(REGISTROS_POR_PAGINA_KEY).subscribe({
+      next: (value) => {
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed) && parsed >= MIN_PAGE_SIZE) this.pageSize.set(parsed);
+        this.loadMenus();
+      },
+      error: () => this.loadMenus(),
+    });
+  }
+
+  onPageSizeChange(newSize: number) {
+    this.pageSize.set(newSize);
+    this.currentPage.set(1);
     this.loadMenus();
   }
 

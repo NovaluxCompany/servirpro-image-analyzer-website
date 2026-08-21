@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { TokenService } from '../service/token.service';
 import { ToastService } from '../service/toast.service';
+import { AuthService } from '../service/auth.service';
 
 const normalizePath = (path: string): string => {
   const cleaned = (path ?? '').split('?')[0].split('#')[0].trim();
@@ -27,8 +28,29 @@ export const roleGuard: CanActivateFn = (
 ) => {
   const tokenService = inject(TokenService);
   const toastService = inject(ToastService);
+  const authService = inject(AuthService);
   const router = inject(Router);
 
+  if (!tokenService.getUser()) {
+    router.navigate(['/']);
+    return false;
+  }
+
+  // Refresca roles/menús/permisos contra el backend en background, sin bloquear
+  // la navegación actual (que evalúa con lo que ya está en caché). Así, cambios
+  // hechos en "asignar permisos" quedan reflejados desde la siguiente navegación,
+  // sin requerir un nuevo login y sin que cada click espere una respuesta de red.
+  authService.refreshUser().subscribe();
+
+  return evaluateAccess(state, tokenService, toastService, router);
+};
+
+function evaluateAccess(
+  state: RouterStateSnapshot,
+  tokenService: TokenService,
+  toastService: ToastService,
+  router: Router
+): boolean {
   const user = tokenService.getUser();
 
   if (!user) {
