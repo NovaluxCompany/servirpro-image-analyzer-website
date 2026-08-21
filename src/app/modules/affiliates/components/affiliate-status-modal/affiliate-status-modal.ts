@@ -1,5 +1,6 @@
 import { Component, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { AffiliateMembersService } from '../../services/affiliate-members.service';
 import { ToastService } from '../../../../core/service/toast.service';
 import { AffiliateMember } from '../../interfaces/affiliate-member.interface';
@@ -7,7 +8,7 @@ import { AffiliateMember } from '../../interfaces/affiliate-member.interface';
 @Component({
   selector: 'app-affiliate-status-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './affiliate-status-modal.html',
 })
 export class AffiliateStatusModalComponent {
@@ -21,6 +22,7 @@ export class AffiliateStatusModalComponent {
   cancelled = output<void>();
 
   isLoading = signal(false);
+  deactivationReason = '';
 
   get isActivating(): boolean {
     return !(this.affiliate()?.isActive ?? true);
@@ -54,10 +56,11 @@ export class AffiliateStatusModalComponent {
     const a = this.affiliate();
     if (!a?.id) return;
     this.isLoading.set(true);
-    this._service.toggleStatus(a.id).subscribe({
+    this._service.toggleStatus(a.id, this.isActivating ? undefined : this.deactivationReason).subscribe({
       next: () => {
         this._toast.showSuccess(this.successMessage);
         this.isLoading.set(false);
+        this.deactivationReason = '';
         this.confirmed.emit();
       },
       error: (err) => {
@@ -68,6 +71,7 @@ export class AffiliateStatusModalComponent {
   }
 
   onCancel(): void {
+    this.deactivationReason = '';
     this.cancelled.emit();
   }
 }

@@ -72,11 +72,11 @@ export class DeactivateAffiliatesService {
     };
   }
 
-  deactivateAffiliates(affiliateIds: number[]): Observable<DeactivateAffiliatesResponse> {
+  deactivateAffiliates(affiliateIds: number[], reason?: string): Observable<DeactivateAffiliatesResponse> {
     return this._http
       .post<DeactivateAffiliatesResponse>(
         `${this.baseUrl}/deactivation`,
-        { affiliateIds },
+        { affiliateIds, reason: reason || undefined },
         { headers: this.getHeaders() },
       )
       .pipe(catchError((error) => this.handleError(error, 'Error al desactivar afiliados')));
@@ -93,6 +93,7 @@ export class DeactivateAffiliatesService {
           advisor: filters.advisor || undefined,
           company: filters.company || undefined,
           grouper: filters.grouper || undefined,
+          reason: filters.reason || undefined,
         },
         { headers: this.getHeaders() },
       )

@@ -11,20 +11,24 @@ import { AffiliateDocumentsModalComponent } from '../../components/affiliate-doc
 import { AffiliateSendEmailObservationModalComponent } from '../../components/affiliate-send-email-observation-modal/affiliate-send-email-observation-modal';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { ConfigGeneralService } from '../../../../core/service/config-general.service';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
+import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
+import { TableScrollComponent } from '../../../../shared/components/table-scroll/table-scroll';
 import { Department } from '../../interfaces/catalog.interface';
 import { debounceTime, Subject } from 'rxjs';
 
 @Component({
   selector: 'app-affiliates-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, SearchableSelectComponent],
+  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './affiliates-list.html',
 })
 export class AffiliatesListComponent implements OnInit {
   private _service = inject(AffiliateMembersService);
   private _toast = inject(ToastService);
   private _permission = inject(PermissionService);
+  private _configGeneralService = inject(ConfigGeneralService);
 
   // ── Datos ─────────────────────────────────────────────────────────
   affiliates = signal<AffiliateMember[]>([]);
@@ -34,7 +38,7 @@ export class AffiliatesListComponent implements OnInit {
 
   // ── Paginación backend ────────────────────────────────────────────
   currentPage = signal(1);
-  pageSize = signal(10);
+  pageSize = signal(MIN_PAGE_SIZE);
   totalItems = signal(0);
   totalPages = signal(0);
 
@@ -47,6 +51,7 @@ export class AffiliatesListComponent implements OnInit {
   filterGrupo = '';
   filterEntryDateFrom = '';
   filterEntryDateTo = '';
+  filterPaymentStatus = '';
   advisorOptions = signal<SelectOption[]>([]);
   referenceOptions = signal<SelectOption[]>([]);
   private departmentNameByCode = new Map<string, string>();
@@ -67,7 +72,12 @@ export class AffiliatesListComponent implements OnInit {
   syncingSiigoId = signal<number | null>(null);  sendingEmailId = signal<number | null>(null);
   // ── Dropdown acciones ─────────────────────────────────────────────
   openDropdownId = signal<string | null>(null);
-  dropdownPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
+  dropdownPos = signal<{ top: number | null; bottom: number | null; left: number; maxHeight: number }>({
+    top: 0,
+    bottom: null,
+    left: 0,
+    maxHeight: 400,
+  });
 
   toggleDropdown(id: string, buttonEl: HTMLElement): void {
     if (this.openDropdownId() === id) {
@@ -75,7 +85,24 @@ export class AffiliatesListComponent implements OnInit {
       return;
     }
     const rect = buttonEl.getBoundingClientRect();
-    this.dropdownPos.set({ top: rect.bottom + 4, left: rect.left });
+
+    // El menú puede tener entre 4 y ~9 ítems según el plan/estado del
+    // afiliado (certificados + correo + Siigo + documentos), así que no se
+    // puede adivinar su altura para decidir la posición. En vez de eso: si
+    // no hay espacio razonable debajo del botón pero sí arriba, se ancla por
+    // "bottom" (crece hacia arriba con su altura real, como un menú
+    // contextual) y siempre se limita su alto máximo al espacio disponible
+    // real, con scroll propio como respaldo si aun así no alcanza.
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const opensUpward = spaceBelow < 200 && spaceAbove > spaceBelow;
+
+    this.dropdownPos.set({
+      top: opensUpward ? null : rect.bottom + 4,
+      bottom: opensUpward ? window.innerHeight - rect.top + 4 : null,
+      left: rect.left,
+      maxHeight: Math.max(120, (opensUpward ? spaceAbove : spaceBelow) - 12),
+    });
     this.openDropdownId.set(id);
   }
 
@@ -94,8 +121,21 @@ export class AffiliatesListComponent implements OnInit {
       this.currentPage.set(1);
       this.loadAffiliates();
     });
-    this.loadAffiliates();
+    this._configGeneralService.getValue(REGISTROS_POR_PAGINA_KEY).subscribe({
+      next: (value) => {
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed) && parsed >= MIN_PAGE_SIZE) this.pageSize.set(parsed);
+        this.loadAffiliates();
+      },
+      error: () => this.loadAffiliates(),
+    });
     this.loadFilterOptions();
+  }
+
+  onPageSizeChange(newSize: number): void {
+    this.pageSize.set(newSize);
+    this.currentPage.set(1);
+    this.loadAffiliates();
   }
 
   private buildFilters(): AffiliateFilters {
@@ -110,6 +150,7 @@ export class AffiliatesListComponent implements OnInit {
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,
       entryDateTo: this.filterEntryDateTo || undefined,
+      paymentStatus: this.filterPaymentStatus === 'paid' || this.filterPaymentStatus === 'unpaid' ? this.filterPaymentStatus : undefined,
     };
   }
 
@@ -167,12 +208,13 @@ export class AffiliatesListComponent implements OnInit {
     this.filterGrupo = '';
     this.filterEntryDateFrom = '';
     this.filterEntryDateTo = '';
+    this.filterPaymentStatus = '';
     this.currentPage.set(1);
     this.loadAffiliates();
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo);
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -313,6 +355,7 @@ export class AffiliatesListComponent implements OnInit {
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,
       entryDateTo: this.filterEntryDateTo || undefined,
+      paymentStatus: this.filterPaymentStatus === 'paid' || this.filterPaymentStatus === 'unpaid' ? this.filterPaymentStatus : undefined,
     };
 
     this._service.exportToExcel(exportFilters).subscribe({
@@ -396,6 +439,36 @@ export class AffiliatesListComponent implements OnInit {
 
   planHasPension(affiliate: AffiliateMember): boolean {
     return this.planIncludes(affiliate, 'AFP');
+  }
+
+  // ── Check de documentos (EPS/ARL/CCF/Pensión) inline desde la tabla ────
+  // Antes solo se podía marcar el certificado abriendo el modal de edición
+  // completo; esto permite alternarlo directo desde la afiliación en la fila.
+  togglingCertId = signal<string | null>(null);
+
+  toggleCert(affiliate: AffiliateMember, field: 'certArl' | 'certEps' | 'certPension' | 'certCcf'): void {
+    if (!this._permission.check('edit', undefined, 'Tu rol no tiene permiso para editar afiliados.')) return;
+    if (!affiliate.id || this.togglingCertId() !== null) return;
+
+    const newValue = !affiliate[field];
+    this.togglingCertId.set(affiliate.id);
+    this._service
+      .updateAffiliate(affiliate.id, {
+        documentNumber: affiliate.documentNumber,
+        cityCode: affiliate.cityCode,
+        [field]: newValue,
+      })
+      .subscribe({
+        next: () => {
+          affiliate[field] = newValue;
+          this.togglingCertId.set(null);
+          this._toast.showSuccess('Certificado actualizado');
+        },
+        error: (err) => {
+          this._toast.showError(err.message ?? 'No se pudo actualizar el certificado');
+          this.togglingCertId.set(null);
+        },
+      });
   }
 
   sendEmail(affiliate: AffiliateMember): void {

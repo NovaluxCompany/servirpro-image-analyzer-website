@@ -54,11 +54,12 @@
           &nbsp;&mdash;&nbsp; Página {{ currentPage() }} de {{ totalPages }}
           }
         </p>
+        <app-page-size-control [pageSize]="pageSize()" (pageSizeChange)="onPageSizeChange($event)" />
       </div>
 
-      <div class="overflow-x-auto">
+      <app-table-scroll>
         <table class="w-full text-sm text-left text-gray-600">
-          <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+          <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Acción</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre del rol</th>
@@ -180,7 +181,7 @@
             }
           </tbody>
         </table>
-      </div>
+      </app-table-scroll>
 
       <!-- Paginacion -->
       @if (totalPages > 1) {

@@ -64,7 +64,6 @@ export class AffiliateFormModalComponent implements OnInit {
 
   section1Open = true
   section2Open = true
-  section3Open = true
 
   readonly documentTypeOptions: SelectOption[] = [
     { value: 'CC', label: 'CC' },
@@ -80,10 +79,6 @@ export class AffiliateFormModalComponent implements OnInit {
 
   toggleSection2() {
     this.section2Open = !this.section2Open;
-  }
-
-  toggleSection3() {
-    this.section3Open = !this.section3Open;
   }
 
   // SelectOption arrays for searchable dropdowns

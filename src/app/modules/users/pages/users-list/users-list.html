@@ -93,14 +93,15 @@
             &nbsp;&mdash;&nbsp; Página {{ currentPage() }} de {{ totalPages() }}
             }
           </p>
+          <app-page-size-control [pageSize]="pageSize()" (pageSizeChange)="onPageSizeChange($event)" />
         </div>
 
-        <div class="overflow-x-auto">
+        <app-table-scroll>
 
           <!-- ══════════════════════════════════════ TAB USUARIOS ══ -->
           @if (activeTab() === 'usuarios') {
           <table class="w-full text-sm text-left text-gray-600">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
               <tr>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Acción</th>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
@@ -248,7 +249,7 @@
           <!-- ══════════════════════════════════ TAB ASIGNAR ROL ══ -->
           @if (activeTab() === 'asignar-rol') {
           <table class="w-full text-sm text-left text-gray-600">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
               <tr>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Acción</th>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre</th>
@@ -343,7 +344,7 @@
           </table>
           }
 
-        </div>
+        </app-table-scroll>
 
         <!-- Paginación -->
         @if (!isLoading() && totalPages() > 1) {

@@ -18,6 +18,7 @@ export interface AffiliateFilters {
   grupo?: string;
   entryDateFrom?: string;
   entryDateTo?: string;
+  paymentStatus?: 'paid' | 'unpaid';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -44,6 +45,7 @@ export class AffiliateMembersService {
     if (filters.grupo) params = params.set('grupo', filters.grupo);
     if (filters.entryDateFrom) params = params.set('entryDateFrom', filters.entryDateFrom);
     if (filters.entryDateTo) params = params.set('entryDateTo', filters.entryDateTo);
+    if (filters.paymentStatus) params = params.set('paymentStatus', filters.paymentStatus);
 
     return this._http
       .get<PaginatedAffiliatesResponse>(`${this.baseUrl}`, {
@@ -128,11 +130,13 @@ export class AffiliateMembersService {
   }
 
   // ── Activar / Desactivar ──────────────────────────────────────────
-  toggleStatus(id: string): Observable<AffiliateMember> {
+  // `reason` solo aplica al deshabilitar (se ignora al habilitar); queda
+  // guardado en affiliations.deactivation_reason.
+  toggleStatus(id: string, reason?: string): Observable<AffiliateMember> {
     return this._http
       .patch<AffiliateMember>(
         `${this.baseUrl}/${id}/toggle`,
-        {},
+        { reason },
         { headers: this.getHeaders() }
       )
       .pipe(catchError(this.handleError));
@@ -162,6 +166,7 @@ export class AffiliateMembersService {
     if (filters.grupo) params = params.set('grupo', filters.grupo);
     if (filters.entryDateFrom) params = params.set('entryDateFrom', filters.entryDateFrom);
     if (filters.entryDateTo) params = params.set('entryDateTo', filters.entryDateTo);
+    if (filters.paymentStatus) params = params.set('paymentStatus', filters.paymentStatus);
 
     return this._http
       .get(`${this.baseUrl}/export/excel`, {

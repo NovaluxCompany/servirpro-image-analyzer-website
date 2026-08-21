@@ -10,11 +10,13 @@ import { ExportExcelModalComponent } from '../../components/export-excel-modal/e
 import { PlansManagerModalComponent } from '../../components/plans-manager-modal/plans-manager-modal';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { ConfigGeneralService } from '../../../../core/service/config-general.service';
+import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
 
 @Component({
   selector: 'app-transactions-list',
   standalone: true,
-  imports: [CommonModule, TransactionFiltersComponent, TransactionTableComponent, ExportExcelModalComponent, PlansManagerModalComponent],
+  imports: [CommonModule, TransactionFiltersComponent, TransactionTableComponent, ExportExcelModalComponent, PlansManagerModalComponent, PageSizeControlComponent],
   templateUrl: './transactions-list.html'
 })
 export class TransactionsListComponent {
@@ -22,8 +24,9 @@ export class TransactionsListComponent {
   private _router = inject(Router);
   private _toastService = inject(ToastService);
   private _permission = inject(PermissionService);
+  private _configGeneralService = inject(ConfigGeneralService);
 
-  readonly pageSize = 10;
+  pageSize = signal(MIN_PAGE_SIZE);
 
   transactions = signal<Transaction[]>([]);
   isLoading = signal(false);
@@ -45,7 +48,14 @@ export class TransactionsListComponent {
   isTogglingLock = signal(false);
 
   ngOnInit(): void {
-    this.loadTransactions();
+    this._configGeneralService.getValue(REGISTROS_POR_PAGINA_KEY).subscribe({
+      next: (value) => {
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed) && parsed >= MIN_PAGE_SIZE) this.pageSize.set(parsed);
+        this.loadTransactions();
+      },
+      error: () => this.loadTransactions(),
+    });
     this.loadLockStatus();
 
     // Mostrar mensaje de éxito si viene de creación
@@ -100,7 +110,7 @@ export class TransactionsListComponent {
     this.errorMessage.set(null);
     this.isPermissionError.set(false);
 
-    this._transactionsService.getPaginatedTransactions(filters, page, this.pageSize).subscribe({
+    this._transactionsService.getPaginatedTransactions(filters, page, this.pageSize()).subscribe({
       next: (response) => {
         this.transactions.set(response.data);
         this.currentPage.set(response.page);
@@ -117,6 +127,12 @@ export class TransactionsListComponent {
         this.isLoading.set(false);
       }
     });
+  }
+
+  onPageSizeChange(newSize: number): void {
+    this.pageSize.set(newSize);
+    this.currentPage.set(1);
+    this.loadTransactions(this.currentFilters, 1);
   }
 
   onFilterApplied(filters: TransactionFilters): void {

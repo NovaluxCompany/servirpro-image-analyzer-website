@@ -1,0 +1,9 @@
+<div class="flex items-center gap-2">
+  <label class="text-xs font-medium text-gray-600 whitespace-nowrap">Registros por página</label>
+  <select [ngModel]="pageSize()" (ngModelChange)="onChange($event)"
+    class="px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+    @for (option of options(); track option) {
+    <option [ngValue]="option">{{ option }}</option>
+    }
+  </select>
+</div>

@@ -7,6 +7,8 @@ import { ToastService } from '../../../core/service/toast.service';
 import { PermissionService } from '../../../core/service/permission.service';
 import { ConfigGeneralService } from '../../../core/service/config-general.service';
 import { TokenService } from '../../../core/service/token.service';
+import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../shared/components/page-size-control/page-size-control';
+import { TableScrollComponent } from '../../../shared/components/table-scroll/table-scroll';
 import {
   AffiliateTransactionRow,
   DeactivateAffiliateFilters,
@@ -21,7 +23,7 @@ type InactivationTab = 'unpaid' | 'underpaid';
 @Component({
   selector: 'app-deactivate-affiliates-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, SearchableSelectComponent],
+  imports: [CommonModule, FormsModule, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './deactivate-affiliates-list.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -36,6 +38,7 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly isLoading = signal(false);
   protected readonly isSubmitting = signal(false);
   protected readonly showConfirmationModal = signal(false);
+  protected deactivationReason = '';
   protected readonly isDeactivatingAll = signal(false);
   protected readonly showApprovePaymentModal = signal(false);
   protected readonly pendingApproveAffiliate = signal<InactivationAffiliateRow | null>(null);
@@ -93,7 +96,7 @@ export class DeactivateAffiliatesList implements OnInit {
 
   // Paginación
   protected readonly currentPage = signal(1);
-  protected readonly pageSize = signal(10);
+  protected readonly pageSize = signal(MIN_PAGE_SIZE);
 
   protected readonly canDeactivateByDate = computed(() => {
     const context = this.context();
@@ -207,10 +210,10 @@ export class DeactivateAffiliatesList implements OnInit {
 
 
   ngOnInit(): void {
-    this._configGeneralService.getValue('REGISTROS_POR_PAGINA').subscribe({
+    this._configGeneralService.getValue(REGISTROS_POR_PAGINA_KEY).subscribe({
       next: (value) => {
         const pageSize = parseInt(value, 10);
-        if (!isNaN(pageSize) && pageSize > 0) {
+        if (!isNaN(pageSize) && pageSize >= MIN_PAGE_SIZE) {
           this.pageSize.set(pageSize);
         }
         this.loadData();
@@ -219,6 +222,11 @@ export class DeactivateAffiliatesList implements OnInit {
         this.loadData();
       },
     });
+  }
+
+  protected onPageSizeChange(newSize: number): void {
+    this.pageSize.set(newSize);
+    this.currentPage.set(1);
   }
 
   // ── Setters de filtros ────────────────────────────────────────────
@@ -374,6 +382,7 @@ export class DeactivateAffiliatesList implements OnInit {
   protected cancelDeactivation(): void {
     this.showConfirmationModal.set(false);
     this.isDeactivatingAll.set(false);
+    this.deactivationReason = '';
   }
 
   protected deactivateAll(): void {
@@ -440,6 +449,7 @@ export class DeactivateAffiliatesList implements OnInit {
         advisor: this.filterAdviser() || undefined,
         company: this.filterCompany() || undefined,
         grouper: this.filterGrouper() || undefined,
+        reason: this.deactivationReason || undefined,
       };
 
       this._deactivateAffiliatesService.deactivateAllAffiliates(filters).subscribe({
@@ -447,6 +457,7 @@ export class DeactivateAffiliatesList implements OnInit {
           this.showConfirmationModal.set(false);
           this.isDeactivatingAll.set(false);
           this.isSubmitting.set(false);
+          this.deactivationReason = '';
           this.handleDeactivationResponse(response);
         },
         error: (error: Error) => {
@@ -467,11 +478,12 @@ export class DeactivateAffiliatesList implements OnInit {
       return;
     }
 
-    this._deactivateAffiliatesService.deactivateAffiliates(ids).subscribe({
+    this._deactivateAffiliatesService.deactivateAffiliates(ids, this.deactivationReason || undefined).subscribe({
       next: (response) => {
         this.showConfirmationModal.set(false);
         this.isDeactivatingAll.set(false);
         this.isSubmitting.set(false);
+        this.deactivationReason = '';
         this.handleDeactivationResponse(response);
       },
       error: (error: Error) => {

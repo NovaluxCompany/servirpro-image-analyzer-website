@@ -105,6 +105,9 @@
     }
 
     <!-- Table -->
+    <div class="flex items-center justify-end mb-2 px-1">
+      <app-page-size-control [pageSize]="pageSize()" (pageSizeChange)="onPageSizeChange($event)" />
+    </div>
     <app-transaction-table
       [transactions]="transactions()"
       [isLoading]="isLoading()"
