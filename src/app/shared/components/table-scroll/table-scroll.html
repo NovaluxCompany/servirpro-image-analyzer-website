@@ -3,8 +3,9 @@
   <div #topScrollInner style="height: 1px;"></div>
 </div>
 
-<!-- Contenedor real: scroll horizontal + vertical acotado para que el thead
-     (con clase sticky top-0) quede fijo mientras se baja dentro de la tabla -->
-<div #mainScroll (scroll)="onMainScroll()" class="overflow-auto max-h-[65vh]">
+<!-- Contenedor real: solo scroll horizontal. La tabla crece de largo lo que
+     necesite y el scroll vertical lo maneja la página (scroll "de afuera"),
+     no un cuadro interno -->
+<div #mainScroll (scroll)="onMainScroll()" class="overflow-x-auto">
   <ng-content></ng-content>
 </div>

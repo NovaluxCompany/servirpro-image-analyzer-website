@@ -236,7 +236,6 @@
                   </label>
                 </th>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre</th>
-                <th class="px-4 py-3 font-semibold whitespace-nowrap">Cédula</th>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor del plan</th>
@@ -258,7 +257,6 @@
                   </label>
                 </th>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Nombre</th>
-                <th class="px-4 py-3 font-semibold whitespace-nowrap">Cédula</th>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Plan</th>
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha ingreso</th>
@@ -272,11 +270,11 @@
           <tbody class="divide-y divide-gray-100">
             @if (isLoading()) {
             <tr>
-              <td [attr.colspan]="activeTab() === 'underpaid' ? 12 : 10" class="px-4 py-16 text-center text-gray-500">Cargando afiliados...</td>
+              <td [attr.colspan]="activeTab() === 'underpaid' ? 11 : 9" class="px-4 py-16 text-center text-gray-500">Cargando afiliados...</td>
             </tr>
             } @else if (currentAffiliates().length === 0) {
             <tr>
-              <td [attr.colspan]="activeTab() === 'underpaid' ? 12 : 10" class="px-4 py-16 text-center">
+              <td [attr.colspan]="activeTab() === 'underpaid' ? 11 : 9" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -361,8 +359,12 @@
                     (change)="toggleRow(affiliate.affiliateId, $any($event.target).checked)"
                   />
                 </td>
-                <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ affiliate.name }}</td>
-                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.document }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <div class="flex flex-col">
+                    <span class="font-medium text-gray-900">{{ affiliate.name }}</span>
+                    <span class="text-xs text-gray-500">{{ affiliate.document }}</span>
+                  </div>
+                </td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.reference }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.plan }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ formatCurrency(affiliate.planValue || 0) }}</td>
@@ -382,8 +384,12 @@
                     (change)="toggleRow(affiliate.affiliateId, $any($event.target).checked)"
                   />
                 </td>
-                <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ affiliate.name }}</td>
-                <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.document }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <div class="flex flex-col">
+                    <span class="font-medium text-gray-900">{{ affiliate.name }}</span>
+                    <span class="text-xs text-gray-500">{{ affiliate.document }}</span>
+                  </div>
+                </td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.reference }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ affiliate.plan }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">
@@ -397,7 +403,7 @@
             </tr>
             @if (activeTab() === 'underpaid' && expandedAffiliateId() === affiliate.affiliateId) {
             <tr class="bg-gray-50/60">
-              <td [attr.colspan]="12" class="px-4 py-4">
+              <td [attr.colspan]="11" class="px-4 py-4">
                 @if (transactionsError()) {
                 <div class="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                   {{ transactionsError() }}
