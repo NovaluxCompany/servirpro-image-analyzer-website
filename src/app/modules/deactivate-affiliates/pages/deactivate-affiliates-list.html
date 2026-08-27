@@ -83,7 +83,7 @@
       </div>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200">
 
       <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
         <p class="text-sm text-gray-500">
@@ -220,7 +220,7 @@
 
       <app-table-scroll>
         <table class="w-full text-sm text-left text-gray-600">
-          <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+          <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
             <tr>
               @if (activeTab() === 'underpaid') {
                 <th class="px-4 py-3 font-semibold whitespace-nowrap">Acciones</th>
@@ -502,7 +502,7 @@
       </app-table-scroll>
 
       @if (totalPages() > 1) {
-      <div class="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50">
+      <div class="sticky bottom-0 z-10 flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
         <p class="text-sm text-gray-600">
           {{ totalItems() }} registros &mdash; Página {{ currentPage() }} de {{ totalPages() }}
         </p>
@@ -560,7 +560,23 @@
         {{ isDeactivatingAll() ? 'Todos los afiliados sin pago del mes actual quedarán inactivos.' : 'Los afiliados seleccionados quedarán inactivos.' }}
       </p>
       <div class="mt-4">
-        <label class="block mb-1 text-xs font-medium text-gray-600">Razón de la desactivación (opcional)</label>
+        <label class="block mb-1 text-xs font-medium text-gray-600">
+          Motivo de la deshabilitación <span class="text-red-500">*</span>
+        </label>
+        <select [(ngModel)]="deactivationReasonType" (ngModelChange)="showReasonTypeError = false"
+          class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+          [class.border-red-400]="showReasonTypeError" [class.border-gray-300]="!showReasonTypeError">
+          <option value="" disabled>Selecciona un motivo</option>
+          @for (opt of reasonTypeOptions; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
+        @if (showReasonTypeError) {
+          <p class="mt-1 text-xs text-red-500">Selecciona el motivo de la deshabilitación.</p>
+        }
+      </div>
+      <div class="mt-4">
+        <label class="block mb-1 text-xs font-medium text-gray-600">Observación (opcional)</label>
         <textarea [(ngModel)]="deactivationReason" rows="3" maxlength="2000"
           placeholder="Ej: No me pagaron"
           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"></textarea>

@@ -11,9 +11,11 @@ import {
   inject,
   signal,
   computed,
+  effect,
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { DropdownCoordinatorService } from '../../services/dropdown-coordinator.service';
 
 export interface SelectOption {
   value: string;
@@ -35,6 +37,18 @@ export interface SelectOption {
 })
 export class SearchableSelectComponent implements ControlValueAccessor, OnInit, AfterViewInit, OnDestroy {
   private _elementRef = inject(ElementRef);
+  private _dropdownCoordinator = inject(DropdownCoordinatorService);
+  private readonly _instanceId = this._dropdownCoordinator.register();
+
+  constructor() {
+    // Cierra este dropdown apenas otra instancia se registra como activa.
+    effect(() => {
+      const activeId = this._dropdownCoordinator.activeId();
+      if (this.isOpen() && activeId !== this._instanceId) {
+        this.closeDropdownPanel();
+      }
+    });
+  }
 
   // `options` se reasigna de forma asíncrona (ej. la lista de municipios llega
   // después de seleccionar el departamento, o después de cargar el afiliado en
@@ -73,6 +87,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
 
   private closeDropdownPanel(resetSearch = true): void {
     this.isOpen.set(false);
+    this._dropdownCoordinator.clear(this._instanceId);
     if (this._bodyPanelEl) {
       this._bodyPanelEl.remove();
       this._bodyPanelEl = null;
@@ -202,6 +217,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
     }
     this.updateDropdownPosition();
     this.isOpen.set(true);
+    this._dropdownCoordinator.setActive(this._instanceId);
     this.searchText = '';
     this.moveDropdownToBody();
     setTimeout(() => this.inputRef?.nativeElement?.focus(), 50);
@@ -225,6 +241,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
       this.updateDropdownPosition();
       if (!this.isOpen()) {
         this.isOpen.set(true);
+        this._dropdownCoordinator.setActive(this._instanceId);
         this.moveDropdownToBody();
       }
     }
@@ -235,6 +252,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
     this.updateDropdownPosition();
     if (!this.isOpen()) {
       this.isOpen.set(true);
+      this._dropdownCoordinator.setActive(this._instanceId);
       this.moveDropdownToBody();
     }
   }
@@ -253,6 +271,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
     } else {
       this.updateDropdownPosition();
       this.isOpen.set(true);
+      this._dropdownCoordinator.setActive(this._instanceId);
       this.moveDropdownToBody();
     }
   }

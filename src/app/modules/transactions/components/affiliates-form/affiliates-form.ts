@@ -25,6 +25,8 @@ export class AffiliatesFormComponent {
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   tableFilter = signal('');
+  /** idNumber -> mensaje de "ya tiene transacción este mes", detectado al seleccionar. */
+  duplicateWarnings = signal<Map<string, string>>(new Map());
 
   affiliatesChanged = output<Affiliate[]>();
 
@@ -39,6 +41,7 @@ export class AffiliatesFormComponent {
 
     // Limpiar selecciones anteriores al hacer una nueva búsqueda
     this.selectedAffiliates.set(new Set());
+    this.duplicateWarnings.set(new Map());
     this.affiliatesChanged.emit([]);
 
     this.isLoading.set(true);
@@ -93,6 +96,7 @@ export class AffiliatesFormComponent {
     this.affiliates.set([]);
     this.filteredAffiliates.set([]);
     this.selectedAffiliates.set(new Set());
+    this.duplicateWarnings.set(new Map());
     this.tableFilter.set('');
     this.errorMessage.set(null);
     this.affiliatesChanged.emit([]);
@@ -103,8 +107,10 @@ export class AffiliatesFormComponent {
 
     if (selected.has(idNumber)) {
       selected.delete(idNumber);
+      this.clearDuplicateWarning(idNumber);
     } else {
       selected.add(idNumber);
+      this.checkDuplicateForAffiliate(idNumber);
     }
 
     this.selectedAffiliates.set(selected);
@@ -115,15 +121,48 @@ export class AffiliatesFormComponent {
     return this.selectedAffiliates().has(idNumber);
   }
 
+  duplicateWarningFor(idNumber: string): string | null {
+    return this.duplicateWarnings().get(idNumber) ?? null;
+  }
+
+  private checkDuplicateForAffiliate(idNumber: string): void {
+    this._affiliatesService.checkDuplicate(idNumber).subscribe({
+      next: (res) => {
+        if (!res.duplicate) return;
+        const warnings = new Map(this.duplicateWarnings());
+        warnings.set(idNumber, res.message ?? 'Ya tiene una transacción registrada este mes.');
+        this.duplicateWarnings.set(warnings);
+      },
+      // Si el chequeo falla no bloqueamos la selección: el backend igual valida al enviar.
+      error: () => {},
+    });
+  }
+
+  private clearDuplicateWarning(idNumber: string): void {
+    if (!this.duplicateWarnings().has(idNumber)) return;
+    const warnings = new Map(this.duplicateWarnings());
+    warnings.delete(idNumber);
+    this.duplicateWarnings.set(warnings);
+  }
+
   selectAll(): void {
-    const allIds = new Set(this.filteredAffiliates().map(a => a.idNumber));
-    this.selectedAffiliates.set(allIds);
+    const allIds = this.filteredAffiliates().map(a => a.idNumber);
+    this.selectedAffiliates.set(new Set(allIds));
+    allIds.forEach((idNumber) => this.checkDuplicateForAffiliate(idNumber));
     this.affiliatesChanged.emit(this.getSelectedAffiliates());
   }
 
   deselectAll(): void {
     this.selectedAffiliates.set(new Set());
+    this.duplicateWarnings.set(new Map());
     this.affiliatesChanged.emit([]);
+  }
+
+  /** true si algún afiliado seleccionado ya tiene una transacción este mes.
+   *  Bloquea el botón de crear transacción como respaldo por si el usuario
+   *  no ve el aviso inline en la fila. */
+  hasDuplicates(): boolean {
+    return this.duplicateWarnings().size > 0;
   }
 
   getSelectedAffiliates(): Affiliate[] {

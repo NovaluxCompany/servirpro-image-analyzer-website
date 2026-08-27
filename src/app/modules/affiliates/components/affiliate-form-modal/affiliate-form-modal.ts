@@ -63,7 +63,7 @@ export class AffiliateFormModalComponent implements OnInit {
   cities = signal<CityOption[]>([]);
 
   section1Open = true
-  section2Open = true
+  section2Open = false
 
   readonly documentTypeOptions: SelectOption[] = [
     { value: 'CC', label: 'CC' },
@@ -75,10 +75,12 @@ export class AffiliateFormModalComponent implements OnInit {
 
   toggleSection1() {
     this.section1Open = !this.section1Open;
+    if (this.section1Open) this.section2Open = false;
   }
 
   toggleSection2() {
     this.section2Open = !this.section2Open;
+    if (this.section2Open) this.section1Open = false;
   }
 
   // SelectOption arrays for searchable dropdowns
@@ -123,6 +125,9 @@ export class AffiliateFormModalComponent implements OnInit {
     { value: 'FEMENINO', label: 'Mujer' },
   ];
 
+  /** Estado del afiliado en edición, usado para bloquear campos como referralType. */
+  affiliateIsActive = false;
+
   form = this._fb.group({
     // Datos personales
     documentType: ['CC', Validators.required],
@@ -155,7 +160,7 @@ export class AffiliateFormModalComponent implements OnInit {
     discount: [<number | null>null],
     affiliateType: ['DEPENDIENTE', Validators.required],
     isNew: [false],
-    referralType: [''],
+    referralType: ['', Validators.required],
     entryDate: [{ value: '', disabled: true }],
     observation: ['', Validators.maxLength(2000)],
     documentFile: [<File | string | null>null],
@@ -171,6 +176,8 @@ export class AffiliateFormModalComponent implements OnInit {
   constructor() {
     effect(() => {
       if (this.isVisible()) {
+        this.section1Open = true;
+        this.section2Open = false;
         if (this.mode() === 'edit' && this.affiliate()) {
           this.formReady.set(false);
           this.loadEditData(this.affiliate()!);
@@ -188,8 +195,10 @@ export class AffiliateFormModalComponent implements OnInit {
           // In create mode: entryDate is automatic (solo editable con permiso), companyEntryDate is freely editable
           this.applyEntryDatePermission();
           this.form.get('companyEntryDate')?.enable({ emitEvent: false });
-          // El bloqueo de plan por afiliado activo solo aplica en edición
+          // El bloqueo de plan/origen por afiliado activo solo aplica en edición
+          this.affiliateIsActive = false;
           this.form.get('planId')?.enable({ emitEvent: false });
+          this.form.get('referralType')?.enable({ emitEvent: false });
           // Asegurar que el campo de archivo esté siempre habilitado en modo creación
           this.form.get('documentFile')?.enable({ emitEvent: false });
           this.form.get('documentFile')?.clearValidators();
@@ -555,10 +564,14 @@ export class AffiliateFormModalComponent implements OnInit {
           this.updatePlanLogic(String(a.planId));
         }
         // El plan solo puede cambiarse mientras el afiliado está desactivado.
+        this.affiliateIsActive = !!a.isActive;
         if (a.isActive) {
           this.form.get('planId')?.disable({ emitEvent: false });
+          // El origen del afiliado solo puede corregirse mientras está desactivado.
+          this.form.get('referralType')?.disable({ emitEvent: false });
         } else {
           this.form.get('planId')?.enable({ emitEvent: false });
+          this.form.get('referralType')?.enable({ emitEvent: false });
         }
         if (a.grouperId) {
           const selectedGrouper = this.groupers().find(g => String(g.id) === String(a.grouperId));
@@ -831,7 +844,7 @@ export class AffiliateFormModalComponent implements OnInit {
       isActive: raw.isActive ?? true,
       discount: toNumberOrNull(raw.discount) ?? undefined,
       affiliateType: raw.affiliateType as 'INDEPENDIENTE' | 'DEPENDIENTE' | undefined,
-      referralType: (raw.referralType || undefined) as 'NUEVO' | 'REINGRESO' | 'REFERIDO' | undefined,
+      referralType: (raw.referralType || undefined) as 'META' | 'WEB' | undefined,
       // companyEntryDate comes from its own form control (disabled), NOT from entryDate
       companyEntryDate: raw.companyEntryDate || this.toLocalDateStr(this.todayDate()),
       // Al crear, entryDate siempre viaja (por defecto hoy). En edición solo se envía

@@ -54,8 +54,23 @@ export class TransactionCreateComponent {
     this.form.get('amountPaid')?.setValue(totalValue);
   }
 
+  /** Bloquea el botón de crear transacción mientras algún afiliado
+   *  seleccionado ya tenga una transacción registrada este mes — respaldo
+   *  por si el usuario no ve el aviso inline en la fila. */
+  isSubmitBlocked(): boolean {
+    return this.isLoading() || !!this.affiliatesForm?.hasDuplicates();
+  }
+
   onSubmit(): void {
     this.errorMessage.set(null);
+
+    if (this.affiliatesForm.hasDuplicates()) {
+      this.errorMessage.set(
+        'Uno o más afiliados seleccionados ya tienen una transacción registrada este mes. Quítalos de la selección antes de continuar.',
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     // Obtener referencia del formulario de afiliados
     const reference = this.affiliatesForm.getReference();

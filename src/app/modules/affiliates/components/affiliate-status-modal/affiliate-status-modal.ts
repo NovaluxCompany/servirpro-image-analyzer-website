@@ -23,6 +23,14 @@ export class AffiliateStatusModalComponent {
 
   isLoading = signal(false);
   deactivationReason = '';
+  deactivationReasonType: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST' | '' = '';
+  showReasonTypeError = false;
+
+  readonly reasonTypeOptions: { value: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST'; label: string }[] = [
+    { value: 'PLAN_CHANGE', label: 'Cambio de plan' },
+    { value: 'NO_PAYMENT', label: 'No pagó' },
+    { value: 'CLIENT_REQUEST', label: 'Solicitud del cliente' },
+  ];
 
   get isActivating(): boolean {
     return !(this.affiliate()?.isActive ?? true);
@@ -55,23 +63,42 @@ export class AffiliateStatusModalComponent {
   onConfirm(): void {
     const a = this.affiliate();
     if (!a?.id) return;
+
+    if (!this.isActivating && !this.deactivationReasonType) {
+      this.showReasonTypeError = true;
+      this._toast.showError('Selecciona el motivo de la deshabilitación antes de continuar.');
+      return;
+    }
+
     this.isLoading.set(true);
-    this._service.toggleStatus(a.id, this.isActivating ? undefined : this.deactivationReason).subscribe({
-      next: () => {
-        this._toast.showSuccess(this.successMessage);
-        this.isLoading.set(false);
-        this.deactivationReason = '';
-        this.confirmed.emit();
-      },
-      error: (err) => {
-        this._toast.showError(err.message);
-        this.isLoading.set(false);
-      },
-    });
+    this._service
+      .toggleStatus(
+        a.id,
+        this.isActivating ? undefined : this.deactivationReason,
+        this.isActivating ? undefined : (this.deactivationReasonType || undefined),
+      )
+      .subscribe({
+        next: () => {
+          this._toast.showSuccess(this.successMessage);
+          this.isLoading.set(false);
+          this.resetForm();
+          this.confirmed.emit();
+        },
+        error: (err) => {
+          this._toast.showError(err.message);
+          this.isLoading.set(false);
+        },
+      });
   }
 
   onCancel(): void {
-    this.deactivationReason = '';
+    this.resetForm();
     this.cancelled.emit();
+  }
+
+  private resetForm(): void {
+    this.deactivationReason = '';
+    this.deactivationReasonType = '';
+    this.showReasonTypeError = false;
   }
 }

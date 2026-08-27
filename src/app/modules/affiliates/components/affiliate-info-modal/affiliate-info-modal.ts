@@ -34,9 +34,8 @@ export class AffiliateInfoModalComponent {
 
   referralTypeLabel(value?: string): string {
     const labels: Record<string, string> = {
-      NUEVO: 'Nuevo',
-      REINGRESO: 'Reingreso',
-      REFERIDO: 'Referido',
+      META: 'Meta',
+      WEB: 'Web',
     };
     return value ? (labels[value] ?? value) : '—';
   }
