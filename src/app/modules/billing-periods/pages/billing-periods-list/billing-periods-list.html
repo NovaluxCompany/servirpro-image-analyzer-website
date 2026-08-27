@@ -112,9 +112,11 @@
                 <button
                   type="button"
                   (click)="onSendToSiigo(period)"
-                  class="px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700"
+                  [class]="period.siigoInvoiceStatus === 'UNCERTAIN'
+                    ? 'px-3 py-1.5 text-xs font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600'
+                    : 'px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700'"
                 >
-                  Enviar a Siigo
+                  {{ sendButtonLabel(period) }}
                 </button>
                 }
               </td>
@@ -138,7 +140,13 @@
                 <span class="px-2.5 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full">No</span>
                 }
               </td>
-              <td class="px-4 py-3 whitespace-nowrap">{{ statusLabel(period.siigoInvoiceStatus) }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                @if (period.siigoInvoiceStatus === 'UNCERTAIN') {
+                <span class="px-2.5 py-1 text-xs font-medium text-orange-800 bg-orange-100 rounded-full">{{ statusLabel(period.siigoInvoiceStatus) }}</span>
+                } @else {
+                {{ statusLabel(period.siigoInvoiceStatus) }}
+                }
+              </td>
               <td class="px-4 py-3 whitespace-nowrap">
                 @if (period.isNewTransaction) {
                 <span class="px-2.5 py-1 text-xs font-medium text-blue-800 bg-blue-100 rounded-full">Sí</span>
@@ -201,6 +209,7 @@
       [isLoading]="isLoadingPayload()"
       [payload]="selectedPayload()"
       [pricingBreakdown]="selectedPricingBreakdown()"
+      [isUncertain]="selectedPeriodIsUncertain()"
       (confirmed)="onConfirmSendToSiigo($event)"
       (cancelled)="onCancelSendToSiigo()"
       (lateFeeChanged)="onLateFeeChanged($event)"

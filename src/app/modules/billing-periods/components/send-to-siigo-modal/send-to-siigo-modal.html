@@ -15,6 +15,15 @@
       <!-- Body -->
       <div class="px-6 py-5 max-h-[70vh] overflow-y-auto space-y-6">
 
+        @if (isUncertain()) {
+          <div class="flex gap-3 p-3 text-sm border border-orange-300 rounded-lg bg-orange-50 text-orange-800">
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86l-8.18 14.14A2 2 0 003.82 21h16.36a2 2 0 001.71-3l-8.18-14.14a2 2 0 00-3.42 0z" />
+            </svg>
+            <p>No se recibió confirmación de Siigo en el intento anterior (pudo ser una caída momentánea de su servicio). Es posible que la factura ya se haya creado. Puedes verificarlo directamente en Siigo, o volver a confirmar aquí: es seguro, no se creará una factura duplicada.</p>
+          </div>
+        }
+
         <!-- Sección 1: Información Precios / Mora -->
         <section>
           <h4 class="text-sm font-semibold text-gray-900 mb-2">1) Información Precios</h4>
