@@ -15,6 +15,11 @@ export class SendToSiigoModalComponent {
   isLoading = input<boolean>(false);
   payload = input<SiigoInvoicePayload | null>(null);
   pricingBreakdown = input<SiigoInvoicePricingBreakdown | null>(null);
+  // true cuando el intento anterior quedó UNCERTAIN (Siigo no confirmó ni
+  // rechazó la factura: timeout o caída de su servicio). El envío sigue
+  // siendo seguro (reutiliza la misma Idempotency-Key), pero se avisa para
+  // que no se interprete como un envío nuevo sin más.
+  isUncertain = input<boolean>(false);
 
   confirmed = output<{ lateFee: number; observations: string }>();
   cancelled = output<void>();

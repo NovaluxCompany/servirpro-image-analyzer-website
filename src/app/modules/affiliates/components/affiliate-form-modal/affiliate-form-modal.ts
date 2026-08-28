@@ -644,6 +644,37 @@ export class AffiliateFormModalComponent implements OnInit {
   private keepExistingDocument = true;
   @ViewChild('fileInput') fileInputRef?: ElementRef<HTMLInputElement>;
 
+  downloadingDocId = signal<number | null>(null);
+
+  // Muestra un rótulo compacto y consistente con affiliate-documents-modal
+  // en vez del nombre poco legible que Supabase le da al archivo.
+  existingDocumentLabel(index: number): string {
+    return `Documento ${index + 1}`;
+  }
+
+  downloadExistingDocument(docId: number): void {
+    const affiliateId = this.affiliate()?.id;
+    if (!affiliateId) return;
+    this.downloadingDocId.set(docId);
+    this._service.downloadBlob(affiliateId, docId).subscribe({
+      next: (blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = `${this.affiliate()?.documentNumber ?? 'documento'}.pdf`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(objectUrl);
+        this.downloadingDocId.set(null);
+      },
+      error: () => {
+        this._toast.showError('No se pudo descargar el archivo');
+        this.downloadingDocId.set(null);
+      },
+    });
+  }
+
   private static readonly ALLOWED_FILE_TYPES = ['application/pdf'];
   private static readonly MAX_FILE_SIZE_MB = 10;
   private static readonly MAX_FILES = 100;

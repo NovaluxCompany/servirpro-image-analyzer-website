@@ -28,6 +28,7 @@ export class BillingPeriodsListComponent implements OnInit {
   isLoadingPayload = signal(false);
   selectedPayload = signal<SiigoInvoicePayload | null>(null);
   selectedPricingBreakdown = signal<SiigoInvoicePricingBreakdown | null>(null);
+  selectedPeriodIsUncertain = signal(false);
   private selectedPeriodId: number | null = null;
 
   pageSize = signal(MIN_PAGE_SIZE);
@@ -66,6 +67,7 @@ export class BillingPeriodsListComponent implements OnInit {
     PENDING: 'Pendiente envío',
     INVOICED: 'Enviado',
     ERROR: 'Error',
+    UNCERTAIN: '⚠ Verificar en Siigo',
   };
 
   onFilterApplied(filters: BillingPeriodFilters): void {
@@ -135,8 +137,13 @@ export class BillingPeriodsListComponent implements OnInit {
     return this.statusLabels[status] ?? status;
   }
 
+  sendButtonLabel(period: BillingPeriod): string {
+    return period.siigoInvoiceStatus === 'UNCERTAIN' ? 'Verificar / Reintentar' : 'Enviar a Siigo';
+  }
+
   onSendToSiigo(period: BillingPeriod): void {
     this.selectedPeriodId = period.id;
+    this.selectedPeriodIsUncertain.set(period.siigoInvoiceStatus === 'UNCERTAIN');
     this.isLoadingPayload.set(true);
     this.selectedPayload.set(null);
     this.selectedPricingBreakdown.set(null);
@@ -186,6 +193,7 @@ export class BillingPeriodsListComponent implements OnInit {
         this.showSendModal.set(false);
         this.selectedPayload.set(null);
         this.selectedPricingBreakdown.set(null);
+        this.selectedPeriodIsUncertain.set(false);
         this.selectedPeriodId = null;
         this._toastService.showSuccess('Factura creada en Siigo correctamente');
         this.loadBillingPeriods();
@@ -193,6 +201,11 @@ export class BillingPeriodsListComponent implements OnInit {
       error: (err) => {
         this.isLoadingPayload.set(false);
         this._toastService.showError(err?.message ?? 'No fue posible crear la factura en Siigo');
+        // El backend ya marcó el periodo como UNCERTAIN o ERROR según el
+        // caso; se refresca la tabla en segundo plano (sin cerrar el modal)
+        // para que la fila muestre el estado real si el usuario decide
+        // cerrar el modal en vez de reintentar.
+        this.loadBillingPeriods();
       },
     });
   }
@@ -201,6 +214,7 @@ export class BillingPeriodsListComponent implements OnInit {
     this.showSendModal.set(false);
     this.selectedPayload.set(null);
     this.selectedPricingBreakdown.set(null);
+    this.selectedPeriodIsUncertain.set(false);
     this.selectedPeriodId = null;
   }
 
