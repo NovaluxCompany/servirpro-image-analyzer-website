@@ -245,14 +245,20 @@ function formatGitHubComment(review) {
   comment += `### 📋 Resumen\n${review.summary}\n\n`;
   comment += `---\n\n`;
 
-  // Alcance (scope) — si hay violaciones, van primero: son bloqueantes
-  if (review.scope_violations && review.scope_violations.length > 0) {
-    comment += `## 🎯 Fuera de Alcance\n\n`;
-    comment += `Se pegaron requerimientos en la descripción de este PR y los siguientes cambios no corresponden a ninguno de ellos:\n\n`;
-    review.scope_violations.forEach(v => {
-      comment += `- 🚫 **\`${v.file}\`** — ${v.summary}\n`;
-      comment += `  > Motivo: ${v.reason}\n\n`;
-    });
+  // Alcance (scope) — se muestra siempre que el PR declaró requerimientos,
+  // haya o no violaciones, para que quede explícito el resultado del chequeo.
+  if (review.scope_declared) {
+    if (review.scope_violations && review.scope_violations.length > 0) {
+      comment += `## 🎯 Fuera de Alcance\n\n`;
+      comment += `Se pegaron requerimientos en la descripción de este PR y los siguientes cambios no corresponden a ninguno de ellos:\n\n`;
+      review.scope_violations.forEach(v => {
+        comment += `- 🚫 **\`${v.file}\`** — ${v.summary}\n`;
+        comment += `  > Motivo: ${v.reason}\n\n`;
+      });
+    } else {
+      comment += `## 🎯 Alcance\n\n`;
+      comment += `✅ Todos los cambios de este PR corresponden a los requerimientos declarados en la descripción.\n\n`;
+    }
     comment += `---\n\n`;
   }
 
@@ -465,6 +471,7 @@ async function main() {
       suggested_improvements: [rawReview]
     };
   }
+  review.scope_declared = !!scopeRequirements;
 
   // ── Gate determinístico: console.log prohibido ──
   const consoleLogFindings = scanForConsoleLog(diff);
