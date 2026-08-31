@@ -1,4 +1,4 @@
-name: 🤖 Angular PR Review Agent (Claude)
+name: 🤖 Angular PR Review Agent (Gemini)
 
 on:
   pull_request:
@@ -31,9 +31,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install @anthropic-ai/sdk
-
       - name: Get PR diff
         id: pr_diff
         env:
@@ -53,7 +50,7 @@ jobs:
 
       - name: Run Angular Review Agent
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}    # Anthropic API key
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}    # Google AI Studio key
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}

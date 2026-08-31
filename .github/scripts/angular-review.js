@@ -1,14 +1,13 @@
 /**
  * 🤖 Angular PR Review Agent
  * Analiza PRs con foco en Angular best practices, calidad de código y seguridad.
- * Powered by Claude (Anthropic API — modelo claude-opus-4-8).
+ * Powered by Google AI Studio (Gemini 2.5 Flash) — Free tier, sin tarjeta de crédito
  */
 
 const fs = require('fs');
 const https = require('https');
-const Anthropic = require('@anthropic-ai/sdk');
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const PR_NUMBER = process.env.PR_NUMBER;
 const PR_TITLE = process.env.PR_TITLE;
@@ -16,8 +15,6 @@ const PR_AUTHOR = process.env.PR_AUTHOR;
 const PR_BODY = process.env.PR_BODY || '';
 const REPO = process.env.REPO;
 const [OWNER, REPO_NAME] = REPO.split('/');
-
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
 // ─── Leer el diff del PR ─────────────────────────────────────────────────────
 function getDiff() {
@@ -78,98 +75,44 @@ function extractScopeRequirements(prBody) {
   return text.length > 0 ? text : null;
 }
 
-// ─── Esquema de salida estructurada (garantiza JSON válido) ──────────────────
-const reviewItemSchema = {
-  type: 'object',
-  properties: {
-    severity: { type: 'string' },
-    category: { type: 'string' },
-    issue: { type: 'string' },
-    location: { type: 'string' },
-    recommendation: { type: 'string' },
-  },
-  required: ['severity', 'category', 'issue', 'location', 'recommendation'],
-  additionalProperties: false,
-};
-
-const securityAlertSchema = {
-  type: 'object',
-  properties: {
-    severity: { type: 'string' },
-    type: { type: 'string' },
-    description: { type: 'string' },
-    location: { type: 'string' },
-    mitigation: { type: 'string' },
-    cwe_reference: { type: 'string' },
-  },
-  required: ['severity', 'type', 'description', 'location', 'mitigation', 'cwe_reference'],
-  additionalProperties: false,
-};
-
-const simpleIssueSchema = {
-  type: 'object',
-  properties: {
-    severity: { type: 'string' },
-    issue: { type: 'string' },
-    recommendation: { type: 'string' },
-  },
-  required: ['severity', 'issue', 'recommendation'],
-  additionalProperties: false,
-};
-
-const scopeViolationSchema = {
-  type: 'object',
-  properties: {
-    file: { type: 'string' },
-    summary: { type: 'string' },
-    reason: { type: 'string' },
-  },
-  required: ['file', 'summary', 'reason'],
-  additionalProperties: false,
-};
-
-const REVIEW_SCHEMA = {
-  type: 'object',
-  properties: {
-    summary: { type: 'string' },
-    verdict: { type: 'string', enum: ['APPROVE', 'REQUEST_CHANGES', 'COMMENT'] },
-    score: { type: 'integer' },
-    angular_best_practices: { type: 'array', items: reviewItemSchema },
-    code_quality: { type: 'array', items: reviewItemSchema },
-    security_alerts: { type: 'array', items: securityAlertSchema },
-    performance_issues: { type: 'array', items: simpleIssueSchema },
-    accessibility: { type: 'array', items: simpleIssueSchema },
-    scope_violations: { type: 'array', items: scopeViolationSchema },
-    positive_highlights: { type: 'array', items: { type: 'string' } },
-    required_changes: { type: 'array', items: { type: 'string' } },
-    suggested_improvements: { type: 'array', items: { type: 'string' } },
-  },
-  required: [
-    'summary',
-    'verdict',
-    'score',
-    'angular_best_practices',
-    'code_quality',
-    'security_alerts',
-    'performance_issues',
-    'accessibility',
-    'scope_violations',
-    'positive_highlights',
-    'required_changes',
-    'suggested_improvements',
-  ],
-  additionalProperties: false,
-};
-
-// ─── Llamar a Claude (Anthropic API) ─────────────────────────────────────────
-async function callClaude(diff, scopeRequirements) {
+// ─── Llamar a Google AI Studio (Gemini 2.5 Flash) ────────────────────────────
+async function callGemini(diff, scopeRequirements) {
   const systemPrompt = `Eres un revisor de código senior, experto en Angular (v17+), TypeScript y seguridad web (ethical hacking / OWASP).
 Tu tarea es revisar Pull Requests exigiendo código limpio, seguro y alineado con las mejores prácticas de Angular.
 Siempre respondes en español. Tu tono es profesional, directo y constructivo.
 
 Regla no negociable: el uso de "console.log" (o cualquier variante como console.debug/console.info dejada en el código) está PROHIBIDO en código de producción. Si encuentras un console.log en el código añadido, repórtalo SIEMPRE como severity "CRITICAL" dentro de code_quality, inclúyelo en required_changes, y el verdict del PR debe ser "REQUEST_CHANGES" sin excepción, sin importar la calidad del resto del código.
 
-${scopeRequirements ? `Regla no negociable de ALCANCE: este PR declaró una lista de requerimientos (ver más abajo, sección "Requerimientos declarados del PR"). Debes evaluar CADA archivo/cambio del diff y determinar si está justificado por al menos uno de esos requerimientos. Un cambio está justificado si es necesario o directamente implicado por algún requerimiento (incluye tests, tipos e imports que soporten ese cambio). NO está justificado: refactors no pedidos, renombrados, cambios de estilo/formato en código no relacionado, archivos o funciones no mencionadas ni implicadas por los requerimientos, eliminación de código no relacionado. Reporta cada cambio no justificado en "scope_violations" (archivo, resumen del cambio, motivo). Si encuentras alguno, el verdict debe ser "REQUEST_CHANGES" sin excepción. Si TODOS los cambios corresponden a los requerimientos, deja "scope_violations" vacío.` : 'No se declararon requerimientos de alcance para este PR (no hay bloque SCOPE en la descripción), así que deja "scope_violations" como un arreglo vacío y no penalices por esto.'}`;
+${scopeRequirements ? `Regla no negociable de ALCANCE: este PR declaró una lista de requerimientos (ver más abajo, sección "Requerimientos declarados del PR"). Debes evaluar CADA archivo/cambio del diff y determinar si está justificado por al menos uno de esos requerimientos. Un cambio está justificado si es necesario o directamente implicado por algún requerimiento (incluye tests, tipos e imports que soporten ese cambio). NO está justificado: refactors no pedidos, renombrados, cambios de estilo/formato en código no relacionado, archivos o funciones no mencionadas ni implicadas por los requerimientos, eliminación de código no relacionado. Reporta cada cambio no justificado en "scope_violations" (archivo, resumen del cambio, motivo). Si encuentras alguno, el verdict debe ser "REQUEST_CHANGES" sin excepción. Si TODOS los cambios corresponden a los requerimientos, deja "scope_violations" vacío.` : 'No se declararon requerimientos de alcance para este PR (no hay bloque SCOPE en la descripción), así que deja "scope_violations" como un arreglo vacío y no penalices por esto.'}
+
+Responde ÚNICAMENTE con un JSON válido, sin texto adicional ni markdown fences, siguiendo exactamente este esquema:
+{
+  "summary": "Resumen ejecutivo del PR en 2-3 oraciones",
+  "verdict": "APPROVE | REQUEST_CHANGES | COMMENT",
+  "score": <número del 1 al 10>,
+  "angular_best_practices": [
+    { "severity": "CRITICAL | WARNING | INFO | GOOD", "category": "categoría Angular", "issue": "descripción", "location": "archivo o línea", "recommendation": "cómo mejorar o qué está bien" }
+  ],
+  "code_quality": [
+    { "severity": "CRITICAL | WARNING | INFO | GOOD", "category": "categoría de calidad", "issue": "descripción", "location": "archivo o línea", "recommendation": "mejora sugerida" }
+  ],
+  "security_alerts": [
+    { "severity": "CRITICAL | HIGH | MEDIUM | LOW | NONE", "type": "tipo de vulnerabilidad", "description": "descripción detallada", "location": "archivo o línea", "mitigation": "cómo mitigarlo", "cwe_reference": "CWE-XXX si aplica, si no cadena vacía" }
+  ],
+  "performance_issues": [
+    { "severity": "HIGH | MEDIUM | LOW", "issue": "problema de performance", "recommendation": "optimización sugerida" }
+  ],
+  "accessibility": [
+    { "severity": "HIGH | MEDIUM | LOW", "issue": "problema de accesibilidad", "recommendation": "mejora sugerida" }
+  ],
+  "scope_violations": [
+    { "file": "archivo con el cambio no justificado", "summary": "qué cambia ahí", "reason": "por qué no corresponde a ningún requerimiento declarado" }
+  ],
+  "positive_highlights": ["aspecto positivo 1"],
+  "required_changes": ["cambio obligatorio (solo si verdict es REQUEST_CHANGES)"],
+  "suggested_improvements": ["mejora sugerida 1"]
+}
+Todos los arreglos son obligatorios en la respuesta; usa [] si no aplica.`;
 
   const userPrompt = `## Pull Request a revisar
 **Título:** ${PR_TITLE}
@@ -227,25 +170,51 @@ Analiza este PR de Angular exigiendo código limpio, seguro y buenas prácticas.
 - Template injection
 - Prototype pollution
 
-Responde con el análisis completo siguiendo el esquema JSON proporcionado.`;
+Responde ÚNICAMENTE con el JSON del esquema indicado arriba, sin texto adicional ni markdown fences.`;
 
-  const response = await anthropic.messages.create({
-    model: 'claude-opus-4-8',
-    max_tokens: 8000,
-    thinking: { type: 'adaptive' },
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userPrompt }],
-    output_config: {
-      effort: 'high',
-      format: { type: 'json_schema', schema: REVIEW_SCHEMA },
-    },
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      model: 'gemini-2.5-flash',
+      max_tokens: 8000,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    });
+
+    // Google AI Studio — endpoint compatible con OpenAI
+    const options = {
+      hostname: 'generativelanguage.googleapis.com',
+      path: '/v1beta/openai/chat/completions',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        'Content-Length': Buffer.byteLength(body),
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.choices && parsed.choices[0]) {
+            resolve(parsed.choices[0].message.content);
+          } else {
+            reject(new Error(`Gemini API Error: ${data}`));
+          }
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(body);
+    req.end();
   });
-
-  const textBlock = response.content.find((block) => block.type === 'text');
-  if (!textBlock) {
-    throw new Error('Claude no devolvió contenido de texto.');
-  }
-  return textBlock.text;
 }
 
 // ─── Formatear el comentario de GitHub ───────────────────────────────────────
@@ -267,7 +236,7 @@ function formatGitHubComment(review) {
   };
 
   let comment = `# 🤖 Angular PR Review Agent\n\n`;
-  comment += `> **Revisión automática generada por Claude (Anthropic)**\n\n`;
+  comment += `> **Revisión automática generada por Gemini 2.5 Flash (Google AI Studio)**\n\n`;
   comment += `---\n\n`;
 
   // Header
@@ -372,7 +341,7 @@ function formatGitHubComment(review) {
     comment += `\n`;
   }
 
-  comment += `\n---\n*🤖 Revisión generada automáticamente por Angular Review Agent (Claude · Anthropic) • [Ver configuración](.github/workflows/angular-pr-review.yml)*`;
+  comment += `\n---\n*🤖 Revisión generada automáticamente por Angular Review Agent (Gemini 2.5 Flash · Google AI Studio) • [Ver configuración](.github/workflows/angular-pr-review.yml)*`;
 
   return comment;
 }
@@ -447,7 +416,7 @@ async function submitPRReview(verdict, body) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('🤖 Iniciando Angular PR Review Agent (Claude)...');
+  console.log('🤖 Iniciando Angular PR Review Agent (Gemini)...');
   console.log(`📋 PR #${PR_NUMBER}: ${PR_TITLE}`);
   console.log(`👤 Autor: ${PR_AUTHOR}`);
 
@@ -461,10 +430,10 @@ async function main() {
     console.log('🎯 Sin bloque SCOPE en la descripción del PR: no se valida alcance.');
   }
 
-  console.log('🤖 Consultando Claude (claude-opus-4-8)...');
-  const rawReview = await callClaude(diff, scopeRequirements);
+  console.log('🤖 Consultando Gemini 2.5 Flash (Google AI Studio)...');
+  const rawReview = await callGemini(diff, scopeRequirements);
 
-  // Parsear JSON (con output_config.format ya viene validado, pero por si acaso)
+  // Parsear JSON
   let review;
   try {
     const cleanJson = rawReview.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
