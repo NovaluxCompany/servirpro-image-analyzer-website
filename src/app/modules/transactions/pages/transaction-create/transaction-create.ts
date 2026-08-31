@@ -40,7 +40,7 @@ export class TransactionCreateComponent {
   });
 
   onAffiliatesChanged(affiliates: Affiliate[]): void {
-    const totalPrice = affiliates.reduce((sum, affiliate) => sum + affiliate.price, 0);
+    const totalPrice = affiliates.reduce((sum, affiliate) => sum + affiliate.price - (affiliate.discount || 0), 0);
     this.form.get('totalValue')?.setValue(totalPrice);
     this.updateValuePaid();
   }

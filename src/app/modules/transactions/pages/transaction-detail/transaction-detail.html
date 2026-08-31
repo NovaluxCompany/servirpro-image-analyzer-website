@@ -196,6 +196,12 @@
                       <p class="text-gray-500">Precio</p>
                       <p class="font-medium text-gray-900">{{ formatCurrency(affiliate.price) }}</p>
                     </div>
+                    @if (affiliate.discount) {
+                      <div>
+                        <p class="text-gray-500">Descuento afiliado</p>
+                        <p class="font-medium text-gray-900">{{ formatCurrency(affiliate.discount) }}</p>
+                      </div>
+                    }
                     <div>
                       <p class="text-gray-500">EPS</p>
                       <p class="font-medium text-gray-900">{{ affiliate.eps }}</p>
