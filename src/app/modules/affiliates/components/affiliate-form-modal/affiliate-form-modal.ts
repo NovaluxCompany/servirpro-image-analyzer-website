@@ -160,7 +160,12 @@ export class AffiliateFormModalComponent implements OnInit {
     discount: [<number | null>null],
     affiliateType: ['DEPENDIENTE', Validators.required],
     isNew: [false],
-    referralType: ['', Validators.required],
+    // Obligatorio solo VISUALMENTE (el label mantiene el "*" en el HTML):
+    // forzarlo con Validators.required bloqueaba crear/editar afiliados a
+    // los que no se les puede asignar un origen. La fecha de origen sigue
+    // siendo obligatoria de verdad, pero solo cuando el origen es Meta o
+    // Web (ver validateOriginDate()).
+    referralType: [''],
     originDate: [''],
     entryDate: [{ value: '', disabled: true }],
     observation: ['', Validators.maxLength(2000)],

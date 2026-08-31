@@ -389,24 +389,7 @@
                     </button>
                     }
 
-                    <!-- Enviar a WhatsApp -->
-                    @if (canSendWhatsapp(affiliate)) {
-                    <button type="button" (click)="sendWhatsapp(affiliate); closeDropdown()"
-                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-emerald-700 hover:bg-emerald-50 transition-colors">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
-                      </svg>
-                      Enviar a WhatsApp
-                    </button>
-                    } @else {
-                    <span class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-400 cursor-not-allowed">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      Ya enviado por WhatsApp
-                    </span>
-                    }
+                    <!-- Enviar a WhatsApp: oculto temporalmente, funcionalidad aun no habilitada -->
 
                     <!-- Subir a Siigo -->
                     @if (affiliate.siigoSyncStatus !== 'SUCCESS') {

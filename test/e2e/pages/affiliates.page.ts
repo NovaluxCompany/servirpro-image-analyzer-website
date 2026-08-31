@@ -176,10 +176,16 @@ export class AffiliatesPage {
     const today = new Date().toISOString().slice(0, 10);
     await form.locator('input[formcontrolname="companyEntryDate"]').fill(today);
 
-    if (overrides?.referralType !== undefined) {
-      await form.locator('select[formcontrolname="referralType"]').selectOption(overrides.referralType);
-      if (overrides.referralType === 'META' || overrides.referralType === 'WEB') {
-        const originDate = overrides.originDate ?? new Date().toISOString().slice(0, 10);
+    // "Origen del afiliado" es OBLIGATORIO (bloquea el submit si queda sin
+    // seleccionar): por defecto se elige "SIN_ESPECIFICAR" para no romper a
+    // los tests que no les importa el origen. Pasar overrides.referralType
+    // === '' explícitamente para dejarlo sin seleccionar a propósito (ej.
+    // el test que verifica que el submit queda deshabilitado).
+    const referralType = overrides?.referralType ?? 'SIN_ESPECIFICAR';
+    if (referralType) {
+      await form.locator('select[formcontrolname="referralType"]').selectOption(referralType);
+      if (referralType === 'META' || referralType === 'WEB') {
+        const originDate = overrides?.originDate ?? new Date().toISOString().slice(0, 10);
         await form.locator('input[formcontrolname="originDate"]').fill(originDate);
       }
     }
@@ -353,22 +359,105 @@ export class AffiliatesPage {
 
   // ── Desactivar con razón ─────────────────────────────────────────
 
-  async deactivateRowWithReason(name: string, reason: string): Promise<void> {
-    await this.openRowAction(name, 'Desactivar');
-    await expect(this.page.getByRole('heading', { name: 'Desactivar Afiliado' })).toBeVisible();
+  private get deactivateModal(): Locator {
+    return this.page.locator('.fixed.inset-0.z-50', { hasText: 'Desactivar Afiliado' });
+  }
 
-    await this.page.getByPlaceholder('Ej: No realizó el pago del mes').fill(reason);
+  /**
+   * "Motivo de la deshabilitación" es un select OBLIGATORIO (ver
+   * affiliate-status-modal.ts `onConfirm()`): sin seleccionarlo, el modal
+   * nunca confirma y solo muestra un toast de error. `reasonType` por
+   * defecto usa 'NO_PAYMENT' ("No pagó") para no romper los specs que ya
+   * llamaban a este método sin ese argumento.
+   */
+  async deactivateRowWithReason(
+    name: string,
+    reason: string,
+    reasonType: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST' = 'NO_PAYMENT'
+  ): Promise<void> {
+    await this.openRowAction(name, 'Desactivar');
+    const modal = this.deactivateModal;
+    await expect(modal.getByRole('heading', { name: 'Desactivar Afiliado' })).toBeVisible();
+
+    await modal.locator('select').selectOption(reasonType);
+    await modal.locator('textarea').fill(reason);
 
     const [response] = await Promise.all([
       this.page.waitForResponse(
         (res) => /\/affiliates\/\d+\/toggle/.test(res.url()) && res.request().method() === 'PATCH'
       ),
-      this.page.getByRole('button', { name: /Sí, deshabilitar/ }).click(),
+      modal.getByRole('button', { name: /Sí, deshabilitar/ }).click(),
     ]);
     expect(response.ok()).toBe(true);
   }
 
   async expectRowDisabled(name: string): Promise<void> {
     await expect(this.rowByName(name).getByText('Deshabilitado')).toBeVisible();
+  }
+
+  /** Abre el modal de desactivar para una fila, sin confirmar (para probar el propio modal: validaciones, estado inicial, etc.). */
+  async openDeactivateModal(name: string): Promise<Locator> {
+    await this.openRowAction(name, 'Desactivar');
+    const modal = this.deactivateModal;
+    await expect(modal.getByRole('heading', { name: 'Desactivar Afiliado' })).toBeVisible();
+    return modal;
+  }
+
+  // ── Cabecera "congelada" de la tabla ──────────────────────────────
+
+  /**
+   * El header congelado NO es `position: sticky` en el thead real: es un
+   * clon del thead insertado por JS como hijo directo de <body>, con
+   * `position: fixed`, que se muestra/oculta según el scroll de la página
+   * (ver TableScrollComponent.updateFrozenVisibility()). Se detecta
+   * buscando ese clon directamente en vez de asumir CSS sticky.
+   */
+  async isFrozenHeaderVisible(): Promise<boolean> {
+    return this.page.evaluate(() => {
+      const wrapper = Array.from(document.body.querySelectorAll(':scope > div')).find(
+        (div) => (div as HTMLElement).style.position === 'fixed' && div.querySelector('table thead')
+      ) as HTMLElement | undefined;
+      return !!wrapper && getComputedStyle(wrapper).display !== 'none';
+    });
+  }
+
+  // ── Columna "Fecha ingreso" ────────────────────────────────────────
+
+  /**
+   * Texto (dd/MM/yyyy) de la columna "Fecha ingreso" (16ª columna de la
+   * tabla, ver thead en affiliates-list.html) para cada fila visible.
+   * Filas sin fecha muestran "—" y se excluyen.
+   */
+  async getVisibleEntryDates(): Promise<string[]> {
+    const texts = await this.page.locator('tbody tr td:nth-child(16)').allTextContents();
+    return texts.map((t) => t.trim()).filter((t) => t !== '—');
+  }
+
+  // ── Acordeón del formulario (Sección 1 / Sección 2) ───────────────
+
+  /**
+   * El contenido de la Sección 2 solo se puede usar como señal de "abierta"
+   * una vez que sus catálogos (Plan, etc.) terminan de cargar de forma
+   * async, lo que puede tardar y da falsos negativos justo después del
+   * click. La rotación del chevron (`[class.rotate-180]="section1Open"` /
+   * "section2Open") refleja el estado del componente de forma inmediata y
+   * sin depender de esa carga, así que se usa como señal en su lugar.
+   */
+  async isSection1Open(): Promise<boolean> {
+    const chevron = this.page.locator('form').locator('button', { hasText: 'Datos Personales' }).locator('svg');
+    return (await chevron.getAttribute('class'))?.includes('rotate-180') ?? false;
+  }
+
+  async isSection2Open(): Promise<boolean> {
+    const chevron = this.page.locator('form').locator('button', { hasText: 'Datos de Afiliación' }).locator('svg');
+    return (await chevron.getAttribute('class'))?.includes('rotate-180') ?? false;
+  }
+
+  async toggleSection1(): Promise<void> {
+    await this.page.getByText('Datos Personales').click();
+  }
+
+  async toggleSection2(): Promise<void> {
+    await this.page.getByText('Datos de Afiliación').click();
   }
 }

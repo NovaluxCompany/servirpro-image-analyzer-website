@@ -130,6 +130,10 @@ test.describe('Afiliados — flujo: origen, documentos múltiples, correo con ob
     await affiliatesPage.searchByName(fullName!);
     await affiliatesPage.openEditForRow(fullName!);
     await expect(page.getByRole('heading', { name: 'Editar Afiliado', level: 2 })).toBeVisible();
+    // El modal de edición también arranca con solo la Sección 1 abierta
+    // (acordeón: una sola sección visible a la vez), así que hay que abrir
+    // la Sección 2 para que el campo "Origen del afiliado" exista en el DOM.
+    await affiliatesPage.openSectionAfiliacion();
     await expect.poll(() => affiliatesPage.getReferralTypeValue()).toBe('REFERIDO');
     await page.getByRole('button', { name: 'Cancelar' }).click();
   });
@@ -221,6 +225,8 @@ test.describe('Afiliados — origen Meta/Web exige fecha de origen', () => {
     await affiliatesPage.searchByName(fullName!);
     await affiliatesPage.openEditForRow(fullName!);
     await expect(page.getByRole('heading', { name: 'Editar Afiliado', level: 2 })).toBeVisible();
+    // Ver comentario en el test anterior: la Sección 2 arranca cerrada en edición.
+    await affiliatesPage.openSectionAfiliacion();
 
     await expect.poll(() => affiliatesPage.getReferralTypeValue()).toBe('META');
     await expect.poll(() => affiliatesPage.getOriginDateValue()).toBe(originDate);
@@ -243,6 +249,7 @@ test.describe('Afiliados — origen Meta/Web exige fecha de origen', () => {
 
     await affiliatesPage.openEditForRow(fullName!);
     await expect(page.getByRole('heading', { name: 'Editar Afiliado', level: 2 })).toBeVisible();
+    await affiliatesPage.openSectionAfiliacion();
     const originDateInput = page.locator('form').locator('input[formcontrolname="originDate"]');
     await expect(originDateInput).toBeEnabled();
 
