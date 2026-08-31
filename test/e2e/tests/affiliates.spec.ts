@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { authStateFile } from '../fixtures/credentials';
-import { AffiliatesPage } from '../pages/affiliates.page';
+import { AffiliatesPage, AFFILIATE_DOCUMENT_FIXTURES_MULTIPLE } from '../pages/affiliates.page';
 import { testAffiliateName, randomDocumentNumber, randomEmail } from '../utils/test-data';
 import { saveCreatedAffiliateName, loadCreatedAffiliateName } from '../utils/shared-state';
 
@@ -53,5 +53,107 @@ test.describe('Afiliados', () => {
 
     await affiliatesPage.searchByName(knownName!);
     await expect(affiliatesPage.rowByName(knownName!)).toBeVisible({ timeout: 20_000 });
+  });
+});
+
+test.describe('Afiliados — filtros nuevos (fecha de ingreso / estado de pago)', () => {
+  test('filtro por rango de fecha de ingreso muestra estado vacío para un rango sin datos', async ({ page }) => {
+    const affiliatesPage = new AffiliatesPage(page);
+    await affiliatesPage.goto();
+    await affiliatesPage.waitForTableLoaded(20_000);
+
+    // Rango angosto y muy futuro: ningún afiliado real debería tener fecha
+    // de ingreso ahí, así que el resultado esperado y estable es "sin datos".
+    await affiliatesPage.filterByEntryDateRange('2099-01-01', '2099-01-02');
+    await expect(affiliatesPage.emptyStateMessage).toBeVisible({ timeout: 15_000 });
+
+    await affiliatesPage.clearEntryDateRangeFilter();
+  });
+
+  test('filtro por estado de pago del mes no rompe el listado', async ({ page }) => {
+    const affiliatesPage = new AffiliatesPage(page);
+    await affiliatesPage.goto();
+    await affiliatesPage.waitForTableLoaded(20_000);
+
+    await affiliatesPage.filterByPaymentStatus('paid');
+    await affiliatesPage.waitForTableLoaded(15_000);
+
+    await affiliatesPage.filterByPaymentStatus('unpaid');
+    await affiliatesPage.waitForTableLoaded(15_000);
+
+    await affiliatesPage.filterByPaymentStatus('');
+  });
+});
+
+/**
+ * Flujo encadenado sobre UN mismo afiliado de prueba (creado en el primer
+ * test de este describe): Origen del afiliado + documentos múltiples +
+ * correo con observación + desactivación con motivo. Se encadena en vez de
+ * crear un afiliado por test para que "enviar correo" corra ANTES de
+ * "desactivar" (un afiliado inactivo ya no permite enviar correo) y para no
+ * pagar 3-4 veces el costo de crear un afiliado completo (catálogos con
+ * hasta 45s de carga).
+ */
+test.describe('Afiliados — flujo: origen, documentos múltiples, correo con observación y desactivación con motivo', () => {
+  test.describe.configure({ mode: 'serial' });
+  let fullName: string | undefined;
+
+  test('crea un afiliado con Origen "Referido" y varios documentos adjuntos', async ({ page }) => {
+    test.setTimeout(120_000);
+
+    const affiliatesPage = new AffiliatesPage(page);
+    const { firstName, lastName } = testAffiliateName('FlujoNuevo');
+    const documentNumber = randomDocumentNumber();
+    const email = randomEmail(firstName);
+
+    await affiliatesPage.goto();
+    await affiliatesPage.openCreateModal();
+    await affiliatesPage.fillPersonalData({ documentNumber, firstName, lastName, email });
+    await affiliatesPage.openSectionAfiliacion();
+    await affiliatesPage.fillAffiliationData({
+      referralType: 'REFERIDO',
+      documentFiles: AFFILIATE_DOCUMENT_FIXTURES_MULTIPLE,
+    });
+    await affiliatesPage.submit();
+    await affiliatesPage.expectCreatedToastOrModalClosed();
+
+    fullName = `${firstName} ${lastName}`;
+    await affiliatesPage.searchByName(fullName);
+    await expect(affiliatesPage.rowByName(fullName)).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('el "Origen del afiliado" queda guardado y se refleja al reabrir en edición', async ({ page }) => {
+    test.skip(!fullName, 'Corre primero el test de creación en esta misma corrida.');
+
+    const affiliatesPage = new AffiliatesPage(page);
+    await affiliatesPage.goto();
+    await affiliatesPage.searchByName(fullName!);
+    await affiliatesPage.openEditForRow(fullName!);
+    await expect(page.getByRole('heading', { name: 'Editar Afiliado', level: 2 })).toBeVisible();
+    await expect.poll(() => affiliatesPage.getReferralTypeValue()).toBe('REFERIDO');
+    await page.getByRole('button', { name: 'Cancelar' }).click();
+  });
+
+  test('los varios documentos adjuntados quedan disponibles en "Ver documentos"', async ({ page }) => {
+    test.skip(!fullName, 'Corre primero el test de creación en esta misma corrida.');
+
+    const affiliatesPage = new AffiliatesPage(page);
+    await affiliatesPage.goto();
+    await affiliatesPage.searchByName(fullName!);
+    await affiliatesPage.openDocumentsForRow(fullName!);
+    await expect(affiliatesPage.documentRows()).toHaveCount(2);
+  });
+
+  test('desactivar con motivo deja al afiliado como Deshabilitado', async ({ page }) => {
+    test.skip(!fullName, 'Corre primero el test de creación en esta misma corrida.');
+
+    const affiliatesPage = new AffiliatesPage(page);
+    await affiliatesPage.goto();
+    await affiliatesPage.searchByName(fullName!);
+    await affiliatesPage.deactivateRowWithReason(
+      fullName!,
+      'Prueba automatizada: motivo de desactivación (Playwright).'
+    );
+    await affiliatesPage.expectRowDisabled(fullName!);
   });
 });

@@ -15,6 +15,9 @@ import { SystemUser } from '../../interfaces/user.interface';
 import { RolesService } from '../../../roles/services/roles.service';
 import { Role } from '../../../roles/interfaces/role.interface';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { ConfigGeneralService } from '../../../../core/service/config-general.service';
+import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
+import { TableScrollComponent } from '../../../../shared/components/table-scroll/table-scroll';
 
 type UsersTab = 'usuarios' | 'asignar-rol';
 
@@ -30,7 +33,7 @@ type UserModal =
 @Component({
   selector: 'app-users-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './users-list.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -39,21 +42,23 @@ export class UsersListComponent implements OnInit {
   private _toast = inject(ToastService);
   private _rolesService = inject(RolesService);
   private _permissionService = inject(PermissionService);
+  private _configGeneralService = inject(ConfigGeneralService);
 
   protected readonly roles = signal<Role[]>([]);
 
-  protected readonly canViewUsers = this._permissionService.can('view', '/usuarios');
-  protected readonly canAssignRole = this._permissionService.can('view', '/usuarios/asignar-rol');
-  protected readonly canEditRoleAssignment = this._permissionService.can('edit', '/usuarios/asignar-rol');
-  protected readonly canCreateUsers = this._permissionService.can('create', '/usuarios');
+  protected readonly canViewUsers = computed(() => this._permissionService.hasMenuEntry('/usuarios'));
+  protected readonly canAssignRole = computed(() => this._permissionService.hasMenuEntry('/usuarios/asignar-rol'));
+  protected readonly canEditRoleAssignment = computed(() => this._permissionService.can('edit', '/usuarios/asignar-rol'));
+  protected readonly canCreateUsers = computed(() => this._permissionService.can('create', '/usuarios'));
 
   // ── Estado general ────────────────────────────────────────────────
   protected readonly isLoading = signal(false);
   protected readonly isSubmitting = signal(false);
-  protected readonly activeTab = signal<UsersTab>(this.canViewUsers ? 'usuarios' : 'asignar-rol');
+  protected readonly activeTab = signal<UsersTab>(this.canViewUsers() ? 'usuarios' : 'asignar-rol');
   protected readonly activeModal = signal<UserModal>('none');
   protected readonly users = signal<SystemUser[]>([]);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly isPermissionError = signal(false);
   protected readonly createErrorMessage = signal<string | null>(null);
 
   // ── Dropdown acciones ─────────────────────────────────────────────
@@ -119,7 +124,7 @@ export class UsersListComponent implements OnInit {
 
   // ── Paginación ────────────────────────────────────────────────────
   protected readonly currentPage = signal(1);
-  protected readonly pageSize = signal(10);
+  protected readonly pageSize = signal(MIN_PAGE_SIZE);
 
   // ── Computed ──────────────────────────────────────────────────────
   protected readonly filteredUsers = computed(() => {
@@ -162,19 +167,35 @@ export class UsersListComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    if (!this.canViewUsers && !this.canAssignRole) {
+    if (!this.canViewUsers() && !this.canAssignRole()) {
       this._toast.showError('Tu rol no tiene permisos sobre este módulo.');
       return;
     }
+    this._configGeneralService.getValue(REGISTROS_POR_PAGINA_KEY).subscribe({
+      next: (value) => {
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed) && parsed >= MIN_PAGE_SIZE) this.pageSize.set(parsed);
+      },
+      error: () => {},
+    });
     this.loadUsers();
     this.loadRoles();
+  }
+
+  protected onPageSizeChange(newSize: number): void {
+    this.pageSize.set(newSize);
+    this.currentPage.set(1);
   }
 
   // ── Carga de roles ───────────────────────────────────────────────
   protected loadRoles(): void {
     this._rolesService.findAll(1, 100).subscribe({
       next: (res) => this.roles.set(res.items.filter(r => r.isActive)),
-      error: (err: Error) => this._toast.showError(err.message),
+      error: (err: Error & { status?: number }) => {
+        if (err.status !== 403) {
+          this._toast.showError(err.message);
+        }
+      },
     });
   }
 
@@ -182,13 +203,18 @@ export class UsersListComponent implements OnInit {
   protected loadUsers(): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
+    this.isPermissionError.set(false);
     this._service.getUsers().subscribe({
       next: (users) => {
         this.users.set(users);
         this.isLoading.set(false);
       },
-      error: (err: Error) => {
-        this.errorMessage.set(err.message);
+      error: (err: Error & { status?: number }) => {
+        if (err.status === 403) {
+          this.isPermissionError.set(true);
+        } else {
+          this.errorMessage.set(err.message);
+        }
         this.isLoading.set(false);
       },
     });
@@ -221,6 +247,7 @@ export class UsersListComponent implements OnInit {
 
   // ── Crear usuario ─────────────────────────────────────────────────
   protected openCreateModal(): void {
+    if (!this._permissionService.check('create', '/usuarios', 'Tu rol no tiene permiso para crear usuarios.')) return;
     this.createForm = { name: '', email: '', password: '', documentNumber: '' };
     this.createErrorMessage.set(null);
     this.createTouched.set({ name: false, email: false, password: false });

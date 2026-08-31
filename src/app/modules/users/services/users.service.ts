@@ -19,7 +19,9 @@ export class UsersManagementService {
   private handleError(error: any): Observable<never> {
     const message =
       error?.error?.message ?? error?.message ?? 'Error inesperado. Intenta de nuevo.';
-    return throwError(() => new Error(message));
+    const wrapped = new Error(message) as Error & { status?: number };
+    wrapped.status = error?.status;
+    return throwError(() => wrapped);
   }
 
   getUsers(): Observable<SystemUser[]> {

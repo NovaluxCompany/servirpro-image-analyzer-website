@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, catchError, throwError } from 'rxjs';
+import { Observable, catchError, from, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../../core/service/token.service';
 import { Transaction } from '../interfaces/transaction.interface';
@@ -91,6 +91,18 @@ export class TransactionsService {
       .pipe(catchError(this.handleError));
   }
 
+  getLockStatus(): Observable<{ locked: boolean }> {
+    return this._http
+      .get<{ locked: boolean }>(`${this.baseUrl}/lock-status`, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError));
+  }
+
+  setLockStatus(locked: boolean): Observable<{ locked: boolean }> {
+    return this._http
+      .patch<{ locked: boolean }>(`${this.baseUrl}/lock`, { locked }, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError));
+  }
+
   exportToExcel(filters?: TransactionFilters): Observable<Blob> {
     let params = new HttpParams().set('isActive', 'true');
 
@@ -110,14 +122,36 @@ export class TransactionsService {
         params,
         responseType: 'blob'
       })
-      .pipe(catchError(this.handleError));
+      .pipe(catchError((error) => this.handleBlobError(error)));
   }
+
+  // Con responseType 'blob', un error 400 con cuerpo JSON (ej. "no hay resultados
+  // para ese rango") llega como Blob en error.error, no como objeto parseado —
+  // hay que leerlo como texto y parsearlo antes de poder mostrar el mensaje real.
+  private handleBlobError = (error: any): Observable<never> => {
+    const blob: Blob | undefined = error?.error;
+    if (blob instanceof Blob && blob.type?.includes('json')) {
+      return from(blob.text()).pipe(
+        switchMap((text: string) => {
+          try {
+            error.error = JSON.parse(text);
+          } catch {
+            // deja error.error como venía si no es JSON parseable
+          }
+          return this.handleError(error);
+        }),
+      );
+    }
+    return this.handleError(error);
+  };
 
   private handleError(error: any): Observable<never> {
     let errorMessage = 'Ha ocurrido un error inesperado';
 
     if (error.status === 401) {
       errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
+    } else if (error.status === 403) {
+      errorMessage = error.error?.message || 'No tienes permiso para ver esta información.';
     } else if (error.status === 400) {
       if (error.error?.message) {
         if (Array.isArray(error.error.message)) {
@@ -136,6 +170,8 @@ export class TransactionsService {
       errorMessage = 'Error del servidor. Por favor, intenta más tarde.';
     }
 
-    return throwError(() => new Error(errorMessage));
+    const wrapped = new Error(errorMessage) as Error & { status?: number };
+    wrapped.status = error.status;
+    return throwError(() => wrapped);
   }
 }

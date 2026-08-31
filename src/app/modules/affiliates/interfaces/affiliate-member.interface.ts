@@ -1,6 +1,6 @@
 export type DocumentType = 'CC' | 'CE' | 'TI' | 'NIT' | 'PPT';
 
-// ── Nueva Interfaz Relacional para Documentos ──────────────────────
+// ── Nueva Interfaz Relacion al para Documentos ──────────────────────
 export interface AffiliateDocument {
   id: number;
   affiliationId: number;
@@ -46,10 +46,17 @@ export interface AffiliateMember {
   pensionName?: string;
   compensationBoxId?: string;
   compensationBoxName?: string;
+  branchId?: string;
+  branchName?: string;
   isActive?: boolean;
   emailSent?: boolean;
   observation?: string;
+  emailObservation?: string;
   entryDate?: string;
+  discount?: number;
+  affiliateType?: 'INDEPENDIENTE' | 'DEPENDIENTE';
+  isNew?: boolean;
+  referralType?: 'NUEVO' | 'REINGRESO' | 'REFERIDO';
   // Datos ADRES
   eps?: string;
   arl?: number;
@@ -108,6 +115,7 @@ export interface CreateAffiliateMemberDto {
   epsId?: number | null;
   pensionId?: number | null;
   compensationBoxId?: number | null;
+  branchId?: number | null;
   isActive?: boolean;
   entryDate?: string;
   arl?: number;
@@ -117,6 +125,11 @@ export interface CreateAffiliateMemberDto {
   certEps?: boolean;
   certPension?: boolean;
   certCcf?: boolean;
+  discount?: number;
+  affiliateType?: 'INDEPENDIENTE' | 'DEPENDIENTE';
+  // isNew solo se captura al crear el afiliado; no se expone en edición
+  isNew?: boolean;
+  referralType?: 'NUEVO' | 'REINGRESO' | 'REFERIDO';
 }
 
-export interface UpdateAffiliateMemberDto extends Partial<CreateAffiliateMemberDto> {}
+export interface UpdateAffiliateMemberDto extends Partial<Omit<CreateAffiliateMemberDto, 'isNew'>> {}

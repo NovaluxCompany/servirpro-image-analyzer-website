@@ -1,0 +1,11 @@
+<!-- Barra de scroll horizontal "espejo", siempre visible arriba de la tabla -->
+<div #topScroll (scroll)="onTopScroll()" class="overflow-x-auto overflow-y-hidden">
+  <div #topScrollInner style="height: 1px;"></div>
+</div>
+
+<!-- Contenedor real: solo scroll horizontal. La tabla crece de largo lo que
+     necesite y el scroll vertical lo maneja la página (scroll "de afuera"),
+     no un cuadro interno -->
+<div #mainScroll (scroll)="onMainScroll()" class="overflow-x-auto">
+  <ng-content></ng-content>
+</div>

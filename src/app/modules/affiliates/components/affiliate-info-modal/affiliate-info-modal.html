@@ -1,0 +1,86 @@
+@if (isVisible() && affiliate()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between gap-3 px-6 py-4 bg-gradient-to-r from-indigo-600 to-indigo-700">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          </div>
+          <h3 class="text-base font-bold text-white">Información del afiliado</h3>
+        </div>
+        <button type="button" (click)="onClose()" class="text-white/80 hover:text-white transition-colors">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Body: solo lectura -->
+      <div class="px-6 py-5 overflow-y-auto">
+        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Datos personales</h4>
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 mb-6">
+          <div><dt class="text-xs text-gray-500">Nombre completo</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.fullName) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Tipo / Número de documento</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.documentType) }} {{ display(affiliate()?.documentNumber) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Fecha de nacimiento</dt><dd class="text-sm font-medium text-gray-900">{{ formatDate(affiliate()?.birthDate) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Vencimiento de documento</dt><dd class="text-sm font-medium text-gray-900">{{ formatDate(affiliate()?.documentExpDate) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Teléfono</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.phone) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Correo electrónico</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.email) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Dirección</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.address) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Municipio</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.municipality) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Profesión / Cargo</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.profession || affiliate()?.charge) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Género</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.gender) }}</dd></div>
+        </dl>
+
+        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Datos de afiliación</h4>
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 mb-6">
+          <div><dt class="text-xs text-gray-500">Plan</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.planName) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Empresa</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.companyName) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Agrupador</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.grouperName) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Asesor</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.advisorName) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">EPS</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.epsName) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Pensión</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.pensionName) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Caja de compensación</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.compensationBoxName) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Sede</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.branchName) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Referencia</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.reference) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Fecha de ingreso</dt><dd class="text-sm font-medium text-gray-900">{{ formatDate(affiliate()?.entryDate) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Tipo de afiliado</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.affiliateType) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Origen</dt><dd class="text-sm font-medium text-gray-900">{{ referralTypeLabel(affiliate()?.referralType) }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Estado</dt>
+            <dd class="text-sm font-medium">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="affiliate()?.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
+                {{ affiliate()?.isActive ? 'Activo' : 'Inactivo' }}
+              </span>
+            </dd>
+          </div>
+        </dl>
+
+        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Certificados</h4>
+        <dl class="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 mb-2">
+          <div><dt class="text-xs text-gray-500">ARL</dt><dd class="text-sm font-medium" [class]="affiliate()?.certArl ? 'text-green-600 font-semibold' : 'text-red-600'">{{ affiliate()?.certArl ? 'Sí' : 'No' }}</dd></div>
+          <div><dt class="text-xs text-gray-500">EPS</dt><dd class="text-sm font-medium" [class]="affiliate()?.certEps ? 'text-green-600 font-semibold' : 'text-red-600'">{{ affiliate()?.certEps ? 'Sí' : 'No' }}</dd></div>
+          <div><dt class="text-xs text-gray-500">Pensión</dt><dd class="text-sm font-medium" [class]="affiliate()?.certPension ? 'text-green-600 font-semibold' : 'text-red-600'">{{ affiliate()?.certPension ? 'Sí' : 'No' }}</dd></div>
+          <div><dt class="text-xs text-gray-500">CCF</dt><dd class="text-sm font-medium" [class]="affiliate()?.certCcf ? 'text-green-600 font-semibold' : 'text-red-600'">{{ affiliate()?.certCcf ? 'Sí' : 'No' }}</dd></div>
+        </dl>
+
+        @if (affiliate()?.observation) {
+          <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 mt-4">Observación</h4>
+          <p class="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{{ affiliate()?.observation }}</p>
+        }
+      </div>
+
+      <!-- Footer -->
+      <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <button type="button" (click)="onClose()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          Cerrar
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

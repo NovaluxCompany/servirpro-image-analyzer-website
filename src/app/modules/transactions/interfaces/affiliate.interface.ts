@@ -7,6 +7,9 @@ export interface Affiliate {
   entryDate: string;
   plan: string;
   price: number;
+  // Snapshot informativo del descuento del afiliado al momento del pago.
+  // Puramente visual: no afecta price ni ningún valor enviado a Siigo.
+  discount?: number | null;
   eps: string;
   reference: string;
   deposit?: string;

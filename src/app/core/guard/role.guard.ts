@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { TokenService } from '../service/token.service';
 import { ToastService } from '../service/toast.service';
+import { AuthService } from '../service/auth.service';
 
 const normalizePath = (path: string): string => {
   const cleaned = (path ?? '').split('?')[0].split('#')[0].trim();
@@ -27,8 +28,29 @@ export const roleGuard: CanActivateFn = (
 ) => {
   const tokenService = inject(TokenService);
   const toastService = inject(ToastService);
+  const authService = inject(AuthService);
   const router = inject(Router);
 
+  if (!tokenService.getUser()) {
+    router.navigate(['/']);
+    return false;
+  }
+
+  // Refresca roles/menús/permisos contra el backend en background, sin bloquear
+  // la navegación actual (que evalúa con lo que ya está en caché). Así, cambios
+  // hechos en "asignar permisos" quedan reflejados desde la siguiente navegación,
+  // sin requerir un nuevo login y sin que cada click espere una respuesta de red.
+  authService.refreshUser().subscribe();
+
+  return evaluateAccess(state, tokenService, toastService, router);
+};
+
+function evaluateAccess(
+  state: RouterStateSnapshot,
+  tokenService: TokenService,
+  toastService: ToastService,
+  router: Router
+): boolean {
   const user = tokenService.getUser();
 
   if (!user) {
@@ -59,11 +81,14 @@ export const roleGuard: CanActivateFn = (
     return false;
   }
 
-  // Si no hay URL anterior (primera carga), redirigir al primer menu permitido en BD,
-  // o al login si el usuario no tiene ningún menú asignado.
+  // Si no hay URL anterior (primera carga), redirigir a la primera ruta de nivel raíz
+  // (un solo segmento) que el usuario tenga permitida en BD; /menu es administrativo
+  // y nunca debe usarse como destino. Si no tiene ninguna ruta raíz navegable
+  // (ej. solo tiene permisos en sub-rutas/hijos), se manda al login.
   const fallback = menuPaths
     .map((p) => normalizePath(p))
-    .find((path) => path !== '/') ?? '/login';
+    .find((path) => path !== '/' && path !== '/menu' && path.split('/').filter(Boolean).length === 1)
+    ?? '/login';
   router.navigate([fallback]);
   return false;
 };

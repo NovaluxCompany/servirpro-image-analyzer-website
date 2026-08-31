@@ -20,7 +20,7 @@
 
     <!-- Tabs -->
     <div class="inline-flex rounded-xl border border-gray-200 bg-white p-1 mb-6">
-      @if (canViewRoles) {
+      @if (canViewRoles()) {
       <button type="button" (click)="activeTab.set('roles')"
         [class]="activeTab() === 'roles'
           ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
@@ -28,7 +28,7 @@
         Roles
       </button>
       }
-      @if (canAssignPermissions) {
+      @if (canAssignPermissions()) {
       <button type="button" (click)="activeTab.set('permissions')"
         [class]="activeTab() === 'permissions'
           ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-blue-700 text-white shadow-sm'
@@ -38,11 +38,11 @@
       }
     </div>
 
-    @if (activeTab() === 'permissions' && canAssignPermissions) {
+    @if (activeTab() === 'permissions' && canAssignPermissions()) {
       <app-assign-permissions />
     }
 
-    @if (activeTab() === 'roles' && canViewRoles) {
+    @if (activeTab() === 'roles' && canViewRoles()) {
     <!-- Tabla -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
 
@@ -54,9 +54,10 @@
           &nbsp;&mdash;&nbsp; Página {{ currentPage() }} de {{ totalPages }}
           }
         </p>
+        <app-page-size-control [pageSize]="pageSize()" (pageSizeChange)="onPageSizeChange($event)" />
       </div>
 
-      <div class="overflow-x-auto overflow-y-auto max-h-[calc(100vh-18rem)]">
+      <app-table-scroll>
         <table class="w-full text-sm text-left text-gray-600">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
@@ -89,10 +90,14 @@
                         d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
                     </svg>
                   </div>
-                  <p class="text-gray-500 font-medium">No se encontraron roles registrados</p>
-                  <button (click)="openCreateModal()" class="text-blue-600 hover:underline text-sm font-medium">
-                    Crear el primero
-                  </button>
+                  @if (isPermissionError()) {
+                    <p class="text-gray-500 font-medium">No cuenta con permisos para ver la información de esta tabla</p>
+                  } @else {
+                    <p class="text-gray-500 font-medium">No se encontraron roles registrados</p>
+                    <button (click)="openCreateModal()" class="text-blue-600 hover:underline text-sm font-medium">
+                      Crear el primero
+                    </button>
+                  }
                 </div>
               </td>
             </tr>
@@ -176,7 +181,7 @@
             }
           </tbody>
         </table>
-      </div>
+      </app-table-scroll>
 
       <!-- Paginacion -->
       @if (totalPages > 1) {

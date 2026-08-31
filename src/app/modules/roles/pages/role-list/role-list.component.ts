@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, HostListener } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RolesService } from '../../services/roles.service';
 import { Role } from '../../interfaces/role.interface';
@@ -6,31 +6,37 @@ import { RoleFormModalComponent } from '../../components/role-form-modal/role-fo
 import { AssignPermissionsComponent } from '../../components/assign-permissions/assign-permissions.component';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { ConfigGeneralService } from '../../../../core/service/config-general.service';
+import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
+import { TableScrollComponent } from '../../../../shared/components/table-scroll/table-scroll';
 
 @Component({
   selector: 'app-role-list',
   standalone: true,
-  imports: [CommonModule, RoleFormModalComponent, AssignPermissionsComponent],
+  imports: [CommonModule, RoleFormModalComponent, AssignPermissionsComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './role-list.component.html',
 })
 export class RoleListComponent implements OnInit {
   private rolesService = inject(RolesService);
   private toastService = inject(ToastService);
   private permissionService = inject(PermissionService);
+  private configGeneralService = inject(ConfigGeneralService);
   protected Math = Math;
 
-  canViewRoles = this.permissionService.can('view', '/roles');
-  canAssignPermissions = this.permissionService.can('view', '/roles/asignar-permisos');
+  canViewRoles = computed(() => this.permissionService.hasMenuEntry('/roles'));
+  canAssignPermissions = computed(() => this.permissionService.hasMenuEntry('/roles/asignar-permisos'));
+  canCreateRoles = computed(() => this.permissionService.can('create', '/roles'));
 
-  activeTab = signal<'roles' | 'permissions'>(this.canViewRoles ? 'roles' : 'permissions');
+  activeTab = signal<'roles' | 'permissions'>(this.canViewRoles() ? 'roles' : 'permissions');
 
   roles = signal<Role[]>([]);
   totalItems = signal(0);
   currentPage = signal(1);
-  pageSize = signal(10);
+  pageSize = signal(MIN_PAGE_SIZE);
   showFormModal = signal(false);
   selectedRole = signal<Role | null>(null);
   isLoading = signal(false);
+  isPermissionError = signal(false);
   roleToToggle = signal<Role | null>(null);
   isToggling = signal(false);
 
@@ -43,19 +49,37 @@ export class RoleListComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.configGeneralService.getValue(REGISTROS_POR_PAGINA_KEY).subscribe({
+      next: (value) => {
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed) && parsed >= MIN_PAGE_SIZE) this.pageSize.set(parsed);
+        this.loadRoles();
+      },
+      error: () => this.loadRoles(),
+    });
+  }
+
+  onPageSizeChange(newSize: number) {
+    this.pageSize.set(newSize);
+    this.currentPage.set(1);
     this.loadRoles();
   }
 
   loadRoles() {
     this.isLoading.set(true);
+    this.isPermissionError.set(false);
     this.rolesService.findAll(this.currentPage(), this.pageSize()).subscribe({
       next: (response) => {
         this.roles.set(response.items);
         this.totalItems.set(response.meta.totalItems);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.toastService.showError('Error al cargar los roles. Intenta de nuevo.');
+      error: (error: { status?: number }) => {
+        if (error?.status === 403) {
+          this.isPermissionError.set(true);
+        } else {
+          this.toastService.showError('Error al cargar los roles. Intenta de nuevo.');
+        }
         this.isLoading.set(false);
       }
     });
@@ -76,6 +100,7 @@ export class RoleListComponent implements OnInit {
   }
 
   openCreateModal() {
+    if (!this.permissionService.check('create', '/roles', 'Tu rol no tiene permiso para crear roles.')) return;
     this.selectedRole.set(null);
     this.showFormModal.set(true);
   }
