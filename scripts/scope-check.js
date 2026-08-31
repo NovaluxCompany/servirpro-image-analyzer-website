@@ -8,7 +8,7 @@
  * el chequeo local de front y back usen la misma key (GEMINI_API_KEY) y no
  * dependas de la API de Anthropic solo para esto. El Angular PR Review Agent
  * que corre en GitHub Actions (.github/scripts/angular-review.js) sigue
- * usando Claude sin cambios — esto es solo para la validación rápida local.
+ * usando Gemini sin cambios — esto es solo para la validación rápida local.
  *
  * Uso:
  *   npm run scope-check                     # valida todo lo no commiteado (git diff HEAD)
@@ -62,15 +62,33 @@ function getDiff(args) {
   }
 }
 
+// Si el texto trae marcadores <!-- SCOPE:START --> ... <!-- SCOPE:END -->
+// (el mismo formato que usa la plantilla de PR y el bot de CI en GitHub),
+// se usa SOLO lo que está entre ellos. Así el chequeo local compara contra
+// exactamente el mismo texto que el bot del PR, sin el resto de la
+// plantilla (encabezados, comentarios de instrucciones, "Cómo probarlo",
+// etc.) que no son requerimientos y solo confunden al modelo.
+function extractScopeBlock(text) {
+  const match = text.match(/<!--\s*SCOPE:START\s*-->([\s\S]*?)<!--\s*SCOPE:END\s*-->/);
+  if (match) {
+    const inner = match[1].trim();
+    if (inner.length > 0) return inner;
+  }
+  return text.trim();
+}
+
 function getRequirements(path) {
+  let raw;
   if (path === '-') {
-    return fs.readFileSync(0, 'utf8').trim();
+    raw = fs.readFileSync(0, 'utf8');
+  } else {
+    if (!fs.existsSync(path)) {
+      console.error(`❌ No existe "${path}". Crea ese archivo en la raíz del proyecto y pega ahí, como texto, la lista de requerimientos de la tarea (o pasa --requirements <ruta>).`);
+      process.exit(2);
+    }
+    raw = fs.readFileSync(path, 'utf8');
   }
-  if (!fs.existsSync(path)) {
-    console.error(`❌ No existe "${path}". Crea ese archivo en la raíz del proyecto y pega ahí, como texto, la lista de requerimientos de la tarea (o pasa --requirements <ruta>).`);
-    process.exit(2);
-  }
-  return fs.readFileSync(path, 'utf8').trim();
+  return extractScopeBlock(raw);
 }
 
 async function callGemini(diff, requirements) {
