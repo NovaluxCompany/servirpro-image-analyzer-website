@@ -1,19 +1,23 @@
 /**
- * 🅰️ Angular PR Review Agent
- * Analiza PRs con foco en Angular best practices, calidad de código y seguridad
- * Powered by Google AI Studio (Gemini 2.5 Flash) — Free tier, sin tarjeta de crédito
+ * 🤖 Angular PR Review Agent
+ * Analiza PRs con foco en Angular best practices, calidad de código y seguridad.
+ * Powered by Claude (Anthropic API — modelo claude-opus-4-8).
  */
 
 const fs = require('fs');
 const https = require('https');
+const Anthropic = require('@anthropic-ai/sdk');
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const PR_NUMBER = process.env.PR_NUMBER;
 const PR_TITLE = process.env.PR_TITLE;
 const PR_AUTHOR = process.env.PR_AUTHOR;
+const PR_BODY = process.env.PR_BODY || '';
 const REPO = process.env.REPO;
 const [OWNER, REPO_NAME] = REPO.split('/');
+
+const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
 // ─── Leer el diff del PR ─────────────────────────────────────────────────────
 function getDiff() {
@@ -24,17 +28,159 @@ function getDiff() {
   }
 }
 
-// ─── Llamar a Google AI Studio (Gemini 2.5 Flash) ────────────────────────────
-async function callGemini(diff) {
-  const systemPrompt = `Eres un experto en Angular (v17+), TypeScript y seguridad web.
-Tu tarea es revisar Pull Requests y proporcionar feedback estructurado, accionable y preciso.
-Siempre respondes en español. Tu tono es profesional pero amigable.`;
+// ─── Chequeo determinístico: console.log prohibido ──────────────────────────
+// No confiamos únicamente en el criterio del modelo para esta regla: se
+// escanean las líneas añadidas del diff y, si aparece un console.log, el PR
+// queda marcado como REQUEST_CHANGES sin importar lo que diga la IA.
+function scanForConsoleLog(diff) {
+  const findings = [];
+  const lines = diff.split('\n');
+  let currentFile = null;
+  let newLineNumber = null;
+
+  for (const line of lines) {
+    if (line.startsWith('+++ ')) {
+      const path = line.slice(4).trim();
+      currentFile = path === '/dev/null' ? null : path.replace(/^b\//, '');
+      newLineNumber = null;
+      continue;
+    }
+    if (line.startsWith('@@')) {
+      const match = line.match(/\+(\d+)/);
+      newLineNumber = match ? parseInt(match[1], 10) : null;
+      continue;
+    }
+    if (line.startsWith('+') && !line.startsWith('+++')) {
+      const isRelevantFile = currentFile && /\.(ts|html)$/.test(currentFile);
+      if (isRelevantFile && /console\.log\s*\(/.test(line)) {
+        findings.push({
+          file: currentFile,
+          line: newLineNumber,
+          code: line.slice(1).trim().slice(0, 200),
+        });
+      }
+      if (newLineNumber !== null) newLineNumber++;
+    } else if (!line.startsWith('-') && !line.startsWith('\\')) {
+      if (newLineNumber !== null) newLineNumber++;
+    }
+  }
+  return findings;
+}
+
+// ─── Requerimientos del PR (para el chequeo de alcance) ──────────────────────
+// Se pegan en la descripción del PR entre <!-- SCOPE:START --> y
+// <!-- SCOPE:END -->. Si no hay marcadores, no se valida alcance (todo lo
+// demás sigue funcionando igual, es opt-in por PR).
+function extractScopeRequirements(prBody) {
+  if (!prBody) return null;
+  const match = prBody.match(/<!--\s*SCOPE:START\s*-->([\s\S]*?)<!--\s*SCOPE:END\s*-->/);
+  const text = match ? match[1].trim() : '';
+  return text.length > 0 ? text : null;
+}
+
+// ─── Esquema de salida estructurada (garantiza JSON válido) ──────────────────
+const reviewItemSchema = {
+  type: 'object',
+  properties: {
+    severity: { type: 'string' },
+    category: { type: 'string' },
+    issue: { type: 'string' },
+    location: { type: 'string' },
+    recommendation: { type: 'string' },
+  },
+  required: ['severity', 'category', 'issue', 'location', 'recommendation'],
+  additionalProperties: false,
+};
+
+const securityAlertSchema = {
+  type: 'object',
+  properties: {
+    severity: { type: 'string' },
+    type: { type: 'string' },
+    description: { type: 'string' },
+    location: { type: 'string' },
+    mitigation: { type: 'string' },
+    cwe_reference: { type: 'string' },
+  },
+  required: ['severity', 'type', 'description', 'location', 'mitigation', 'cwe_reference'],
+  additionalProperties: false,
+};
+
+const simpleIssueSchema = {
+  type: 'object',
+  properties: {
+    severity: { type: 'string' },
+    issue: { type: 'string' },
+    recommendation: { type: 'string' },
+  },
+  required: ['severity', 'issue', 'recommendation'],
+  additionalProperties: false,
+};
+
+const scopeViolationSchema = {
+  type: 'object',
+  properties: {
+    file: { type: 'string' },
+    summary: { type: 'string' },
+    reason: { type: 'string' },
+  },
+  required: ['file', 'summary', 'reason'],
+  additionalProperties: false,
+};
+
+const REVIEW_SCHEMA = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    verdict: { type: 'string', enum: ['APPROVE', 'REQUEST_CHANGES', 'COMMENT'] },
+    score: { type: 'integer' },
+    angular_best_practices: { type: 'array', items: reviewItemSchema },
+    code_quality: { type: 'array', items: reviewItemSchema },
+    security_alerts: { type: 'array', items: securityAlertSchema },
+    performance_issues: { type: 'array', items: simpleIssueSchema },
+    accessibility: { type: 'array', items: simpleIssueSchema },
+    scope_violations: { type: 'array', items: scopeViolationSchema },
+    positive_highlights: { type: 'array', items: { type: 'string' } },
+    required_changes: { type: 'array', items: { type: 'string' } },
+    suggested_improvements: { type: 'array', items: { type: 'string' } },
+  },
+  required: [
+    'summary',
+    'verdict',
+    'score',
+    'angular_best_practices',
+    'code_quality',
+    'security_alerts',
+    'performance_issues',
+    'accessibility',
+    'scope_violations',
+    'positive_highlights',
+    'required_changes',
+    'suggested_improvements',
+  ],
+  additionalProperties: false,
+};
+
+// ─── Llamar a Claude (Anthropic API) ─────────────────────────────────────────
+async function callClaude(diff, scopeRequirements) {
+  const systemPrompt = `Eres un revisor de código senior, experto en Angular (v17+), TypeScript y seguridad web (ethical hacking / OWASP).
+Tu tarea es revisar Pull Requests exigiendo código limpio, seguro y alineado con las mejores prácticas de Angular.
+Siempre respondes en español. Tu tono es profesional, directo y constructivo.
+
+Regla no negociable: el uso de "console.log" (o cualquier variante como console.debug/console.info dejada en el código) está PROHIBIDO en código de producción. Si encuentras un console.log en el código añadido, repórtalo SIEMPRE como severity "CRITICAL" dentro de code_quality, inclúyelo en required_changes, y el verdict del PR debe ser "REQUEST_CHANGES" sin excepción, sin importar la calidad del resto del código.
+
+${scopeRequirements ? `Regla no negociable de ALCANCE: este PR declaró una lista de requerimientos (ver más abajo, sección "Requerimientos declarados del PR"). Debes evaluar CADA archivo/cambio del diff y determinar si está justificado por al menos uno de esos requerimientos. Un cambio está justificado si es necesario o directamente implicado por algún requerimiento (incluye tests, tipos e imports que soporten ese cambio). NO está justificado: refactors no pedidos, renombrados, cambios de estilo/formato en código no relacionado, archivos o funciones no mencionadas ni implicadas por los requerimientos, eliminación de código no relacionado. Reporta cada cambio no justificado en "scope_violations" (archivo, resumen del cambio, motivo). Si encuentras alguno, el verdict debe ser "REQUEST_CHANGES" sin excepción. Si TODOS los cambios corresponden a los requerimientos, deja "scope_violations" vacío.` : 'No se declararon requerimientos de alcance para este PR (no hay bloque SCOPE en la descripción), así que deja "scope_violations" como un arreglo vacío y no penalices por esto.'}`;
 
   const userPrompt = `## Pull Request a revisar
 **Título:** ${PR_TITLE}
 **Autor:** ${PR_AUTHOR}
 **PR #:** ${PR_NUMBER}
-
+${scopeRequirements ? `
+## Requerimientos declarados del PR (validar alcance)
+---
+${scopeRequirements}
+---
+` : ''}
 ## Diff del código
 \`\`\`diff
 ${diff}
@@ -42,58 +188,7 @@ ${diff}
 
 ## Instrucciones de revisión
 
-Analiza este PR de Angular y proporciona una revisión COMPLETA en el siguiente formato JSON exacto:
-
-{
-  "summary": "Resumen ejecutivo del PR en 2-3 oraciones",
-  "verdict": "APPROVE | REQUEST_CHANGES | COMMENT",
-  "score": <número del 1 al 10>,
-  "angular_best_practices": [
-    {
-      "severity": "CRITICAL | WARNING | INFO | GOOD",
-      "category": "Categoría Angular",
-      "issue": "Descripción del problema o buena práctica",
-      "location": "archivo o línea si aplica",
-      "recommendation": "Cómo mejorar o qué está bien"
-    }
-  ],
-  "code_quality": [
-    {
-      "severity": "CRITICAL | WARNING | INFO | GOOD",
-      "category": "Categoría de calidad",
-      "issue": "Descripción",
-      "location": "archivo o línea si aplica",
-      "recommendation": "Mejora sugerida"
-    }
-  ],
-  "security_alerts": [
-    {
-      "severity": "CRITICAL | HIGH | MEDIUM | LOW | NONE",
-      "type": "Tipo de vulnerabilidad (XSS, CSRF, Injection, etc.)",
-      "description": "Descripción detallada del riesgo",
-      "location": "archivo o línea",
-      "mitigation": "Cómo mitigarlo",
-      "cwe_reference": "CWE-XXX si aplica"
-    }
-  ],
-  "performance_issues": [
-    {
-      "severity": "HIGH | MEDIUM | LOW",
-      "issue": "Problema de performance",
-      "recommendation": "Optimización sugerida"
-    }
-  ],
-  "accessibility": [
-    {
-      "severity": "HIGH | MEDIUM | LOW",
-      "issue": "Problema de accesibilidad WCAG",
-      "recommendation": "Corrección sugerida"
-    }
-  ],
-  "positive_highlights": ["Aspecto positivo 1", "Aspecto positivo 2"],
-  "required_changes": ["Cambio obligatorio 1 (solo si verdict es REQUEST_CHANGES)"],
-  "suggested_improvements": ["Mejora sugerida 1", "Mejora sugerida 2"]
-}
+Analiza este PR de Angular exigiendo código limpio, seguro y buenas prácticas. Devuelve un veredicto (APPROVE, REQUEST_CHANGES o COMMENT), una puntuación del 1 al 10, y listas detalladas de hallazgos.
 
 ### Checklist Angular que DEBES revisar:
 - OnPush Change Detection Strategy
@@ -104,13 +199,20 @@ Analiza este PR de Angular y proporciona una revisión COMPLETA en el siguiente 
 - Standalone components (Angular 17+)
 - Signals API si aplica
 - Inyección de dependencias correcta (inject() function)
-- Tipado estricto TypeScript
+- Tipado estricto TypeScript (nada de "any" sin justificar)
 - Nomenclatura Angular (kebab-case, PascalCase)
 - Separación de responsabilidades (Smart/Dumb components)
 - Evitar lógica en templates
 - Uso de Pipes en lugar de métodos en templates
 - HTTP interceptors y manejo de errores
-- Guard e interfaces bien definidas
+- Guards e interfaces bien definidas
+
+### Checklist de código limpio:
+- Nombres descriptivos, funciones cortas y con una sola responsabilidad
+- Sin código muerto, comentado o duplicado
+- **Sin "console.log" ni código de depuración en producción (ver regla no negociable arriba)**
+- Manejo de errores explícito y consistente
+- Sin "magic numbers"/strings sin constantes
 
 ### Checklist de Seguridad (Ethical Hacking):
 - XSS: innerHTML, bypassSecurityTrust*, [innerHTML]
@@ -125,52 +227,25 @@ Analiza este PR de Angular y proporciona una revisión COMPLETA en el siguiente 
 - Template injection
 - Prototype pollution
 
-Responde ÚNICAMENTE con el JSON, sin texto adicional ni markdown fences.`;
+Responde con el análisis completo siguiendo el esquema JSON proporcionado.`;
 
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify({
-      model: 'gemini-2.5-flash',         // Modelo gratuito de Google AI Studio
-      max_tokens: 4096,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ]
-    });
-
-    // Google AI Studio — endpoint compatible con OpenAI
-    const options = {
-      hostname: 'generativelanguage.googleapis.com',
-      path: '/v1beta/openai/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GEMINI_API_KEY}`,
-        'Content-Length': Buffer.byteLength(body)
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          // Respuesta en formato OpenAI: choices[0].message.content
-          if (parsed.choices && parsed.choices[0]) {
-            resolve(parsed.choices[0].message.content);
-          } else {
-            reject(new Error(`Gemini API Error: ${data}`));
-          }
-        } catch (e) {
-          reject(e);
-        }
-      });
-    });
-
-    req.on('error', reject);
-    req.write(body);
-    req.end();
+  const response = await anthropic.messages.create({
+    model: 'claude-opus-4-8',
+    max_tokens: 8000,
+    thinking: { type: 'adaptive' },
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
+    output_config: {
+      effort: 'high',
+      format: { type: 'json_schema', schema: REVIEW_SCHEMA },
+    },
   });
+
+  const textBlock = response.content.find((block) => block.type === 'text');
+  if (!textBlock) {
+    throw new Error('Claude no devolvió contenido de texto.');
+  }
+  return textBlock.text;
 }
 
 // ─── Formatear el comentario de GitHub ───────────────────────────────────────
@@ -191,8 +266,8 @@ function formatGitHubComment(review) {
     return '█'.repeat(filled) + '░'.repeat(10 - filled) + ` ${score}/10`;
   };
 
-  let comment = `# 🅰️ Angular PR Review Agent\n\n`;
-  comment += `> **Revisión automática generada por Gemini 2.5 Flash (Google AI Studio)**\n\n`;
+  let comment = `# 🤖 Angular PR Review Agent\n\n`;
+  comment += `> **Revisión automática generada por Claude (Anthropic)**\n\n`;
   comment += `---\n\n`;
 
   // Header
@@ -200,6 +275,17 @@ function formatGitHubComment(review) {
   comment += `**Puntuación:** \`${scoreBar(review.score)}\`\n\n`;
   comment += `### 📋 Resumen\n${review.summary}\n\n`;
   comment += `---\n\n`;
+
+  // Alcance (scope) — si hay violaciones, van primero: son bloqueantes
+  if (review.scope_violations && review.scope_violations.length > 0) {
+    comment += `## 🎯 Fuera de Alcance\n\n`;
+    comment += `Se pegaron requerimientos en la descripción de este PR y los siguientes cambios no corresponden a ninguno de ellos:\n\n`;
+    review.scope_violations.forEach(v => {
+      comment += `- 🚫 **\`${v.file}\`** — ${v.summary}\n`;
+      comment += `  > Motivo: ${v.reason}\n\n`;
+    });
+    comment += `---\n\n`;
+  }
 
   // Security Alerts (primero por importancia)
   if (review.security_alerts && review.security_alerts.length > 0) {
@@ -286,7 +372,7 @@ function formatGitHubComment(review) {
     comment += `\n`;
   }
 
-  comment += `\n---\n*🤖 Revisión generada automáticamente por Angular Review Agent (Gemini 2.5 Flash • Google AI Studio) • [Ver configuración](.github/workflows/angular-pr-review.yml)*`;
+  comment += `\n---\n*🤖 Revisión generada automáticamente por Angular Review Agent (Claude · Anthropic) • [Ver configuración](.github/workflows/angular-pr-review.yml)*`;
 
   return comment;
 }
@@ -361,22 +447,37 @@ async function submitPRReview(verdict, body) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('🅰️ Iniciando Angular PR Review Agent...');
+  console.log('🤖 Iniciando Angular PR Review Agent (Claude)...');
   console.log(`📋 PR #${PR_NUMBER}: ${PR_TITLE}`);
   console.log(`👤 Autor: ${PR_AUTHOR}`);
 
   const diff = getDiff();
   console.log(`📄 Diff obtenido: ${diff.length} caracteres`);
 
-  console.log('🤖 Consultando Gemini 2.5 Flash (Google AI Studio)...');
-  const rawReview = await callGemini(diff);
+  const scopeRequirements = extractScopeRequirements(PR_BODY);
+  if (scopeRequirements) {
+    console.log(`🎯 Requerimientos de alcance detectados en la descripción del PR (${scopeRequirements.length} caracteres)`);
+  } else {
+    console.log('🎯 Sin bloque SCOPE en la descripción del PR: no se valida alcance.');
+  }
 
-  // Parsear JSON
+  console.log('🤖 Consultando Claude (claude-opus-4-8)...');
+  const rawReview = await callClaude(diff, scopeRequirements);
+
+  // Parsear JSON (con output_config.format ya viene validado, pero por si acaso)
   let review;
   try {
     const cleanJson = rawReview.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     review = JSON.parse(cleanJson);
-    fs.writeFileSync('review_output.json', JSON.stringify(review, null, 2));
+    review.angular_best_practices = review.angular_best_practices || [];
+    review.code_quality = review.code_quality || [];
+    review.security_alerts = review.security_alerts || [];
+    review.performance_issues = review.performance_issues || [];
+    review.accessibility = review.accessibility || [];
+    review.scope_violations = review.scope_violations || [];
+    review.positive_highlights = review.positive_highlights || [];
+    review.required_changes = review.required_changes || [];
+    review.suggested_improvements = review.suggested_improvements || [];
     console.log('✅ Revisión parseada correctamente');
   } catch (e) {
     console.error('❌ Error al parsear JSON:', e.message);
@@ -389,10 +490,38 @@ async function main() {
       security_alerts: [],
       performance_issues: [],
       accessibility: [],
+      scope_violations: [],
       positive_highlights: [],
       required_changes: [],
       suggested_improvements: [rawReview]
     };
+  }
+
+  // ── Gate determinístico: console.log prohibido ──
+  const consoleLogFindings = scanForConsoleLog(diff);
+  if (consoleLogFindings.length > 0) {
+    console.log(`🚫 Se encontraron ${consoleLogFindings.length} uso(s) de console.log — forzando REQUEST_CHANGES`);
+    review.verdict = 'REQUEST_CHANGES';
+    consoleLogFindings.reverse().forEach((finding) => {
+      const location = finding.line ? `${finding.file}:${finding.line}` : finding.file;
+      review.code_quality.unshift({
+        severity: 'CRITICAL',
+        category: 'console.log prohibido',
+        issue: `Se encontró un "console.log" en el código añadido: \`${finding.code}\``,
+        location,
+        recommendation: 'Elimina el console.log del código de producción. Usa un logger apropiado (servicio de logging inyectable) o elimínalo antes de mergear.',
+      });
+      review.required_changes.unshift(`Eliminar console.log en ${location}`);
+    });
+  }
+
+  // ── Gate determinístico: cambios fuera de alcance ──
+  if (review.scope_violations && review.scope_violations.length > 0) {
+    console.log(`🎯 Se encontraron ${review.scope_violations.length} cambio(s) fuera de alcance — forzando REQUEST_CHANGES`);
+    review.verdict = 'REQUEST_CHANGES';
+    review.scope_violations.slice().reverse().forEach((v) => {
+      review.required_changes.unshift(`Fuera de alcance en ${v.file}: ${v.summary}`);
+    });
   }
 
   // Formatear y publicar
@@ -410,9 +539,11 @@ async function main() {
     a.severity === 'CRITICAL' || a.severity === 'HIGH'
   ) || [];
 
-  if (criticalSecurity.length > 0) {
-    console.log(`\n🚨 ALERTA: ${criticalSecurity.length} vulnerabilidad(es) crítica(s) detectada(s)!`);
-    process.exit(1); // Falla el check si hay vulnerabilidades críticas
+  const scopeViolationCount = review.scope_violations?.length || 0;
+
+  if (criticalSecurity.length > 0 || consoleLogFindings.length > 0 || scopeViolationCount > 0) {
+    console.log(`\n🚨 ALERTA: ${criticalSecurity.length} vulnerabilidad(es) crítica(s), ${consoleLogFindings.length} console.log y ${scopeViolationCount} cambio(s) fuera de alcance detectado(s)!`);
+    process.exit(1); // Falla el check si hay vulnerabilidades críticas, console.log o scope creep
   }
 }
 
