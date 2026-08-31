@@ -17,6 +17,7 @@ import {
   InactivationAffiliateRow,
 } from '../interfaces/deactivate-affiliates.interface';
 import { DeactivateAffiliatesService } from '../services/deactivate-affiliates.service';
+import { AffiliateMembersService } from '../../affiliates/services/affiliate-members.service';
 
 type InactivationTab = 'unpaid' | 'underpaid';
 
@@ -29,6 +30,7 @@ type InactivationTab = 'unpaid' | 'underpaid';
 })
 export class DeactivateAffiliatesList implements OnInit {
   private readonly _deactivateAffiliatesService = inject(DeactivateAffiliatesService);
+  private readonly _affiliateMembersService = inject(AffiliateMembersService);
   private readonly _toastService = inject(ToastService);
   private readonly _configGeneralService = inject(ConfigGeneralService);
   private readonly _tokenService = inject(TokenService);
@@ -201,8 +203,19 @@ export class DeactivateAffiliatesList implements OnInit {
     return unique.map(v => ({ value: v, label: v }));
   });
 
+  // Nombres del catálogo de asesores HABILITADOS (GET /advisors/dropdown).
+  protected readonly activeAdvisorNames = signal<Set<string>>(new Set());
+
+  // Intersección: solo asesores que (a) tienen al menos un afiliado en la
+  // lista cargada Y (b) están habilitados. Derivarlo solo de los datos
+  // mostraría asesores viejos/deshabilitados que quedaron pegados a algún
+  // afiliado sin reasignar; derivarlo solo del catálogo mostraría asesores
+  // habilitados con cero resultados en este tab (filtro "muerto").
   protected readonly adviserOptions = computed((): SelectOption[] => {
-    const unique = [...new Set(this.allAffiliates().map(a => a.advisor).filter(Boolean))].sort();
+    const active = this.activeAdvisorNames();
+    const unique = [...new Set(this.allAffiliates().map(a => a.advisor).filter(Boolean))]
+      .filter(name => active.size === 0 || active.has(name))
+      .sort();
     return unique.map(v => ({ value: v, label: v }));
   });
 
@@ -229,6 +242,10 @@ export class DeactivateAffiliatesList implements OnInit {
       error: () => {
         this.loadData();
       },
+    });
+
+    this._affiliateMembersService.getAdvisors().subscribe((advisors) => {
+      this.activeAdvisorNames.set(new Set(advisors.map((a) => a.name)));
     });
   }
 
