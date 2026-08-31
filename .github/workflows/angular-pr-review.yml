@@ -1,8 +1,8 @@
-name: 🅰️ Angular PR Review Agent
+name: 🤖 Angular PR Review Agent (Claude)
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, edited]
     paths:
       - '**/*.ts'
       - '**/*.html'
@@ -32,7 +32,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install @octokit/rest node-fetch
+        run: npm install @anthropic-ai/sdk
 
       - name: Get PR diff
         id: pr_diff
@@ -53,11 +53,12 @@ jobs:
 
       - name: Run Angular Review Agent
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}    # Google AI Studio key
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}    # Anthropic API key
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BODY: ${{ github.event.pull_request.body }}
           REPO: ${{ github.repository }}
         run: node .github/scripts/angular-review.js
 
