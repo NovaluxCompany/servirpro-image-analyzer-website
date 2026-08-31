@@ -175,7 +175,7 @@ Responde ÚNICAMENTE con el JSON del esquema indicado arriba, sin texto adiciona
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       model: 'gemini-2.5-flash',
-      max_tokens: 8000,
+      max_tokens: 16000,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
