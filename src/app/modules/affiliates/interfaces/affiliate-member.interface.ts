@@ -56,7 +56,8 @@ export interface AffiliateMember {
   discount?: number;
   affiliateType?: 'INDEPENDIENTE' | 'DEPENDIENTE';
   isNew?: boolean;
-  referralType?: 'META' | 'WEB';
+  referralType?: 'META' | 'WEB' | 'REINGRESO' | 'REFERIDO' | 'SIN_ESPECIFICAR';
+  originDate?: string;
   // Datos ADRES
   eps?: string;
   arl?: number;
@@ -129,7 +130,8 @@ export interface CreateAffiliateMemberDto {
   affiliateType?: 'INDEPENDIENTE' | 'DEPENDIENTE';
   // isNew solo se captura al crear el afiliado; no se expone en edición
   isNew?: boolean;
-  referralType?: 'META' | 'WEB';
+  referralType?: 'META' | 'WEB' | 'REINGRESO' | 'REFERIDO' | 'SIN_ESPECIFICAR';
+  originDate?: string;
 }
 
 export interface UpdateAffiliateMemberDto extends Partial<Omit<CreateAffiliateMemberDto, 'isNew'>> {}

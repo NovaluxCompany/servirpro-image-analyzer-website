@@ -36,6 +36,9 @@ export class AffiliateInfoModalComponent {
     const labels: Record<string, string> = {
       META: 'Meta',
       WEB: 'Web',
+      REINGRESO: 'Reingreso',
+      REFERIDO: 'Referido',
+      SIN_ESPECIFICAR: 'Sin especificar',
     };
     return value ? (labels[value] ?? value) : '—';
   }

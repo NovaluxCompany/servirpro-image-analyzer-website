@@ -157,3 +157,102 @@ test.describe('Afiliados — flujo: origen, documentos múltiples, correo con ob
     await affiliatesPage.expectRowDisabled(fullName!);
   });
 });
+
+/**
+ * Flujo del origen "Meta"/"Web": la fecha de origen es obligatoria solo para
+ * esos dos orígenes, y (igual que el propio origen) solo se puede editar
+ * mientras el afiliado está desactivado. Se encadena sobre un mismo afiliado
+ * por el mismo motivo que el describe anterior: evitar pagar 2-3 veces el
+ * costo de crear un afiliado completo.
+ */
+test.describe('Afiliados — origen Meta/Web exige fecha de origen', () => {
+  test.describe.configure({ mode: 'serial' });
+  let fullName: string | undefined;
+  const originDate = '2026-01-15';
+
+  test('el botón de guardar queda deshabilitado si el origen es Meta y falta la fecha de origen', async ({ page }) => {
+    test.setTimeout(120_000);
+
+    const affiliatesPage = new AffiliatesPage(page);
+    const { firstName, lastName } = testAffiliateName('OrigenMeta');
+    const documentNumber = randomDocumentNumber();
+    const email = randomEmail(firstName);
+
+    await affiliatesPage.goto();
+    await affiliatesPage.openCreateModal();
+    await affiliatesPage.fillPersonalData({ documentNumber, firstName, lastName, email });
+    await affiliatesPage.openSectionAfiliacion();
+    // No se pasa originDate a propósito: fillAffiliationData solo selecciona
+    // el origen "META" y deja la fecha de origen vacía.
+    const form = page.locator('form');
+    await affiliatesPage.fillAffiliationData();
+    await form.locator('select[formcontrolname="referralType"]').selectOption('META');
+    await expect(form.locator('input[formcontrolname="originDate"]')).toBeVisible();
+
+    await expect(page.getByRole('button', { name: 'Crear afiliado' })).toBeDisabled();
+  });
+
+  test('crea un afiliado con Origen "Meta" y fecha de origen', async ({ page }) => {
+    test.setTimeout(120_000);
+
+    const affiliatesPage = new AffiliatesPage(page);
+    const { firstName, lastName } = testAffiliateName('OrigenMeta');
+    const documentNumber = randomDocumentNumber();
+    const email = randomEmail(firstName);
+
+    await affiliatesPage.goto();
+    await affiliatesPage.openCreateModal();
+    await affiliatesPage.fillPersonalData({ documentNumber, firstName, lastName, email });
+    await affiliatesPage.openSectionAfiliacion();
+    await affiliatesPage.fillAffiliationData({ referralType: 'META', originDate });
+    await affiliatesPage.submit();
+    await affiliatesPage.expectCreatedToastOrModalClosed();
+
+    fullName = `${firstName} ${lastName}`;
+    await affiliatesPage.searchByName(fullName);
+    await expect(affiliatesPage.rowByName(fullName)).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('la fecha de origen queda guardada pero NO editable mientras el afiliado está activo', async ({ page }) => {
+    test.skip(!fullName, 'Corre primero el test de creación en esta misma corrida.');
+
+    const affiliatesPage = new AffiliatesPage(page);
+    await affiliatesPage.goto();
+    await affiliatesPage.searchByName(fullName!);
+    await affiliatesPage.openEditForRow(fullName!);
+    await expect(page.getByRole('heading', { name: 'Editar Afiliado', level: 2 })).toBeVisible();
+
+    await expect.poll(() => affiliatesPage.getReferralTypeValue()).toBe('META');
+    await expect.poll(() => affiliatesPage.getOriginDateValue()).toBe(originDate);
+    await expect(page.locator('form').locator('input[formcontrolname="originDate"]')).toBeDisabled();
+
+    await page.getByRole('button', { name: 'Cancelar' }).click();
+  });
+
+  test('desactivar el afiliado habilita de nuevo la edición de la fecha de origen', async ({ page }) => {
+    test.skip(!fullName, 'Corre primero el test de creación en esta misma corrida.');
+
+    const affiliatesPage = new AffiliatesPage(page);
+    await affiliatesPage.goto();
+    await affiliatesPage.searchByName(fullName!);
+    await affiliatesPage.deactivateRowWithReason(
+      fullName!,
+      'Prueba automatizada: motivo de desactivación (Playwright).'
+    );
+    await affiliatesPage.expectRowDisabled(fullName!);
+
+    await affiliatesPage.openEditForRow(fullName!);
+    await expect(page.getByRole('heading', { name: 'Editar Afiliado', level: 2 })).toBeVisible();
+    const originDateInput = page.locator('form').locator('input[formcontrolname="originDate"]');
+    await expect(originDateInput).toBeEnabled();
+
+    const newOriginDate = '2026-02-20';
+    await originDateInput.fill(newOriginDate);
+
+    const [response] = await Promise.all([
+      page.waitForResponse((res) => /\/affiliates\/\d+(\?.*)?$/.test(res.url()) && res.request().method() === 'PATCH'),
+      page.getByRole('button', { name: 'Guardar cambios' }).click(),
+    ]);
+    expect(response.ok()).toBe(true);
+  });
+});

@@ -109,8 +109,10 @@ export class AffiliatesPage {
   async fillAffiliationData(overrides?: {
     planText?: string;
     agrupadoraText?: string;
-    /** "" (sin especificar, default) | "NUEVO" | "REINGRESO" | "REFERIDO" */
-    referralType?: '' | 'NUEVO' | 'REINGRESO' | 'REFERIDO';
+    /** "" (sin seleccionar) | "META" | "WEB" | "REINGRESO" | "REFERIDO" | "SIN_ESPECIFICAR" */
+    referralType?: '' | 'META' | 'WEB' | 'REINGRESO' | 'REFERIDO' | 'SIN_ESPECIFICAR';
+    /** Fecha de origen (YYYY-MM-DD). Obligatoria y solo visible cuando referralType es META o WEB. */
+    originDate?: string;
     /** Rutas de los PDF a adjuntar. Por defecto sube un único archivo de prueba. */
     documentFiles?: string[];
   }): Promise<void> {
@@ -176,6 +178,10 @@ export class AffiliatesPage {
 
     if (overrides?.referralType !== undefined) {
       await form.locator('select[formcontrolname="referralType"]').selectOption(overrides.referralType);
+      if (overrides.referralType === 'META' || overrides.referralType === 'WEB') {
+        const originDate = overrides.originDate ?? new Date().toISOString().slice(0, 10);
+        await form.locator('input[formcontrolname="originDate"]').fill(originDate);
+      }
     }
 
     // Opcional para casi todos los casos, obligatorio si la agrupadora
@@ -254,6 +260,11 @@ export class AffiliatesPage {
   /** Valor actual del select "Origen del afiliado" en el formulario abierto (crear o editar). */
   async getReferralTypeValue(): Promise<string> {
     return this.page.locator('form').locator('select[formcontrolname="referralType"]').inputValue();
+  }
+
+  /** Valor actual del input "Fecha de origen" (solo visible/presente cuando el origen es Meta o Web). */
+  async getOriginDateValue(): Promise<string> {
+    return this.page.locator('form').locator('input[formcontrolname="originDate"]').inputValue();
   }
 
   /**
