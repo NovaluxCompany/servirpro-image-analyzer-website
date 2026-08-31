@@ -7,6 +7,7 @@ import { AffiliatesFormComponent } from '../../components/affiliates-form/affili
 import { ImageUploaderComponent } from '../../components/image-uploader/image-uploader';
 import { Affiliate } from '../../interfaces/affiliate.interface';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { ToastService } from '../../../../core/service/toast.service';
 
 @Component({
   selector: 'app-transaction-create',
@@ -21,6 +22,7 @@ export class TransactionCreateComponent {
   private _transactionsService = inject(TransactionsService);
   private _router = inject(Router);
   private _permission = inject(PermissionService);
+  private _toast = inject(ToastService);
 
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
@@ -138,8 +140,12 @@ export class TransactionCreateComponent {
       },
       error: (error) => {
         this.isLoading.set(false);
-        this.errorMessage.set(error.message);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // A partir de aquí la transacción YA se mandó a crear: el error es
+        // de la petición (backend/Siigo/inesperado), no de datos mal
+        // llenados en el formulario — se muestra por notificación en vez
+        // del texto rojo inline (ese queda reservado para validación
+        // mientras se completa el formulario, ver validaciones arriba).
+        this._toast.showError(error.message);
       }
     });
   }
