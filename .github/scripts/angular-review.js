@@ -85,7 +85,7 @@ Regla no negociable: el uso de "console.log" (o cualquier variante como console.
 
 ${scopeRequirements ? `Regla no negociable de ALCANCE: este PR declaró una lista de requerimientos (ver más abajo, sección "Requerimientos declarados del PR"). Debes evaluar CADA archivo/cambio del diff y determinar si está justificado por al menos uno de esos requerimientos. Un cambio está justificado si es necesario o directamente implicado por algún requerimiento (incluye tests, tipos e imports que soporten ese cambio). NO está justificado: refactors no pedidos, renombrados, cambios de estilo/formato en código no relacionado, archivos o funciones no mencionadas ni implicadas por los requerimientos, eliminación de código no relacionado. Reporta cada cambio no justificado en "scope_violations" (archivo, resumen del cambio, motivo). Si encuentras alguno, el verdict debe ser "REQUEST_CHANGES" sin excepción. Si TODOS los cambios corresponden a los requerimientos, deja "scope_violations" vacío.
 
-Además, chequeo de COBERTURA (esto es solo informativo, NO afecta el verdict ni cuenta como motivo para REQUEST_CHANGES): identifica cada tarea o punto individual dentro de la lista de requerimientos (cada línea, viñeta o punto numerado que describa un cambio distinto — no la lista completa como un solo bloque) y determina, para cada uno, si el diff contiene cambios que lo implementen. Devuelve esto en "requirements_coverage" (campos: requirement, covered, note). Un PR puede cubrir solo una parte de la lista a propósito (trabajo dividido en varios PRs) — eso NO es un error ni debe penalizar el score ni el verdict, es puramente para que el autor vea de un vistazo qué falta.` : 'No se declararon requerimientos de alcance para este PR (no hay bloque SCOPE en la descripción), así que deja "scope_violations" y "requirements_coverage" como arreglos vacíos y no penalices por esto.'}
+Regla no negociable de COBERTURA (el array es obligatorio siempre, aunque su contenido sea solo informativo y NO afecte el verdict ni cuente como motivo para REQUEST_CHANGES): cuenta cuántos puntos/tareas individuales tiene la lista de requerimientos (cada línea, viñeta o punto numerado que describa un cambio distinto — no la lista completa como un solo bloque) y devuelve en "requirements_coverage" EXACTAMENTE esa cantidad de entradas (campos: requirement, covered, note), una por cada punto, sin omitir ninguno. Esto aplica SIEMPRE, incluso si hubo violaciones de alcance, incluso si el PR no implementa todavía nada de la lista: en ese caso igual debes listar cada requerimiento con "covered": false y una nota breve de por qué no se ve implementado. NUNCA devuelvas "requirements_coverage" vacío cuando hay una lista de requerimientos declarada. Un PR puede cubrir solo una parte de la lista a propósito (trabajo dividido en varios PRs) — eso NO es un error ni debe penalizar el score ni el verdict, es puramente para que el autor vea de un vistazo qué falta.` : 'No se declararon requerimientos de alcance para este PR (no hay bloque SCOPE en la descripción), así que deja "scope_violations" y "requirements_coverage" como arreglos vacíos y no penalices por esto.'}
 
 Responde ÚNICAMENTE con un JSON válido, sin texto adicional ni markdown fences, siguiendo exactamente este esquema:
 {
@@ -185,9 +185,12 @@ Responde ÚNICAMENTE con el JSON del esquema indicado arriba, sin texto adiciona
       // thinking salen del mismo presupuesto que max_tokens — con diffs
       // grandes y el JSON de salida ya extenso (scope + cobertura), el
       // thinking se comía casi todo el presupuesto y la respuesta llegaba
-      // cortada a mitad del JSON. Se desactiva: esta tarea es clasificación
-      // estructurada, no necesita razonamiento profundo.
-      reasoning_effort: 'none',
+      // cortada a mitad del JSON. Con "none" el JSON ya no se corta, pero el
+      // modelo empezó a saltarse instrucciones secundarias (dejaba
+      // "requirements_coverage" vacío) — "low" le da un margen chico de
+      // razonamiento (~1024 tokens, bien lejos del límite de max_tokens) para
+      // que siga todas las instrucciones sin volver a truncar la salida.
+      reasoning_effort: 'low',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
