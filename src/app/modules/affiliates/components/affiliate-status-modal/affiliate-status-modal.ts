@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, inject, input, output, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AffiliateMembersService } from '../../services/affiliate-members.service';
@@ -11,7 +11,7 @@ import { AffiliateMember } from '../../interfaces/affiliate-member.interface';
   imports: [CommonModule, FormsModule],
   templateUrl: './affiliate-status-modal.html',
 })
-export class AffiliateStatusModalComponent {
+export class AffiliateStatusModalComponent implements OnInit {
   private _service = inject(AffiliateMembersService);
   private _toast = inject(ToastService);
 
@@ -23,14 +23,19 @@ export class AffiliateStatusModalComponent {
 
   isLoading = signal(false);
   deactivationReason = '';
-  deactivationReasonType: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST' | '' = '';
+  // Es el id de deactivation_reasons (FK real) que se manda al backend.
+  reasonTypeId: number | null = null;
   showReasonTypeError = false;
 
-  readonly reasonTypeOptions: { value: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST'; label: string }[] = [
-    { value: 'PLAN_CHANGE', label: 'Cambio de plan' },
-    { value: 'NO_PAYMENT', label: 'No pagó' },
-    { value: 'CLIENT_REQUEST', label: 'Solicitud del cliente' },
-  ];
+  // Viene de deactivation_reasons (ver AffiliateMembersService.getDeactivationReasons):
+  // agregar un motivo nuevo es un INSERT en esa tabla, no un deploy de este archivo.
+  reasonTypeOptions: { value: number; label: string }[] = [];
+
+  ngOnInit(): void {
+    this._service.getDeactivationReasons().subscribe((reasons) => {
+      this.reasonTypeOptions = reasons.map((r) => ({ value: r.id, label: r.label }));
+    });
+  }
 
   get isActivating(): boolean {
     return !(this.affiliate()?.isActive ?? true);
@@ -64,7 +69,7 @@ export class AffiliateStatusModalComponent {
     const a = this.affiliate();
     if (!a?.id) return;
 
-    if (!this.isActivating && !this.deactivationReasonType) {
+    if (!this.isActivating && !this.reasonTypeId) {
       this.showReasonTypeError = true;
       this._toast.showError('Selecciona el motivo de la deshabilitación antes de continuar.');
       return;
@@ -75,7 +80,7 @@ export class AffiliateStatusModalComponent {
       .toggleStatus(
         a.id,
         this.isActivating ? undefined : this.deactivationReason,
-        this.isActivating ? undefined : (this.deactivationReasonType || undefined),
+        this.isActivating ? undefined : (this.reasonTypeId ?? undefined),
       )
       .subscribe({
         next: () => {
@@ -98,7 +103,7 @@ export class AffiliateStatusModalComponent {
 
   private resetForm(): void {
     this.deactivationReason = '';
-    this.deactivationReasonType = '';
+    this.reasonTypeId = null;
     this.showReasonTypeError = false;
   }
 }

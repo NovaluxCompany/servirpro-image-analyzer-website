@@ -41,15 +41,14 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly isSubmitting = signal(false);
   protected readonly showConfirmationModal = signal(false);
   protected deactivationReason = '';
-  protected deactivationReasonType: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST' | '' = '';
+  // Es el id de deactivation_reasons (FK real) que se manda al backend.
+  protected reasonTypeId: number | null = null;
   protected showReasonTypeError = false;
   protected readonly isDeactivatingAll = signal(false);
 
-  readonly reasonTypeOptions: { value: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST'; label: string }[] = [
-    { value: 'PLAN_CHANGE', label: 'Cambio de plan' },
-    { value: 'NO_PAYMENT', label: 'No pagó' },
-    { value: 'CLIENT_REQUEST', label: 'Solicitud del cliente' },
-  ];
+  // Viene de deactivation_reasons (ver AffiliateMembersService.getDeactivationReasons):
+  // agregar un motivo nuevo es un INSERT en esa tabla, no un deploy de este archivo.
+  reasonTypeOptions: { value: number; label: string }[] = [];
   protected readonly showApprovePaymentModal = signal(false);
   protected readonly pendingApproveAffiliate = signal<InactivationAffiliateRow | null>(null);
   protected readonly selectedIds = signal<number[]>([]);
@@ -247,6 +246,10 @@ export class DeactivateAffiliatesList implements OnInit {
     this._affiliateMembersService.getAdvisors().subscribe((advisors) => {
       this.activeAdvisorNames.set(new Set(advisors.map((a) => a.name)));
     });
+
+    this._affiliateMembersService.getDeactivationReasons().subscribe((reasons) => {
+      this.reasonTypeOptions = reasons.map((r) => ({ value: r.id, label: r.label }));
+    });
   }
 
   protected onPageSizeChange(newSize: number): void {
@@ -408,7 +411,7 @@ export class DeactivateAffiliatesList implements OnInit {
     this.showConfirmationModal.set(false);
     this.isDeactivatingAll.set(false);
     this.deactivationReason = '';
-    this.deactivationReasonType = '';
+    this.reasonTypeId = null;
     this.showReasonTypeError = false;
   }
 
@@ -466,12 +469,11 @@ export class DeactivateAffiliatesList implements OnInit {
   protected confirmDeactivation(): void {
     if (this.isSubmitting()) return;
 
-    if (!this.deactivationReasonType) {
+    if (!this.reasonTypeId) {
       this.showReasonTypeError = true;
       this._toastService.showError('Selecciona el motivo de la deshabilitación antes de continuar.');
       return;
     }
-
     this.isSubmitting.set(true);
 
     if (this.isDeactivatingAll()) {
@@ -483,7 +485,7 @@ export class DeactivateAffiliatesList implements OnInit {
         company: this.filterCompany() || undefined,
         grouper: this.filterGrouper() || undefined,
         reason: this.deactivationReason || undefined,
-        reasonType: this.deactivationReasonType,
+        reasonTypeId: this.reasonTypeId ?? undefined,
       };
 
       this._deactivateAffiliatesService.deactivateAllAffiliates(filters).subscribe({
@@ -513,7 +515,7 @@ export class DeactivateAffiliatesList implements OnInit {
     }
 
     this._deactivateAffiliatesService
-      .deactivateAffiliates(ids, this.deactivationReason || undefined, this.deactivationReasonType)
+      .deactivateAffiliates(ids, this.deactivationReason || undefined, this.reasonTypeId ?? undefined)
       .subscribe({
         next: (response) => {
           this.showConfirmationModal.set(false);
@@ -533,7 +535,7 @@ export class DeactivateAffiliatesList implements OnInit {
 
   private resetReasonFields(): void {
     this.deactivationReason = '';
-    this.deactivationReasonType = '';
+    this.reasonTypeId = null;
     this.showReasonTypeError = false;
   }
 

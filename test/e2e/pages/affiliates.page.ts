@@ -13,6 +13,33 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * El <select> de "Origen del afiliado" manda el id de affiliate_origins (FK
+ * real), no el code — y el id depende del orden del seed, no es fijo. Se
+ * elige la opción por su label visible (seed en
+ * sql/new-seed/affiliates/migration_create_affiliate_origins_and_deactivation_reasons_catalogs.sql).
+ */
+function referralTypeLabel(code: 'META' | 'WEB' | 'REINGRESO' | 'REFERIDO' | 'SIN_ESPECIFICAR'): string {
+  const labels: Record<typeof code, string> = {
+    META: 'Meta',
+    WEB: 'Web',
+    REINGRESO: 'Reingreso',
+    REFERIDO: 'Referido',
+    SIN_ESPECIFICAR: 'Sin especificar',
+  };
+  return labels[code];
+}
+
+/** Mismo caso que referralTypeLabel, para el select "Motivo de la deshabilitación". */
+function deactivationReasonLabel(code: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST'): string {
+  const labels: Record<typeof code, string> = {
+    PLAN_CHANGE: 'Cambio de plan',
+    NO_PAYMENT: 'No pagó',
+    CLIENT_REQUEST: 'Solicitud del cliente',
+  };
+  return labels[code];
+}
+
 export interface NewAffiliateData {
   documentNumber: string;
   firstName: string;
@@ -181,9 +208,12 @@ export class AffiliatesPage {
     // los tests que no les importa el origen. Pasar overrides.referralType
     // === '' explícitamente para dejarlo sin seleccionar a propósito (ej.
     // el test que verifica que el submit queda deshabilitado).
+    // El <select> ahora manda el id de affiliate_origins (FK real), no el
+    // code — como el id depende del orden del seed (no es fijo), se elige
+    // por el label visible en vez de por value.
     const referralType = overrides?.referralType ?? 'SIN_ESPECIFICAR';
     if (referralType) {
-      await form.locator('select[formcontrolname="referralType"]').selectOption(referralType);
+      await form.locator('select[formcontrolname="originId"]').selectOption({ label: referralTypeLabel(referralType) });
       if (referralType === 'META' || referralType === 'WEB') {
         const originDate = overrides?.originDate ?? new Date().toISOString().slice(0, 10);
         await form.locator('input[formcontrolname="originDate"]').fill(originDate);
@@ -263,9 +293,14 @@ export class AffiliatesPage {
     await this.page.getByRole('button', { name: 'Editar' }).click();
   }
 
-  /** Valor actual del select "Origen del afiliado" en el formulario abierto (crear o editar). */
-  async getReferralTypeValue(): Promise<string> {
-    return this.page.locator('form').locator('select[formcontrolname="referralType"]').inputValue();
+  /**
+   * Label visible de la opción elegida en el select "Origen del afiliado"
+   * (crear o editar) — el <select> manda el id (FK), no el code, así que ya
+   * no tiene sentido comparar inputValue() contra 'META'/'WEB'/etc.
+   */
+  async getReferralTypeLabel(): Promise<string> {
+    const select = this.page.locator('form').locator('select[formcontrolname="originId"]');
+    return select.locator('option:checked').innerText();
   }
 
   /** Valor actual del input "Fecha de origen" (solo visible/presente cuando el origen es Meta o Web). */
@@ -369,17 +404,21 @@ export class AffiliatesPage {
    * nunca confirma y solo muestra un toast de error. `reasonType` por
    * defecto usa 'NO_PAYMENT' ("No pagó") para no romper los specs que ya
    * llamaban a este método sin ese argumento.
+   *
+   * Devuelve el body real del PATCH /toggle (reasonTypeId debe viajar como
+   * número — el select manda el id de deactivation_reasons, no el code de
+   * texto) para que los tests que les importe puedan verificarlo.
    */
   async deactivateRowWithReason(
     name: string,
     reason: string,
     reasonType: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST' = 'NO_PAYMENT'
-  ): Promise<void> {
+  ): Promise<{ reason?: string; reasonTypeId?: number }> {
     await this.openRowAction(name, 'Desactivar');
     const modal = this.deactivateModal;
     await expect(modal.getByRole('heading', { name: 'Desactivar Afiliado' })).toBeVisible();
 
-    await modal.locator('select').selectOption(reasonType);
+    await modal.locator('select').selectOption({ label: deactivationReasonLabel(reasonType) });
     await modal.locator('textarea').fill(reason);
 
     const [response] = await Promise.all([
@@ -389,6 +428,7 @@ export class AffiliatesPage {
       modal.getByRole('button', { name: /Sí, deshabilitar/ }).click(),
     ]);
     expect(response.ok()).toBe(true);
+    return response.request().postDataJSON();
   }
 
   async expectRowDisabled(name: string): Promise<void> {

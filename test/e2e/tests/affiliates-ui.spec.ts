@@ -125,7 +125,9 @@ test.describe('Afiliados — desactivación exige motivo (desplegable) y permite
     await expect(modal.getByText('Debes seleccionar un motivo.')).toBeVisible();
     await expect(modal.getByRole('heading', { name: 'Desactivar Afiliado' })).toBeVisible(); // el modal no se cerró
 
-    await modal.locator('select').selectOption('NO_PAYMENT');
+    // El select manda el id del catálogo (FK real), no el code: se elige
+    // por el label visible ("No pagó"), no por value.
+    await modal.locator('select').selectOption({ label: 'No pagó' });
     await expect(modal.locator('textarea')).toBeEnabled();
 
     await page.getByRole('button', { name: 'Cancelar' }).click();
@@ -137,11 +139,18 @@ test.describe('Afiliados — desactivación exige motivo (desplegable) y permite
     const affiliatesPage = new AffiliatesPage(page);
     await affiliatesPage.goto();
     await affiliatesPage.searchByName(fullName!);
-    await affiliatesPage.deactivateRowWithReason(
+    const body = await affiliatesPage.deactivateRowWithReason(
       fullName!,
       'Prueba automatizada: observación al deshabilitar (Playwright).',
       'PLAN_CHANGE'
     );
+    // El motivo ahora viaja como reasonTypeId (el id del catálogo
+    // deactivation_reasons), no como el code de texto 'PLAN_CHANGE'. El
+    // <select> nativo con [(ngModel)] lo manda como string (no number) — el
+    // backend lo acepta igual (ver DTOs/inline body de toggleStatus), así
+    // que se verifica el valor, no el tipo exacto.
+    expect(String(body.reasonTypeId)).toMatch(/^\d+$/);
+    expect(body.reason).toBe('Prueba automatizada: observación al deshabilitar (Playwright).');
     await affiliatesPage.expectRowDisabled(fullName!);
   });
 });

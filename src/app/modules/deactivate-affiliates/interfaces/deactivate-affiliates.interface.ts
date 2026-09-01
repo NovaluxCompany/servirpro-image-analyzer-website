@@ -8,7 +8,7 @@ export interface DeactivateAffiliateFilters {
   company?: string;
   grouper?: string;
   reason?: string;
-  reasonType?: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST';
+  reasonTypeId?: number;
 }
 
 

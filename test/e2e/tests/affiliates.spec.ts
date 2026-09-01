@@ -134,7 +134,7 @@ test.describe('Afiliados — flujo: origen, documentos múltiples, correo con ob
     // (acordeón: una sola sección visible a la vez), así que hay que abrir
     // la Sección 2 para que el campo "Origen del afiliado" exista en el DOM.
     await affiliatesPage.openSectionAfiliacion();
-    await expect.poll(() => affiliatesPage.getReferralTypeValue()).toBe('REFERIDO');
+    await expect.poll(() => affiliatesPage.getReferralTypeLabel()).toBe('Referido');
     await page.getByRole('button', { name: 'Cancelar' }).click();
   });
 
@@ -190,10 +190,49 @@ test.describe('Afiliados — origen Meta/Web exige fecha de origen', () => {
     // el origen "META" y deja la fecha de origen vacía.
     const form = page.locator('form');
     await affiliatesPage.fillAffiliationData();
-    await form.locator('select[formcontrolname="referralType"]').selectOption('META');
+    await form.locator('select[formcontrolname="originId"]').selectOption({ label: 'Meta' });
     await expect(form.locator('input[formcontrolname="originDate"]')).toBeVisible();
 
     await expect(page.getByRole('button', { name: 'Crear afiliado' })).toBeDisabled();
+  });
+
+  test('la fecha de origen siempre se muestra, pero solo se habilita cuando el origen es Meta o Web', async ({ page }) => {
+    test.setTimeout(120_000);
+
+    const affiliatesPage = new AffiliatesPage(page);
+    const { firstName, lastName } = testAffiliateName('OrigenBloqueo');
+    const documentNumber = randomDocumentNumber();
+    const email = randomEmail(firstName);
+
+    await affiliatesPage.goto();
+    await affiliatesPage.openCreateModal();
+    await affiliatesPage.fillPersonalData({ documentNumber, firstName, lastName, email });
+    await affiliatesPage.openSectionAfiliacion();
+    const form = page.locator('form');
+    // fillAffiliationData() sin overrides deja el origen en "Sin especificar".
+    await affiliatesPage.fillAffiliationData();
+
+    const originDateInput = form.locator('input[formcontrolname="originDate"]');
+    const originSelect = form.locator('select[formcontrolname="originId"]');
+    const hint = form.getByText('Solo aplica cuando el origen es Meta o Web.');
+
+    // Origen "Sin especificar": el campo se ve, pero queda bloqueado.
+    await expect(originDateInput).toBeVisible();
+    await expect(originDateInput).toBeDisabled();
+    await expect(hint).toBeVisible();
+
+    // Cambiar a "Meta" lo habilita y el hint desaparece.
+    await originSelect.selectOption({ label: 'Meta' });
+    await expect(originDateInput).toBeEnabled();
+    await expect(hint).not.toBeVisible();
+    await originDateInput.fill(originDate);
+
+    // Volver a un origen que no sea Meta/Web lo bloquea de nuevo y limpia el valor
+    // (evita que quede un dato "fantasma" para un origen que ya no lo requiere).
+    await originSelect.selectOption({ label: 'Referido' });
+    await expect(originDateInput).toBeDisabled();
+    await expect(originDateInput).toHaveValue('');
+    await expect(hint).toBeVisible();
   });
 
   test('crea un afiliado con Origen "Meta" y fecha de origen', async ({ page }) => {
@@ -209,7 +248,18 @@ test.describe('Afiliados — origen Meta/Web exige fecha de origen', () => {
     await affiliatesPage.fillPersonalData({ documentNumber, firstName, lastName, email });
     await affiliatesPage.openSectionAfiliacion();
     await affiliatesPage.fillAffiliationData({ referralType: 'META', originDate });
-    await affiliatesPage.submit();
+
+    // El origen ahora viaja como originId (el id del catálogo affiliate_origins),
+    // no como el code de texto 'META' — se verifica el payload real enviado
+    // (createAffiliate() manda el DTO como JSON, no como FormData).
+    const [request] = await Promise.all([
+      page.waitForRequest((req) => /\/affiliates$/.test(req.url()) && req.method() === 'POST'),
+      affiliatesPage.submit(),
+    ]);
+    const body = request.postDataJSON();
+    expect(typeof body.originId).toBe('number');
+    expect(body.referralType).toBeUndefined();
+
     await affiliatesPage.expectCreatedToastOrModalClosed();
 
     fullName = `${firstName} ${lastName}`;
@@ -228,7 +278,7 @@ test.describe('Afiliados — origen Meta/Web exige fecha de origen', () => {
     // Ver comentario en el test anterior: la Sección 2 arranca cerrada en edición.
     await affiliatesPage.openSectionAfiliacion();
 
-    await expect.poll(() => affiliatesPage.getReferralTypeValue()).toBe('META');
+    await expect.poll(() => affiliatesPage.getReferralTypeLabel()).toBe('Meta');
     await expect.poll(() => affiliatesPage.getOriginDateValue()).toBe(originDate);
     await expect(page.locator('form').locator('input[formcontrolname="originDate"]')).toBeDisabled();
 
