@@ -61,6 +61,9 @@ export class AffiliateFormModalComponent implements OnInit {
   references = signal<string[]>([]);
   departments = signal<Department[]>([]);
   cities = signal<CityOption[]>([]);
+  // Viene de affiliate_origins (ver AffiliateMembersService.getOrigins): agregar
+  // un origen nuevo es un INSERT en esa tabla, no un deploy de este archivo.
+  origins = signal<{ id: number; code: string; label: string }[]>([]);
 
   section1Open = true
   section2Open = false
@@ -125,7 +128,7 @@ export class AffiliateFormModalComponent implements OnInit {
     { value: 'FEMENINO', label: 'Mujer' },
   ];
 
-  /** Estado del afiliado en edición, usado para bloquear campos como referralType. */
+  /** Estado del afiliado en edición, usado para bloquear campos como originId. */
   affiliateIsActive = false;
 
   form = this._fb.group({
@@ -165,7 +168,7 @@ export class AffiliateFormModalComponent implements OnInit {
     // los que no se les puede asignar un origen. La fecha de origen sigue
     // siendo obligatoria de verdad, pero solo cuando el origen es Meta o
     // Web (ver validateOriginDate()).
-    referralType: [''],
+    originId: [null as number | null],
     originDate: [''],
     entryDate: [{ value: '', disabled: true }],
     observation: ['', Validators.maxLength(2000)],
@@ -204,8 +207,8 @@ export class AffiliateFormModalComponent implements OnInit {
           // El bloqueo de plan/origen por afiliado activo solo aplica en edición
           this.affiliateIsActive = false;
           this.form.get('planId')?.enable({ emitEvent: false });
-          this.form.get('referralType')?.enable({ emitEvent: false });
-          this.validateOriginDate('');
+          this.form.get('originId')?.enable({ emitEvent: false });
+          this.validateOriginDate(null);
           // Asegurar que el campo de archivo esté siempre habilitado en modo creación
           this.form.get('documentFile')?.enable({ emitEvent: false });
           this.form.get('documentFile')?.clearValidators();
@@ -262,16 +265,25 @@ export class AffiliateFormModalComponent implements OnInit {
     }
   }
 
+  /** Busca el code ('META'/'WEB'/...) de un origen por su id, para las reglas
+   *  de negocio que dependen del origen elegido (no de cuál id le tocó). */
+  private originCodeById(originId: number | string | null | undefined): string | undefined {
+    const id = Number(originId);
+    if (!id) return undefined;
+    return this.origins().find((o) => o.id === id)?.code;
+  }
+
   /**
    * La fecha de origen solo es obligatoria cuando el origen del afiliado es
    * Meta o Web (para los demás orígenes no aplica y se limpia). El campo
    * siempre se muestra, pero queda bloqueado salvo que el origen sea Meta/Web
    * y el afiliado no esté restringido por estar activo (misma regla que
-   * referralType).
+   * originId).
    */
-  validateOriginDate(referralType: string | null | undefined): void {
+  validateOriginDate(originId: number | string | null | undefined): void {
     const originDateControl = this.form.get('originDate');
-    const isMetaOrWeb = referralType === 'META' || referralType === 'WEB';
+    const code = this.originCodeById(originId);
+    const isMetaOrWeb = code === 'META' || code === 'WEB';
     if (isMetaOrWeb) {
       originDateControl?.setValidators([Validators.required]);
     } else {
@@ -287,8 +299,8 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   get isMetaOrWebOrigin(): boolean {
-    const value = this.form.get('referralType')?.value;
-    return value === 'META' || value === 'WEB';
+    const code = this.originCodeById(this.form.get('originId')?.value);
+    return code === 'META' || code === 'WEB';
   }
 
   validateProfession(professionControl: AbstractControl | null) {
@@ -458,10 +470,10 @@ export class AffiliateFormModalComponent implements OnInit {
       this.validateAffiliateType();
     });
 
-    this.form.get('referralType')?.valueChanges.subscribe((value) => {
+    this.form.get('originId')?.valueChanges.subscribe((value) => {
       this.validateOriginDate(value);
     });
-    this.validateOriginDate(this.form.get('referralType')?.value);
+    this.validateOriginDate(this.form.get('originId')?.value);
   }
 
   private loadCitiesForDepartment(departmentCode: string): void {
@@ -559,8 +571,9 @@ export class AffiliateFormModalComponent implements OnInit {
       compensationBoxes: this._service.getCompensationBoxes(),
       departments: this._service.getDepartments(),
       branches: this._service.getBranchesDropdown(),
+      origins: this._service.getOrigins(),
     }).pipe(
-      switchMap(({ plans, companies, groupers, advisors, epsList, references, pensions, compensationBoxes, departments, branches }) => {
+      switchMap(({ plans, companies, groupers, advisors, epsList, references, pensions, compensationBoxes, departments, branches, origins }) => {
         this.plans.set(plans);
         this.companies.set(companies);
         this.groupers.set(groupers);
@@ -571,6 +584,7 @@ export class AffiliateFormModalComponent implements OnInit {
         this.compensationBoxes.set(compensationBoxes);
         this.departments.set(departments);
         this.branches.set(branches);
+        this.origins.set(origins);
         this.catalogsLoading.set(false);
         return of(null);
       }),
@@ -609,14 +623,14 @@ export class AffiliateFormModalComponent implements OnInit {
         if (a.isActive) {
           this.form.get('planId')?.disable({ emitEvent: false });
           // El origen del afiliado (y su fecha) solo pueden corregirse mientras está desactivado.
-          this.form.get('referralType')?.disable({ emitEvent: false });
+          this.form.get('originId')?.disable({ emitEvent: false });
         } else {
           this.form.get('planId')?.enable({ emitEvent: false });
-          this.form.get('referralType')?.enable({ emitEvent: false });
+          this.form.get('originId')?.enable({ emitEvent: false });
         }
         // Se llama después de fijar affiliateIsActive para que originDate quede
         // bloqueado/desbloqueado con la regla correcta desde el primer render.
-        this.validateOriginDate(a.referralType ?? '');
+        this.validateOriginDate(a.originId ?? null);
         if (a.grouperId) {
           const selectedGrouper = this.groupers().find(g => String(g.id) === String(a.grouperId));
           this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
@@ -666,7 +680,7 @@ export class AffiliateFormModalComponent implements OnInit {
       isActive: a.isActive ?? true,
       discount: a.discount ?? null,
       affiliateType: a.affiliateType ?? 'DEPENDIENTE',
-      referralType: a.referralType ?? '',
+      originId: a.originId ?? null,
       originDate: this.toLocalDateStr(a.originDate),
       companyEntryDate: this.toLocalDateStr(a.companyEntryDate ?? this.todayDate()),
       entryDate: this.toLocalDateStr(a.entryDate),
@@ -920,8 +934,8 @@ export class AffiliateFormModalComponent implements OnInit {
       isActive: raw.isActive ?? true,
       discount: toNumberOrNull(raw.discount) ?? undefined,
       affiliateType: raw.affiliateType as 'INDEPENDIENTE' | 'DEPENDIENTE' | undefined,
-      referralType: (raw.referralType || undefined) as 'META' | 'WEB' | 'REINGRESO' | 'REFERIDO' | 'SIN_ESPECIFICAR' | undefined,
-      originDate: (raw.referralType === 'META' || raw.referralType === 'WEB') ? (raw.originDate || undefined) : undefined,
+      originId: toNumberOrNull(raw.originId) ?? undefined,
+      originDate: this.isMetaOrWebOrigin ? (raw.originDate || undefined) : undefined,
       // companyEntryDate comes from its own form control (disabled), NOT from entryDate
       companyEntryDate: raw.companyEntryDate || this.toLocalDateStr(this.todayDate()),
       // Al crear, entryDate siempre viaja (por defecto hoy). En edición solo se envía
