@@ -83,7 +83,9 @@ Siempre respondes en español. Tu tono es profesional, directo y constructivo.
 
 Regla no negociable: el uso de "console.log" (o cualquier variante como console.debug/console.info dejada en el código) está PROHIBIDO en código de producción. Si encuentras un console.log en el código añadido, repórtalo SIEMPRE como severity "CRITICAL" dentro de code_quality, inclúyelo en required_changes, y el verdict del PR debe ser "REQUEST_CHANGES" sin excepción, sin importar la calidad del resto del código.
 
-${scopeRequirements ? `Regla no negociable de ALCANCE: este PR declaró una lista de requerimientos (ver más abajo, sección "Requerimientos declarados del PR"). Debes evaluar CADA archivo/cambio del diff y determinar si está justificado por al menos uno de esos requerimientos. Un cambio está justificado si es necesario o directamente implicado por algún requerimiento (incluye tests, tipos e imports que soporten ese cambio). NO está justificado: refactors no pedidos, renombrados, cambios de estilo/formato en código no relacionado, archivos o funciones no mencionadas ni implicadas por los requerimientos, eliminación de código no relacionado. Reporta cada cambio no justificado en "scope_violations" (archivo, resumen del cambio, motivo). Si encuentras alguno, el verdict debe ser "REQUEST_CHANGES" sin excepción. Si TODOS los cambios corresponden a los requerimientos, deja "scope_violations" vacío.` : 'No se declararon requerimientos de alcance para este PR (no hay bloque SCOPE en la descripción), así que deja "scope_violations" como un arreglo vacío y no penalices por esto.'}
+${scopeRequirements ? `Regla no negociable de ALCANCE: este PR declaró una lista de requerimientos (ver más abajo, sección "Requerimientos declarados del PR"). Debes evaluar CADA archivo/cambio del diff y determinar si está justificado por al menos uno de esos requerimientos. Un cambio está justificado si es necesario o directamente implicado por algún requerimiento (incluye tests, tipos e imports que soporten ese cambio). NO está justificado: refactors no pedidos, renombrados, cambios de estilo/formato en código no relacionado, archivos o funciones no mencionadas ni implicadas por los requerimientos, eliminación de código no relacionado. Reporta cada cambio no justificado en "scope_violations" (archivo, resumen del cambio, motivo). Si encuentras alguno, el verdict debe ser "REQUEST_CHANGES" sin excepción. Si TODOS los cambios corresponden a los requerimientos, deja "scope_violations" vacío.
+
+Además, chequeo de COBERTURA (esto es solo informativo, NO afecta el verdict ni cuenta como motivo para REQUEST_CHANGES): identifica cada tarea o punto individual dentro de la lista de requerimientos (cada línea, viñeta o punto numerado que describa un cambio distinto — no la lista completa como un solo bloque) y determina, para cada uno, si el diff contiene cambios que lo implementen. Devuelve esto en "requirements_coverage" (campos: requirement, covered, note). Un PR puede cubrir solo una parte de la lista a propósito (trabajo dividido en varios PRs) — eso NO es un error ni debe penalizar el score ni el verdict, es puramente para que el autor vea de un vistazo qué falta.` : 'No se declararon requerimientos de alcance para este PR (no hay bloque SCOPE en la descripción), así que deja "scope_violations" y "requirements_coverage" como arreglos vacíos y no penalices por esto.'}
 
 Responde ÚNICAMENTE con un JSON válido, sin texto adicional ni markdown fences, siguiendo exactamente este esquema:
 {
@@ -107,6 +109,9 @@ Responde ÚNICAMENTE con un JSON válido, sin texto adicional ni markdown fences
   ],
   "scope_violations": [
     { "file": "archivo con el cambio no justificado", "summary": "qué cambia ahí", "reason": "por qué no corresponde a ningún requerimiento declarado" }
+  ],
+  "requirements_coverage": [
+    { "requirement": "texto breve del punto/tarea individual de la lista de requerimientos", "covered": true, "note": "qué archivo/cambio lo implementa, o por qué no se ve implementado todavía (vacío si covered es true y es obvio)" }
   ],
   "positive_highlights": ["aspecto positivo 1"],
   "required_changes": ["cambio obligatorio (solo si verdict es REQUEST_CHANGES)"],
@@ -260,6 +265,20 @@ function formatGitHubComment(review) {
       comment += `✅ Todos los cambios de este PR corresponden a los requerimientos declarados en la descripción.\n\n`;
     }
     comment += `---\n\n`;
+  }
+
+  // Cobertura de requerimientos — informativo, no bloquea el PR. Un PR puede
+  // cubrir solo una parte de la lista a propósito (trabajo en varios PRs).
+  if (review.requirements_coverage && review.requirements_coverage.length > 0) {
+    const covered = review.requirements_coverage.filter(r => r.covered).length;
+    const total = review.requirements_coverage.length;
+    comment += `## 📋 Cobertura de Requerimientos\n\n`;
+    comment += `${covered}/${total} requerimientos declarados se ven reflejados en este diff (informativo — no bloquea el PR, puede que el resto se desarrolle en otro commit o PR):\n\n`;
+    review.requirements_coverage.forEach(r => {
+      comment += `- ${r.covered ? '✅' : '⬜'} ${r.requirement}\n`;
+      if (r.note) comment += `  > ${r.note}\n`;
+    });
+    comment += `\n---\n\n`;
   }
 
   // Security Alerts (primero por importancia)
@@ -450,6 +469,7 @@ async function main() {
     review.performance_issues = review.performance_issues || [];
     review.accessibility = review.accessibility || [];
     review.scope_violations = review.scope_violations || [];
+    review.requirements_coverage = review.requirements_coverage || [];
     review.positive_highlights = review.positive_highlights || [];
     review.required_changes = review.required_changes || [];
     review.suggested_improvements = review.suggested_improvements || [];
@@ -466,6 +486,7 @@ async function main() {
       performance_issues: [],
       accessibility: [],
       scope_violations: [],
+      requirements_coverage: [],
       positive_highlights: [],
       required_changes: [],
       suggested_improvements: [rawReview]
