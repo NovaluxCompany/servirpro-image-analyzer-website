@@ -96,7 +96,7 @@ async function callGemini(diff, requirements) {
 
 Un cambio está justificado si es necesario o directamente implicado por algún requerimiento (incluye tests, tipos e imports que soporten ese cambio). NO está justificado: refactors no pedidos, renombrados, cambios de estilo/formato en código no relacionado, archivos o funciones no mencionadas ni implicadas por los requerimientos, eliminación de código no relacionado, cambios de configuración o dependencias no pedidos.
 
-Además, chequeo de COBERTURA (esto es solo informativo, no afecta si el diff está "en alcance" o no): identifica cada tarea o punto individual dentro de la lista de requerimientos (cada línea, viñeta o punto numerado que describa un cambio distinto — no la lista completa como un solo bloque) y determina, para cada uno, si el diff contiene cambios que lo implementen. Un diff puede cubrir solo una parte de la lista a propósito (trabajo dividido en varios commits/PRs) — eso no es un error, es puramente informativo para que el autor vea de un vistazo qué falta.
+Regla no negociable de COBERTURA (el array es obligatorio siempre, aunque su contenido sea solo informativo y no afecte si el diff está "en alcance" o no): cuenta cuántos puntos/tareas individuales tiene la lista de requerimientos (cada línea, viñeta o punto numerado que describa un cambio distinto — no la lista completa como un solo bloque) y devuelve en "coverage" EXACTAMENTE esa cantidad de entradas, una por cada punto, sin omitir ninguno. Esto aplica SIEMPRE, incluso si hay violaciones, incluso si el diff no implementa todavía nada de la lista: en ese caso igual debes listar cada requerimiento con "covered": false y una nota breve de por qué no se ve implementado. NUNCA devuelvas "coverage" vacío cuando hay una lista de requerimientos. Un diff puede cubrir solo una parte de la lista a propósito (trabajo dividido en varios commits/PRs) — eso no es un error, es puramente informativo para que el autor vea de un vistazo qué falta.
 
 Responde ÚNICAMENTE con un JSON válido, sin texto adicional ni markdown fences, con este esquema exacto. Para que la respuesta no se corte, mantén "reason" y "note" en UNA sola frase corta (máximo ~20 palabras) cada una:
 {
@@ -128,10 +128,13 @@ Evalúa el diff contra los requerimientos y responde solo con el JSON pedido. Si
       // Gemini 2.5 Flash "piensa" (reasoning) por defecto y esos tokens de
       // thinking salen del mismo presupuesto que max_tokens — con el JSON
       // de salida ya extenso (violations + coverage), el thinking se comía
-      // el presupuesto y la respuesta llegaba cortada a mitad del JSON.
-      // Se desactiva: esta tarea es clasificación estructurada, no necesita
-      // razonamiento profundo.
-      reasoning_effort: 'none',
+      // el presupuesto y la respuesta llegaba cortada a mitad del JSON. Con
+      // "none" el JSON ya no se corta, pero el modelo empezó a saltarse
+      // instrucciones secundarias (dejaba "coverage" vacío) — "low" le da
+      // un margen chico de razonamiento (~1024 tokens, bien lejos del
+      // límite de max_tokens) para que siga todas las instrucciones sin
+      // volver a truncar la salida.
+      reasoning_effort: 'low',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
