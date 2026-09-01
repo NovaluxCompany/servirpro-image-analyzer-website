@@ -48,10 +48,26 @@
             El afiliado quedará inactivo y no podrá ser procesado hasta que sea activado nuevamente.
           </p>
           <div class="mt-4">
-            <label class="block mb-1 text-xs font-medium text-gray-600">Razón de la deshabilitación (opcional)</label>
+            <label class="block mb-1 text-xs font-medium text-gray-600">Motivo de la deshabilitación <span class="text-red-500">*</span></label>
+            <select [(ngModel)]="deactivationReasonType" (ngModelChange)="showReasonTypeError = false"
+              [class.border-red-400]="showReasonTypeError"
+              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
+              <option value="" disabled>Selecciona un motivo</option>
+              @for (opt of reasonTypeOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+            @if (showReasonTypeError) {
+              <p class="mt-1 text-xs text-red-500">Debes seleccionar un motivo.</p>
+            }
+          </div>
+
+          <div class="mt-3">
+            <label class="block mb-1 text-xs font-medium text-gray-600">Observación (opcional)</label>
             <textarea [(ngModel)]="deactivationReason" rows="3" maxlength="2000"
-              placeholder="Ej: No realizó el pago del mes"
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"></textarea>
+              [disabled]="!deactivationReasonType"
+              placeholder="Detalle adicional sobre el motivo seleccionado"
+              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 disabled:text-gray-400"></textarea>
           </div>
         } @else {
           <p class="mt-3 text-center text-xs text-gray-400">

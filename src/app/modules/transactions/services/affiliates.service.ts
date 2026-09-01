@@ -31,6 +31,18 @@ export class AffiliatesService {
       .pipe(catchError(this.handleError));
   }
 
+  /** Solo lectura: avisa si este documento ya tiene una transacción activa este mes. */
+  checkDuplicate(documentNumber: string): Observable<{ duplicate: boolean; message: string | null }> {
+    const params = new HttpParams().set('documentNumber', documentNumber);
+
+    return this._http
+      .get<{ duplicate: boolean; message: string | null }>(`${environment.urlBD}/transactions/check-duplicate`, {
+        headers: this.getHeaders(),
+        params,
+      })
+      .pipe(catchError(this.handleError));
+  }
+
   private handleError(error: any): Observable<never> {
     let errorMessage = 'Ha ocurrido un error al buscar afiliados';
 

@@ -17,6 +17,7 @@ import {
   InactivationAffiliateRow,
 } from '../interfaces/deactivate-affiliates.interface';
 import { DeactivateAffiliatesService } from '../services/deactivate-affiliates.service';
+import { AffiliateMembersService } from '../../affiliates/services/affiliate-members.service';
 
 type InactivationTab = 'unpaid' | 'underpaid';
 
@@ -29,6 +30,7 @@ type InactivationTab = 'unpaid' | 'underpaid';
 })
 export class DeactivateAffiliatesList implements OnInit {
   private readonly _deactivateAffiliatesService = inject(DeactivateAffiliatesService);
+  private readonly _affiliateMembersService = inject(AffiliateMembersService);
   private readonly _toastService = inject(ToastService);
   private readonly _configGeneralService = inject(ConfigGeneralService);
   private readonly _tokenService = inject(TokenService);
@@ -39,7 +41,15 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly isSubmitting = signal(false);
   protected readonly showConfirmationModal = signal(false);
   protected deactivationReason = '';
+  protected deactivationReasonType: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST' | '' = '';
+  protected showReasonTypeError = false;
   protected readonly isDeactivatingAll = signal(false);
+
+  readonly reasonTypeOptions: { value: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST'; label: string }[] = [
+    { value: 'PLAN_CHANGE', label: 'Cambio de plan' },
+    { value: 'NO_PAYMENT', label: 'No pagó' },
+    { value: 'CLIENT_REQUEST', label: 'Solicitud del cliente' },
+  ];
   protected readonly showApprovePaymentModal = signal(false);
   protected readonly pendingApproveAffiliate = signal<InactivationAffiliateRow | null>(null);
   protected readonly selectedIds = signal<number[]>([]);
@@ -193,8 +203,19 @@ export class DeactivateAffiliatesList implements OnInit {
     return unique.map(v => ({ value: v, label: v }));
   });
 
+  // Nombres del catálogo de asesores HABILITADOS (GET /advisors/dropdown).
+  protected readonly activeAdvisorNames = signal<Set<string>>(new Set());
+
+  // Intersección: solo asesores que (a) tienen al menos un afiliado en la
+  // lista cargada Y (b) están habilitados. Derivarlo solo de los datos
+  // mostraría asesores viejos/deshabilitados que quedaron pegados a algún
+  // afiliado sin reasignar; derivarlo solo del catálogo mostraría asesores
+  // habilitados con cero resultados en este tab (filtro "muerto").
   protected readonly adviserOptions = computed((): SelectOption[] => {
-    const unique = [...new Set(this.allAffiliates().map(a => a.advisor).filter(Boolean))].sort();
+    const active = this.activeAdvisorNames();
+    const unique = [...new Set(this.allAffiliates().map(a => a.advisor).filter(Boolean))]
+      .filter(name => active.size === 0 || active.has(name))
+      .sort();
     return unique.map(v => ({ value: v, label: v }));
   });
 
@@ -221,6 +242,10 @@ export class DeactivateAffiliatesList implements OnInit {
       error: () => {
         this.loadData();
       },
+    });
+
+    this._affiliateMembersService.getAdvisors().subscribe((advisors) => {
+      this.activeAdvisorNames.set(new Set(advisors.map((a) => a.name)));
     });
   }
 
@@ -383,6 +408,8 @@ export class DeactivateAffiliatesList implements OnInit {
     this.showConfirmationModal.set(false);
     this.isDeactivatingAll.set(false);
     this.deactivationReason = '';
+    this.deactivationReasonType = '';
+    this.showReasonTypeError = false;
   }
 
   protected deactivateAll(): void {
@@ -439,6 +466,12 @@ export class DeactivateAffiliatesList implements OnInit {
   protected confirmDeactivation(): void {
     if (this.isSubmitting()) return;
 
+    if (!this.deactivationReasonType) {
+      this.showReasonTypeError = true;
+      this._toastService.showError('Selecciona el motivo de la deshabilitación antes de continuar.');
+      return;
+    }
+
     this.isSubmitting.set(true);
 
     if (this.isDeactivatingAll()) {
@@ -450,6 +483,7 @@ export class DeactivateAffiliatesList implements OnInit {
         company: this.filterCompany() || undefined,
         grouper: this.filterGrouper() || undefined,
         reason: this.deactivationReason || undefined,
+        reasonType: this.deactivationReasonType,
       };
 
       this._deactivateAffiliatesService.deactivateAllAffiliates(filters).subscribe({
@@ -457,7 +491,7 @@ export class DeactivateAffiliatesList implements OnInit {
           this.showConfirmationModal.set(false);
           this.isDeactivatingAll.set(false);
           this.isSubmitting.set(false);
-          this.deactivationReason = '';
+          this.resetReasonFields();
           this.handleDeactivationResponse(response);
         },
         error: (error: Error) => {
@@ -478,21 +512,29 @@ export class DeactivateAffiliatesList implements OnInit {
       return;
     }
 
-    this._deactivateAffiliatesService.deactivateAffiliates(ids, this.deactivationReason || undefined).subscribe({
-      next: (response) => {
-        this.showConfirmationModal.set(false);
-        this.isDeactivatingAll.set(false);
-        this.isSubmitting.set(false);
-        this.deactivationReason = '';
-        this.handleDeactivationResponse(response);
-      },
-      error: (error: Error) => {
-        this.isSubmitting.set(false);
-        this.showConfirmationModal.set(false);
-        this.isDeactivatingAll.set(false);
-        this._toastService.showError(error.message || 'No fue posible desactivar los afiliados seleccionados.');
-      },
-    });
+    this._deactivateAffiliatesService
+      .deactivateAffiliates(ids, this.deactivationReason || undefined, this.deactivationReasonType)
+      .subscribe({
+        next: (response) => {
+          this.showConfirmationModal.set(false);
+          this.isDeactivatingAll.set(false);
+          this.isSubmitting.set(false);
+          this.resetReasonFields();
+          this.handleDeactivationResponse(response);
+        },
+        error: (error: Error) => {
+          this.isSubmitting.set(false);
+          this.showConfirmationModal.set(false);
+          this.isDeactivatingAll.set(false);
+          this._toastService.showError(error.message || 'No fue posible desactivar los afiliados seleccionados.');
+        },
+      });
+  }
+
+  private resetReasonFields(): void {
+    this.deactivationReason = '';
+    this.deactivationReasonType = '';
+    this.showReasonTypeError = false;
   }
 
   protected handleDeactivationResponse(response: DeactivateAffiliatesResponse): void {

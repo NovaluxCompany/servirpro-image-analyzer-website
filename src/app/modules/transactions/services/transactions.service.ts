@@ -146,28 +146,31 @@ export class TransactionsService {
   };
 
   private handleError(error: any): Observable<never> {
-    let errorMessage = 'Ha ocurrido un error inesperado';
+    // El backend ya devuelve mensajes descriptivos por escenario (documento duplicado,
+    // creación bloqueada, validación de campos, etc.) — se leen primero siempre que
+    // vengan, y solo se cae al mensaje genérico por status cuando no hay ninguno.
+    const backendMessage = Array.isArray(error.error?.message)
+      ? error.error.message.join(', ')
+      : error.error?.message;
 
-    if (error.status === 401) {
-      errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
-    } else if (error.status === 403) {
-      errorMessage = error.error?.message || 'No tienes permiso para ver esta información.';
-    } else if (error.status === 400) {
-      if (error.error?.message) {
-        if (Array.isArray(error.error.message)) {
-          errorMessage = error.error.message.join(', ');
-        } else {
-          errorMessage = error.error.message;
-        }
-      } else {
-        errorMessage = 'Los datos enviados no son válidos';
+    let errorMessage = backendMessage || 'Ha ocurrido un error inesperado';
+
+    if (!backendMessage) {
+      if (error.status === 401) {
+        errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
+      } else if (error.status === 403) {
+        errorMessage = 'No tienes permiso para ver esta información.';
+      } else if (error.status === 400) {
+        errorMessage = 'Los datos enviados no son válidos.';
+      } else if (error.status === 409) {
+        errorMessage = 'Ya existe un registro en conflicto con los datos enviados.';
+      } else if (error.status === 413) {
+        errorMessage = 'Las imágenes son muy grandes (máximo 5MB cada una).';
+      } else if (error.status === 404) {
+        errorMessage = 'Transacción no encontrada.';
+      } else if (error.status >= 500) {
+        errorMessage = 'Error del servidor. Por favor, intenta más tarde.';
       }
-    } else if (error.status === 413) {
-      errorMessage = 'Las imágenes son muy grandes (máximo 5MB cada una)';
-    } else if (error.status === 404) {
-      errorMessage = 'Transacción no encontrada';
-    } else if (error.status >= 500) {
-      errorMessage = 'Error del servidor. Por favor, intenta más tarde.';
     }
 
     const wrapped = new Error(errorMessage) as Error & { status?: number };

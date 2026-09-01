@@ -1,7 +1,7 @@
 @if (isVisible()) {
 <!-- Overlay -->
 <div class="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-  <div class="relative w-full max-w-4xl my-6 bg-white rounded-2xl shadow-2xl flex flex-col">
+  <div class="relative w-full max-w-3xl my-6 bg-white rounded-2xl shadow-2xl flex flex-col">
 
     <!-- Header -->
     <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-800 rounded-t-2xl">
@@ -53,7 +53,7 @@
         <!-- SECCION 1: DATOS PERSONALES -->
         <div class="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
           <!-- Encabezado como botón para alternar el estado -->
-          <button type="button" (click)="section1Open = !section1Open"
+          <button type="button" (click)="toggleSection1()"
             class="w-full flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors border-b border-blue-100 focus:outline-none">
             <div class="flex items-center gap-3">
               <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
@@ -257,7 +257,7 @@
         <div class="border border-gray-200 rounded-xl overflow-hidden mt-6 bg-white shadow-sm">
 
           <!-- Botón de Encabezado -->
-          <button type="button" (click)="section2Open = !section2Open"
+          <button type="button" (click)="toggleSection2()"
             class="w-full flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors border-b border-blue-100 focus:outline-none">
             <div class="flex items-center gap-3">
               <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
@@ -327,23 +327,56 @@
 
               @if (!isEdit) {
               <!-- ¿Es afiliado nuevo? (solo al crear) -->
-              <div class="flex items-center gap-2 pt-6">
-                <input type="checkbox" id="isNew" formControlName="isNew"
-                  class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                <label for="isNew" class="text-xs font-semibold text-gray-700">¿Es afiliado nuevo?</label>
+              <div>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Afiliado nuevo</label>
+                <label for="isNew"
+                  class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer select-none hover:bg-gray-50">
+                  <input type="checkbox" id="isNew" formControlName="isNew"
+                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                  ¿Es afiliado nuevo?
+                </label>
               </div>
               }
 
-              <!-- Origen del afiliado (Nuevo / Reingreso / Referido) -->
+              <!-- Origen del afiliado (Meta / Web) -->
               <div>
-                <label class="block mb-1.5 text-xs font-semibold text-gray-700">Origen del afiliado</label>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                  Origen del afiliado <span class="text-red-500">*</span>
+                </label>
                 <select formControlName="referralType"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                  <option value="">Sin especificar</option>
-                  <option value="NUEVO">Nuevo</option>
+                  [class.border-red-400]="form.get('referralType')?.invalid && form.get('referralType')?.touched"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-400">
+                  <option value="" disabled>Selecciona un origen</option>
+                  <option value="META">Meta</option>
+                  <option value="WEB">Web</option>
                   <option value="REINGRESO">Reingreso</option>
                   <option value="REFERIDO">Referido</option>
+                  <option value="SIN_ESPECIFICAR">Sin especificar</option>
                 </select>
+                @if (form.get('referralType')?.invalid && form.get('referralType')?.touched) {
+                <p class="mt-1 text-xs text-red-500">El origen del afiliado es obligatorio.</p>
+                }
+                @if (isEdit && affiliateIsActive) {
+                <p class="mt-1 text-xs text-gray-400">Solo editable mientras el afiliado esté deshabilitado.</p>
+                }
+              </div>
+
+              <!-- Fecha de origen (solo editable con origen Meta/Web) -->
+              <div>
+                <label class="block mb-1.5 text-xs font-semibold text-gray-700">
+                  Fecha de origen @if (isMetaOrWebOrigin) {<span class="text-red-500">*</span>}
+                </label>
+                <input type="date" formControlName="originDate"
+                  [class.border-red-400]="form.get('originDate')?.invalid && form.get('originDate')?.touched"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-400">
+                @if (form.get('originDate')?.invalid && form.get('originDate')?.touched) {
+                <p class="mt-1 text-xs text-red-500">La fecha de origen es obligatoria para Meta o Web.</p>
+                }
+                @if (!isMetaOrWebOrigin) {
+                <p class="mt-1 text-xs text-gray-400">Solo aplica cuando el origen es Meta o Web.</p>
+                } @else if (isEdit && affiliateIsActive) {
+                <p class="mt-1 text-xs text-gray-400">Solo editable mientras el afiliado esté deshabilitado.</p>
+                }
               </div>
 
               <!-- Profesion -->

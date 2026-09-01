@@ -1,11 +1,30 @@
-<!-- Barra de scroll horizontal "espejo", siempre visible arriba de la tabla -->
-<div #topScroll (scroll)="onTopScroll()" class="overflow-x-auto overflow-y-hidden">
+<!-- Barra de scroll horizontal "espejo", siempre visible arriba de la tabla
+     (si no, con el scroll vertical manejado por la página, la barra real de
+     abajo queda al final de toda la tabla y hay que bajar hasta ahí para verla).
+     No vive dentro de #mainScroll, así que su propio sticky sí funciona
+     relativo a la página (queda pegada bajo el header de la app). -->
+<div #topScroll (scroll)="onTopScroll()"
+  class="sticky top-[73px] z-20 bg-white border-b border-gray-200 pt-2 pb-3 overflow-x-auto overflow-y-hidden">
   <div #topScrollInner style="height: 1px;"></div>
 </div>
 
-<!-- Contenedor real: solo scroll horizontal. La tabla crece de largo lo que
-     necesite y el scroll vertical lo maneja la página (scroll "de afuera"),
-     no un cuadro interno -->
+<!-- Contenedor real: scroll horizontal. El scroll vertical lo maneja la
+     página (scroll "de afuera"), no un cuadro interno. El thead real NO usa
+     `position: sticky` (no puede funcionar: `overflow-x: auto` obliga al
+     navegador a activar también `overflow-y`, y eso vuelve a este div el
+     contenedor de referencia del sticky en vez de la página — se probó
+     directamente, no hay forma de evitarlo). En su lugar, ver ngAfterViewInit:
+     se clona el thead en un elemento aparte con position:fixed que se
+     muestra/oculta y sincroniza por JS, simulando el encabezado "congelado". -->
 <div #mainScroll (scroll)="onMainScroll()" class="overflow-x-auto">
   <ng-content></ng-content>
+</div>
+
+<!-- Pie fijo opcional (totales, paginación, etc.): vive FUERA del div con
+     scroll horizontal de arriba, así que su sticky bottom-0 sí funciona
+     relativo a la página sin problema. Sin estilos propios (bg/borde) para
+     no afectar a las páginas que no proyectan nada en este slot: el
+     contenido proyectado trae su propio fondo/borde. -->
+<div class="sticky bottom-0 z-10">
+  <ng-content select="[table-footer]"></ng-content>
 </div>

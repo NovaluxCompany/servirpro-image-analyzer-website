@@ -130,13 +130,17 @@ export class AffiliateMembersService {
   }
 
   // ── Activar / Desactivar ──────────────────────────────────────────
-  // `reason` solo aplica al deshabilitar (se ignora al habilitar); queda
-  // guardado en affiliations.deactivation_reason.
-  toggleStatus(id: string, reason?: string): Observable<AffiliateMember> {
+  // `reason`/`reasonType` solo aplican al deshabilitar (se ignoran al habilitar);
+  // quedan guardados en affiliations.deactivation_reason / deactivation_reason_type.
+  toggleStatus(
+    id: string,
+    reason?: string,
+    reasonType?: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST',
+  ): Observable<AffiliateMember> {
     return this._http
       .patch<AffiliateMember>(
         `${this.baseUrl}/${id}/toggle`,
-        { reason },
+        { reason, reasonType },
         { headers: this.getHeaders() }
       )
       .pipe(catchError(this.handleError));
@@ -207,6 +211,36 @@ export class AffiliateMembersService {
         { emails, observation },
         { headers: this.getHeaders() }
       )
+      .pipe(catchError(this.handleError));
+  }
+
+  // ── Envío de documentos por WhatsApp ────────────────────────────────
+  getWhatsappSourceNumbers(): Observable<{ id: number; ownerName: string }[]> {
+    return this._http
+      .get<{ id: number; ownerName: string }[]>(`${this.baseUrl}/whatsapp/source-numbers`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(() => of([])));
+  }
+
+  sendWhatsapp(
+    affiliationId: number,
+    sourceNumberId: number,
+    destinationPhone: string,
+    files: { file: File; certType: 'EPS' | 'ARL' | 'CCF' | 'AFP' }[],
+  ): Observable<{ success: boolean; message: string }> {
+    const formData = new FormData();
+    formData.append('sourceNumberId', String(sourceNumberId));
+    formData.append('destinationPhone', destinationPhone);
+    files.forEach(({ file, certType }) => {
+      formData.append('files', file);
+      formData.append('certTypes', certType);
+    });
+
+    const token = this._tokenService.getToken();
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    return this._http
+      .post<{ success: boolean; message: string }>(`${this.baseUrl}/${affiliationId}/whatsapp-send`, formData, { headers })
       .pipe(catchError(this.handleError));
   }
 

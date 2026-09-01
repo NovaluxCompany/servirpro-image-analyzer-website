@@ -1,0 +1,119 @@
+@if (isVisible() && affiliate(); as a) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+
+      <!-- Header -->
+      <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-emerald-600 to-emerald-700 shrink-0">
+        <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+          </svg>
+        </div>
+        <h3 class="text-base font-bold text-white">Enviar documentos por WhatsApp</h3>
+      </div>
+
+      <!-- Body -->
+      <div class="px-6 py-5 overflow-y-auto">
+        <p class="text-sm text-gray-700 mb-4">
+          Adjunta los certificados de <strong>{{ a.fullName }}</strong> ({{ a.planName }}) y elige desde qué
+          número se enviarán.
+        </p>
+
+        @if (allAlreadySent) {
+          <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+            Ya se enviaron todos los documentos por WhatsApp a este afiliado. Para volver a enviar, desactiva y
+            vuelve a activar al afiliado.
+          </div>
+        }
+
+        @if (certSlots().length === 0) {
+          <p class="text-xs text-gray-400 italic mb-4">Este plan no requiere certificados adicionales.</p>
+        }
+
+        <div class="space-y-3">
+          @for (slot of certSlots(); track slot.key) {
+            <div class="border border-gray-200 rounded-lg p-3">
+              <label class="block mb-2 text-xs font-semibold text-gray-700">
+                {{ slot.label }}
+                @if (!slot.alreadySent) {
+                  <span class="text-red-500">*</span>
+                }
+              </label>
+              @if (slot.alreadySent) {
+                <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-500">
+                  <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Ya enviado previamente
+                </div>
+              } @else if (slot.file) {
+                <div class="flex items-center justify-between gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <span class="text-xs text-emerald-800 truncate">{{ slot.file.name }}</span>
+                  <button type="button" (click)="removeFile(slot.key)" class="text-emerald-600 hover:text-emerald-800 shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              } @else {
+                <label class="flex items-center justify-center gap-2 px-3 py-3 border-2 border-dashed border-gray-300 rounded-lg text-xs text-gray-500 hover:border-emerald-400 hover:text-emerald-600 cursor-pointer transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Adjuntar PDF
+                  <input type="file" accept="application/pdf" class="hidden" (change)="onFileSelected($event, slot.key)">
+                </label>
+              }
+            </div>
+          }
+        </div>
+
+        @if (fileError()) {
+          <p class="mt-2 text-xs text-red-500">{{ fileError() }}</p>
+        }
+
+        <label class="block mt-4 mb-1 text-xs font-semibold text-gray-700">
+          Número de origen <span class="text-red-500">*</span>
+        </label>
+        <select [(ngModel)]="selectedSourceNumberId"
+          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+          <option [ngValue]="''" disabled>Selecciona un número de origen</option>
+          @for (n of sourceNumbers(); track n.id) {
+            <option [ngValue]="n.id">{{ n.ownerName }}</option>
+          }
+        </select>
+        @if (sourceNumbers().length === 0) {
+          <p class="mt-1 text-xs text-gray-400">No hay números de origen configurados. Contacta al administrador.</p>
+        }
+
+        <label class="block mt-4 mb-1 text-xs font-semibold text-gray-700">
+          Número de destino (WhatsApp) <span class="text-red-500">*</span>
+        </label>
+        <input type="tel" [(ngModel)]="destinationPhone" placeholder="Ej: 3001234567"
+          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+      </div>
+
+      <!-- Footer -->
+      <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200 shrink-0">
+        <button type="button" (click)="onCancel()" [disabled]="isLoading()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+          Cancelar
+        </button>
+        <button type="button" (click)="onConfirm()" [disabled]="isLoading() || allAlreadySent"
+          class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+          @if (isLoading()) {
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Enviando...
+          } @else {
+            Enviar
+          }
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

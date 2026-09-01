@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, effect } from '@angular/core';
+import { Component, inject, signal, computed, effect, HostListener } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
@@ -32,6 +32,8 @@ export class LayoutComponent {
   /** Estado visual real del sidebar: expandido si está fijado abierto o en hover. */
   isSidebarExpanded = computed(() => this.isSidebarOpen() || this.isSidebarHovered());
   currentRoute = signal('');
+  /** Menú de "Cerrar sesión" desplegado desde el avatar del header. */
+  isUserMenuOpen = signal(false);
 
   /** Ruta previa a la actual (solo se pisa en navegaciones reales, ya validadas por el roleGuard). */
   private previousPath = '';
@@ -148,10 +150,19 @@ export class LayoutComponent {
     this.isSidebarHovered.set(false);
   }
 
+  toggleUserMenu(event: Event): void {
+    event.stopPropagation();
+    this.isUserMenuOpen.set(!this.isUserMenuOpen());
+  }
+
+  @HostListener('document:click')
+  closeUserMenu(): void {
+    if (this.isUserMenuOpen()) this.isUserMenuOpen.set(false);
+  }
+
   logout(): void {
-    this._tokenService.removeToken();
-    this._tokenService.clearUser();
-    this._router.navigate(['/login']);
+    this.isUserMenuOpen.set(false);
+    this._authService.logout();
   }
 
   isActiveRoute(route: string): boolean {
