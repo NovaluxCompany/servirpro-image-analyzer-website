@@ -205,7 +205,7 @@ export class AffiliateFormModalComponent implements OnInit {
           this.affiliateIsActive = false;
           this.form.get('planId')?.enable({ emitEvent: false });
           this.form.get('referralType')?.enable({ emitEvent: false });
-          this.form.get('originDate')?.enable({ emitEvent: false });
+          this.validateOriginDate('');
           // Asegurar que el campo de archivo esté siempre habilitado en modo creación
           this.form.get('documentFile')?.enable({ emitEvent: false });
           this.form.get('documentFile')?.clearValidators();
@@ -264,17 +264,26 @@ export class AffiliateFormModalComponent implements OnInit {
 
   /**
    * La fecha de origen solo es obligatoria cuando el origen del afiliado es
-   * Meta o Web (para los demás orígenes no aplica y se limpia).
+   * Meta o Web (para los demás orígenes no aplica y se limpia). El campo
+   * siempre se muestra, pero queda bloqueado salvo que el origen sea Meta/Web
+   * y el afiliado no esté restringido por estar activo (misma regla que
+   * referralType).
    */
   validateOriginDate(referralType: string | null | undefined): void {
     const originDateControl = this.form.get('originDate');
-    if (referralType === 'META' || referralType === 'WEB') {
+    const isMetaOrWeb = referralType === 'META' || referralType === 'WEB';
+    if (isMetaOrWeb) {
       originDateControl?.setValidators([Validators.required]);
     } else {
       originDateControl?.setValue('', { emitEvent: false });
       originDateControl?.clearValidators();
     }
     originDateControl?.updateValueAndValidity({ emitEvent: false });
+    if (isMetaOrWeb && !this.affiliateIsActive) {
+      originDateControl?.enable({ emitEvent: false });
+    } else {
+      originDateControl?.disable({ emitEvent: false });
+    }
   }
 
   get isMetaOrWebOrigin(): boolean {
@@ -595,19 +604,19 @@ export class AffiliateFormModalComponent implements OnInit {
         if (a.planId) {
           this.updatePlanLogic(String(a.planId));
         }
-        this.validateOriginDate(a.referralType ?? '');
         // El plan solo puede cambiarse mientras el afiliado está desactivado.
         this.affiliateIsActive = !!a.isActive;
         if (a.isActive) {
           this.form.get('planId')?.disable({ emitEvent: false });
           // El origen del afiliado (y su fecha) solo pueden corregirse mientras está desactivado.
           this.form.get('referralType')?.disable({ emitEvent: false });
-          this.form.get('originDate')?.disable({ emitEvent: false });
         } else {
           this.form.get('planId')?.enable({ emitEvent: false });
           this.form.get('referralType')?.enable({ emitEvent: false });
-          this.form.get('originDate')?.enable({ emitEvent: false });
         }
+        // Se llama después de fijar affiliateIsActive para que originDate quede
+        // bloqueado/desbloqueado con la regla correcta desde el primer render.
+        this.validateOriginDate(a.referralType ?? '');
         if (a.grouperId) {
           const selectedGrouper = this.groupers().find(g => String(g.id) === String(a.grouperId));
           this.selectedGrouperLabel = selectedGrouper ? selectedGrouper.name.toUpperCase() : '';
