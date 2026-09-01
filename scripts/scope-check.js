@@ -27,7 +27,7 @@ const { execSync } = require('child_process');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MAX_DIFF_CHARS = 400000;
-const MAX_OUTPUT_TOKENS = 16000;
+const MAX_OUTPUT_TOKENS = 24000;
 
 const COLOR = {
   reset: '\x1b[0m',
@@ -125,6 +125,13 @@ Evalúa el diff contra los requerimientos y responde solo con el JSON pedido. Si
     const body = JSON.stringify({
       model: 'gemini-2.5-flash',
       max_tokens: MAX_OUTPUT_TOKENS,
+      // Gemini 2.5 Flash "piensa" (reasoning) por defecto y esos tokens de
+      // thinking salen del mismo presupuesto que max_tokens — con el JSON
+      // de salida ya extenso (violations + coverage), el thinking se comía
+      // el presupuesto y la respuesta llegaba cortada a mitad del JSON.
+      // Se desactiva: esta tarea es clasificación estructurada, no necesita
+      // razonamiento profundo.
+      reasoning_effort: 'none',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
