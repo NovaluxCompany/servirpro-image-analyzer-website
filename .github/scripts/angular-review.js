@@ -180,7 +180,14 @@ Responde ÚNICAMENTE con el JSON del esquema indicado arriba, sin texto adiciona
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       model: 'gemini-2.5-flash',
-      max_tokens: 16000,
+      max_tokens: 24000,
+      // Gemini 2.5 Flash "piensa" (reasoning) por defecto y esos tokens de
+      // thinking salen del mismo presupuesto que max_tokens — con diffs
+      // grandes y el JSON de salida ya extenso (scope + cobertura), el
+      // thinking se comía casi todo el presupuesto y la respuesta llegaba
+      // cortada a mitad del JSON. Se desactiva: esta tarea es clasificación
+      // estructurada, no necesita razonamiento profundo.
+      reasoning_effort: 'none',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
