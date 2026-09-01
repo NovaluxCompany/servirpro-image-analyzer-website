@@ -8,7 +8,7 @@
  * el chequeo local de front y back usen la misma key (GEMINI_API_KEY) y no
  * dependas de la API de Anthropic solo para esto. El Angular PR Review Agent
  * que corre en GitHub Actions (.github/scripts/angular-review.js) sigue
- * usando Gemini sin cambios — esto es solo para la validación rápida local.
+ * usando Claude sin cambios — esto es solo para la validación rápida local.
  *
  * Uso:
  *   npm run scope-check                     # valida todo lo no commiteado (git diff HEAD)
@@ -96,11 +96,16 @@ async function callGemini(diff, requirements) {
 
 Un cambio está justificado si es necesario o directamente implicado por algún requerimiento (incluye tests, tipos e imports que soporten ese cambio). NO está justificado: refactors no pedidos, renombrados, cambios de estilo/formato en código no relacionado, archivos o funciones no mencionadas ni implicadas por los requerimientos, eliminación de código no relacionado, cambios de configuración o dependencias no pedidos.
 
-Responde ÚNICAMENTE con un JSON válido, sin texto adicional ni markdown fences, con este esquema exacto. Para que la respuesta no se corte, mantén "reason" en UNA sola frase corta (máximo ~20 palabras) por cada violación:
+Además, chequeo de COBERTURA (esto es solo informativo, no afecta si el diff está "en alcance" o no): identifica cada tarea o punto individual dentro de la lista de requerimientos (cada línea, viñeta o punto numerado que describa un cambio distinto — no la lista completa como un solo bloque) y determina, para cada uno, si el diff contiene cambios que lo implementen. Un diff puede cubrir solo una parte de la lista a propósito (trabajo dividido en varios commits/PRs) — eso no es un error, es puramente informativo para que el autor vea de un vistazo qué falta.
+
+Responde ÚNICAMENTE con un JSON válido, sin texto adicional ni markdown fences, con este esquema exacto. Para que la respuesta no se corte, mantén "reason" y "note" en UNA sola frase corta (máximo ~20 palabras) cada una:
 {
   "in_scope": true|false,
   "violations": [
     { "file": "ruta/al/archivo", "reason": "motivo breve de por qué no corresponde a ningún requerimiento" }
+  ],
+  "coverage": [
+    { "requirement": "texto breve del punto/tarea individual de la lista", "covered": true|false, "note": "qué archivo lo implementa, o por qué no se ve implementado (vacío si covered es true y es obvio)" }
   ]
 }`;
 
@@ -174,6 +179,7 @@ function extractPartialViolations(text) {
 
 function printReport(result, truncated) {
   const violations = result.violations || [];
+  const coverage = result.coverage || [];
   const line = '─'.repeat(56);
 
   console.log('');
@@ -189,19 +195,33 @@ function printReport(result, truncated) {
 
   if (!truncated && result.in_scope && violations.length === 0) {
     console.log(`\n${COLOR.green}${COLOR.bold}✅ EN ALCANCE${COLOR.reset} — todos los cambios corresponden a los requerimientos.\n`);
-    return;
-  }
-
-  if (violations.length === 0) {
+  } else if (violations.length === 0) {
     console.log(`\n${COLOR.dim}No se identificó ninguna violación en la parte de la respuesta que llegó.${COLOR.reset}\n`);
-    return;
+  } else {
+    console.log(`\n${COLOR.red}${COLOR.bold}❌ FUERA DE ALCANCE${COLOR.reset} — ${violations.length} cambio(s) no justificado(s):\n`);
+    violations.forEach((v, i) => {
+      console.log(`${COLOR.bold}${i + 1}.${COLOR.reset} ${COLOR.yellow}${v.file}${COLOR.reset}`);
+      console.log(`   ${COLOR.dim}${v.reason}${COLOR.reset}`);
+    });
   }
 
-  console.log(`\n${COLOR.red}${COLOR.bold}❌ FUERA DE ALCANCE${COLOR.reset} — ${violations.length} cambio(s) no justificado(s):\n`);
-  violations.forEach((v, i) => {
-    console.log(`${COLOR.bold}${i + 1}.${COLOR.reset} ${COLOR.yellow}${v.file}${COLOR.reset}`);
-    console.log(`   ${COLOR.dim}${v.reason}${COLOR.reset}`);
-  });
+  // Cobertura de requerimientos — informativo, no afecta el resultado de
+  // arriba ni el código de salida. Un diff puede cubrir solo una parte de
+  // la lista a propósito (trabajo dividido en varios commits/PRs).
+  if (coverage.length > 0) {
+    const covered = coverage.filter((c) => c.covered).length;
+    console.log('');
+    console.log(`${COLOR.cyan}${line}${COLOR.reset}`);
+    console.log(`${COLOR.bold}📋 Cobertura de requerimientos${COLOR.reset} ${COLOR.dim}(informativo)${COLOR.reset}`);
+    console.log(`${COLOR.cyan}${line}${COLOR.reset}`);
+    console.log(`${covered}/${coverage.length} requerimientos se ven reflejados en este diff:\n`);
+    coverage.forEach((c) => {
+      const mark = c.covered ? `${COLOR.green}✅${COLOR.reset}` : `${COLOR.yellow}⬜${COLOR.reset}`;
+      console.log(`${mark} ${c.requirement}`);
+      if (c.note) console.log(`   ${COLOR.dim}${c.note}${COLOR.reset}`);
+    });
+  }
+
   console.log('');
   console.log(`${COLOR.cyan}${line}${COLOR.reset}\n`);
 }
