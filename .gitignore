@@ -51,3 +51,11 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Alcance local (scope-check)
+SCOPE.md
+
+# Variables de entorno
+.env
+.env.local
+.env.*.local

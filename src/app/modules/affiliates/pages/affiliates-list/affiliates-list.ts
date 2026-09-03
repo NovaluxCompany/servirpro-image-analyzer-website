@@ -9,6 +9,7 @@ import { AffiliateSendEmailModalComponent } from '../../components/affiliate-sen
 import { AffiliateInfoModalComponent } from '../../components/affiliate-info-modal/affiliate-info-modal';
 import { AffiliateDocumentsModalComponent } from '../../components/affiliate-documents-modal/affiliate-documents-modal';
 import { AffiliateSendEmailObservationModalComponent } from '../../components/affiliate-send-email-observation-modal/affiliate-send-email-observation-modal';
+import { AffiliateSendWhatsappModalComponent } from '../../components/affiliate-send-whatsapp-modal/affiliate-send-whatsapp-modal';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
 import { ConfigGeneralService } from '../../../../core/service/config-general.service';
@@ -21,7 +22,7 @@ import { debounceTime, Subject } from 'rxjs';
 @Component({
   selector: 'app-affiliates-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
+  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateSendWhatsappModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './affiliates-list.html',
 })
 export class AffiliatesListComponent implements OnInit {
@@ -63,6 +64,7 @@ export class AffiliatesListComponent implements OnInit {
   showStatusModal = signal(false);
   showSendEmailModal = signal(false);
   showSendEmailObservationModal = signal(false);
+  showSendWhatsappModal = signal(false);
   showInfoModal = signal(false);
   showDocumentsModal = signal(false);
   formMode = signal<'create' | 'edit'>('create');
@@ -497,6 +499,42 @@ export class AffiliatesListComponent implements OnInit {
   onEmailModalCancelled(): void {
     this.showSendEmailModal.set(false);
     this.showSendEmailObservationModal.set(false);
+    this.selectedAffiliate.set(null);
+  }
+
+  // Reutiliza los flags cert_arl/cert_eps/cert_pension/cert_ccf (los mismos del
+  // toggle manual): el envío por WhatsApp los marca automáticamente al terminar.
+  // Se bloquea el reenvío solo cuando TODOS los certificados que aplican al plan
+  // ya están marcados; se desbloquea de nuevo al deshabilitar/habilitar (ver
+  // toggleStatus en el backend, que los resetea).
+  canSendWhatsapp(affiliate: AffiliateMember): boolean {
+    const applicable = [
+      this.planHasEps(affiliate) ? !!affiliate.certEps : null,
+      this.planHasArl(affiliate) ? !!affiliate.certArl : null,
+      this.planHasCcf(affiliate) ? !!affiliate.certCcf : null,
+      this.planHasPension(affiliate) ? !!affiliate.certPension : null,
+    ].filter((v): v is boolean => v !== null);
+
+    if (applicable.length === 0) return true;
+    return !applicable.every((sent) => sent);
+  }
+
+  sendWhatsapp(affiliate: AffiliateMember): void {
+    if (!this._permission.check('send_email', undefined, 'Tu rol no tiene permiso para enviar documentos de afiliación.')) {
+      return;
+    }
+    this.selectedAffiliate.set(affiliate);
+    this.showSendWhatsappModal.set(true);
+  }
+
+  onWhatsappSent(): void {
+    this.showSendWhatsappModal.set(false);
+    this.selectedAffiliate.set(null);
+    this.loadAffiliates();
+  }
+
+  onWhatsappModalCancelled(): void {
+    this.showSendWhatsappModal.set(false);
     this.selectedAffiliate.set(null);
   }
 

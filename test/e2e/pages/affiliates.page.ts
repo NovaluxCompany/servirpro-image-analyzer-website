@@ -13,6 +13,33 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * El <select> de "Origen del afiliado" manda el id de affiliate_origins (FK
+ * real), no el code — y el id depende del orden del seed, no es fijo. Se
+ * elige la opción por su label visible (seed en
+ * sql/new-seed/affiliates/migration_create_affiliate_origins_and_deactivation_reasons_catalogs.sql).
+ */
+function referralTypeLabel(code: 'META' | 'WEB' | 'REINGRESO' | 'REFERIDO' | 'SIN_ESPECIFICAR'): string {
+  const labels: Record<typeof code, string> = {
+    META: 'Meta',
+    WEB: 'Web',
+    REINGRESO: 'Reingreso',
+    REFERIDO: 'Referido',
+    SIN_ESPECIFICAR: 'Sin especificar',
+  };
+  return labels[code];
+}
+
+/** Mismo caso que referralTypeLabel, para el select "Motivo de la deshabilitación". */
+function deactivationReasonLabel(code: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST'): string {
+  const labels: Record<typeof code, string> = {
+    PLAN_CHANGE: 'Cambio de plan',
+    NO_PAYMENT: 'No pagó',
+    CLIENT_REQUEST: 'Solicitud del cliente',
+  };
+  return labels[code];
+}
+
 export interface NewAffiliateData {
   documentNumber: string;
   firstName: string;
@@ -109,8 +136,10 @@ export class AffiliatesPage {
   async fillAffiliationData(overrides?: {
     planText?: string;
     agrupadoraText?: string;
-    /** "" (sin especificar, default) | "NUEVO" | "REINGRESO" | "REFERIDO" */
-    referralType?: '' | 'NUEVO' | 'REINGRESO' | 'REFERIDO';
+    /** "" (sin seleccionar) | "META" | "WEB" | "REINGRESO" | "REFERIDO" | "SIN_ESPECIFICAR" */
+    referralType?: '' | 'META' | 'WEB' | 'REINGRESO' | 'REFERIDO' | 'SIN_ESPECIFICAR';
+    /** Fecha de origen (YYYY-MM-DD). Obligatoria y solo visible cuando referralType es META o WEB. */
+    originDate?: string;
     /** Rutas de los PDF a adjuntar. Por defecto sube un único archivo de prueba. */
     documentFiles?: string[];
   }): Promise<void> {
@@ -174,8 +203,21 @@ export class AffiliatesPage {
     const today = new Date().toISOString().slice(0, 10);
     await form.locator('input[formcontrolname="companyEntryDate"]').fill(today);
 
-    if (overrides?.referralType !== undefined) {
-      await form.locator('select[formcontrolname="referralType"]').selectOption(overrides.referralType);
+    // "Origen del afiliado" es OBLIGATORIO (bloquea el submit si queda sin
+    // seleccionar): por defecto se elige "SIN_ESPECIFICAR" para no romper a
+    // los tests que no les importa el origen. Pasar overrides.referralType
+    // === '' explícitamente para dejarlo sin seleccionar a propósito (ej.
+    // el test que verifica que el submit queda deshabilitado).
+    // El <select> ahora manda el id de affiliate_origins (FK real), no el
+    // code — como el id depende del orden del seed (no es fijo), se elige
+    // por el label visible en vez de por value.
+    const referralType = overrides?.referralType ?? 'SIN_ESPECIFICAR';
+    if (referralType) {
+      await form.locator('select[formcontrolname="originId"]').selectOption({ label: referralTypeLabel(referralType) });
+      if (referralType === 'META' || referralType === 'WEB') {
+        const originDate = overrides?.originDate ?? new Date().toISOString().slice(0, 10);
+        await form.locator('input[formcontrolname="originDate"]').fill(originDate);
+      }
     }
 
     // Opcional para casi todos los casos, obligatorio si la agrupadora
@@ -251,9 +293,19 @@ export class AffiliatesPage {
     await this.page.getByRole('button', { name: 'Editar' }).click();
   }
 
-  /** Valor actual del select "Origen del afiliado" en el formulario abierto (crear o editar). */
-  async getReferralTypeValue(): Promise<string> {
-    return this.page.locator('form').locator('select[formcontrolname="referralType"]').inputValue();
+  /**
+   * Label visible de la opción elegida en el select "Origen del afiliado"
+   * (crear o editar) — el <select> manda el id (FK), no el code, así que ya
+   * no tiene sentido comparar inputValue() contra 'META'/'WEB'/etc.
+   */
+  async getReferralTypeLabel(): Promise<string> {
+    const select = this.page.locator('form').locator('select[formcontrolname="originId"]');
+    return select.locator('option:checked').innerText();
+  }
+
+  /** Valor actual del input "Fecha de origen" (solo visible/presente cuando el origen es Meta o Web). */
+  async getOriginDateValue(): Promise<string> {
+    return this.page.locator('form').locator('input[formcontrolname="originDate"]').inputValue();
   }
 
   /**
@@ -342,22 +394,110 @@ export class AffiliatesPage {
 
   // ── Desactivar con razón ─────────────────────────────────────────
 
-  async deactivateRowWithReason(name: string, reason: string): Promise<void> {
-    await this.openRowAction(name, 'Desactivar');
-    await expect(this.page.getByRole('heading', { name: 'Desactivar Afiliado' })).toBeVisible();
+  private get deactivateModal(): Locator {
+    return this.page.locator('.fixed.inset-0.z-50', { hasText: 'Desactivar Afiliado' });
+  }
 
-    await this.page.getByPlaceholder('Ej: No realizó el pago del mes').fill(reason);
+  /**
+   * "Motivo de la deshabilitación" es un select OBLIGATORIO (ver
+   * affiliate-status-modal.ts `onConfirm()`): sin seleccionarlo, el modal
+   * nunca confirma y solo muestra un toast de error. `reasonType` por
+   * defecto usa 'NO_PAYMENT' ("No pagó") para no romper los specs que ya
+   * llamaban a este método sin ese argumento.
+   *
+   * Devuelve el body real del PATCH /toggle (reasonTypeId debe viajar como
+   * número — el select manda el id de deactivation_reasons, no el code de
+   * texto) para que los tests que les importe puedan verificarlo.
+   */
+  async deactivateRowWithReason(
+    name: string,
+    reason: string,
+    reasonType: 'PLAN_CHANGE' | 'NO_PAYMENT' | 'CLIENT_REQUEST' = 'NO_PAYMENT'
+  ): Promise<{ reason?: string; reasonTypeId?: number }> {
+    await this.openRowAction(name, 'Desactivar');
+    const modal = this.deactivateModal;
+    await expect(modal.getByRole('heading', { name: 'Desactivar Afiliado' })).toBeVisible();
+
+    await modal.locator('select').selectOption({ label: deactivationReasonLabel(reasonType) });
+    await modal.locator('textarea').fill(reason);
 
     const [response] = await Promise.all([
       this.page.waitForResponse(
         (res) => /\/affiliates\/\d+\/toggle/.test(res.url()) && res.request().method() === 'PATCH'
       ),
-      this.page.getByRole('button', { name: /Sí, deshabilitar/ }).click(),
+      modal.getByRole('button', { name: /Sí, deshabilitar/ }).click(),
     ]);
     expect(response.ok()).toBe(true);
+    return response.request().postDataJSON();
   }
 
   async expectRowDisabled(name: string): Promise<void> {
     await expect(this.rowByName(name).getByText('Deshabilitado')).toBeVisible();
+  }
+
+  /** Abre el modal de desactivar para una fila, sin confirmar (para probar el propio modal: validaciones, estado inicial, etc.). */
+  async openDeactivateModal(name: string): Promise<Locator> {
+    await this.openRowAction(name, 'Desactivar');
+    const modal = this.deactivateModal;
+    await expect(modal.getByRole('heading', { name: 'Desactivar Afiliado' })).toBeVisible();
+    return modal;
+  }
+
+  // ── Cabecera "congelada" de la tabla ──────────────────────────────
+
+  /**
+   * El header congelado NO es `position: sticky` en el thead real: es un
+   * clon del thead insertado por JS como hijo directo de <body>, con
+   * `position: fixed`, que se muestra/oculta según el scroll de la página
+   * (ver TableScrollComponent.updateFrozenVisibility()). Se detecta
+   * buscando ese clon directamente en vez de asumir CSS sticky.
+   */
+  async isFrozenHeaderVisible(): Promise<boolean> {
+    return this.page.evaluate(() => {
+      const wrapper = Array.from(document.body.querySelectorAll(':scope > div')).find(
+        (div) => (div as HTMLElement).style.position === 'fixed' && div.querySelector('table thead')
+      ) as HTMLElement | undefined;
+      return !!wrapper && getComputedStyle(wrapper).display !== 'none';
+    });
+  }
+
+  // ── Columna "Fecha ingreso" ────────────────────────────────────────
+
+  /**
+   * Texto (dd/MM/yyyy) de la columna "Fecha ingreso" (16ª columna de la
+   * tabla, ver thead en affiliates-list.html) para cada fila visible.
+   * Filas sin fecha muestran "—" y se excluyen.
+   */
+  async getVisibleEntryDates(): Promise<string[]> {
+    const texts = await this.page.locator('tbody tr td:nth-child(16)').allTextContents();
+    return texts.map((t) => t.trim()).filter((t) => t !== '—');
+  }
+
+  // ── Acordeón del formulario (Sección 1 / Sección 2) ───────────────
+
+  /**
+   * El contenido de la Sección 2 solo se puede usar como señal de "abierta"
+   * una vez que sus catálogos (Plan, etc.) terminan de cargar de forma
+   * async, lo que puede tardar y da falsos negativos justo después del
+   * click. La rotación del chevron (`[class.rotate-180]="section1Open"` /
+   * "section2Open") refleja el estado del componente de forma inmediata y
+   * sin depender de esa carga, así que se usa como señal en su lugar.
+   */
+  async isSection1Open(): Promise<boolean> {
+    const chevron = this.page.locator('form').locator('button', { hasText: 'Datos Personales' }).locator('svg');
+    return (await chevron.getAttribute('class'))?.includes('rotate-180') ?? false;
+  }
+
+  async isSection2Open(): Promise<boolean> {
+    const chevron = this.page.locator('form').locator('button', { hasText: 'Datos de Afiliación' }).locator('svg');
+    return (await chevron.getAttribute('class'))?.includes('rotate-180') ?? false;
+  }
+
+  async toggleSection1(): Promise<void> {
+    await this.page.getByText('Datos Personales').click();
+  }
+
+  async toggleSection2(): Promise<void> {
+    await this.page.getByText('Datos de Afiliación').click();
   }
 }

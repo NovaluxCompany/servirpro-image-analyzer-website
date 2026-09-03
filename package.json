@@ -10,7 +10,8 @@
     "test:e2e": "playwright test",
     "test:e2e:setup": "playwright test --project=setup",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "scope-check": "node scripts/scope-check.js"
   },
   "prettier": {
     "printWidth": 100,

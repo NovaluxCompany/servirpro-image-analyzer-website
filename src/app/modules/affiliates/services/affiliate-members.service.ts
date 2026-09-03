@@ -130,13 +130,18 @@ export class AffiliateMembersService {
   }
 
   // ── Activar / Desactivar ──────────────────────────────────────────
-  // `reason` solo aplica al deshabilitar (se ignora al habilitar); queda
-  // guardado en affiliations.deactivation_reason.
-  toggleStatus(id: string, reason?: string): Observable<AffiliateMember> {
+  // `reason`/`reasonTypeId` solo aplican al deshabilitar (se ignoran al habilitar).
+  // reasonTypeId es el id de deactivation_reasons (FK real); queda guardado en
+  // affiliations.deactivation_reason_type_id (+ el code en deactivation_reason_type).
+  toggleStatus(
+    id: string,
+    reason?: string,
+    reasonTypeId?: number,
+  ): Observable<AffiliateMember> {
     return this._http
       .patch<AffiliateMember>(
         `${this.baseUrl}/${id}/toggle`,
-        { reason },
+        { reason, reasonTypeId },
         { headers: this.getHeaders() }
       )
       .pipe(catchError(this.handleError));
@@ -210,6 +215,36 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  // ── Envío de documentos por WhatsApp ────────────────────────────────
+  getWhatsappSourceNumbers(): Observable<{ id: number; ownerName: string }[]> {
+    return this._http
+      .get<{ id: number; ownerName: string }[]>(`${this.baseUrl}/whatsapp/source-numbers`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(() => of([])));
+  }
+
+  sendWhatsapp(
+    affiliationId: number,
+    sourceNumberId: number,
+    destinationPhone: string,
+    files: { file: File; certType: 'EPS' | 'ARL' | 'CCF' | 'AFP' }[],
+  ): Observable<{ success: boolean; message: string }> {
+    const formData = new FormData();
+    formData.append('sourceNumberId', String(sourceNumberId));
+    formData.append('destinationPhone', destinationPhone);
+    files.forEach(({ file, certType }) => {
+      formData.append('files', file);
+      formData.append('certTypes', certType);
+    });
+
+    const token = this._tokenService.getToken();
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    return this._http
+      .post<{ success: boolean; message: string }>(`${this.baseUrl}/${affiliationId}/whatsapp-send`, formData, { headers })
+      .pipe(catchError(this.handleError));
+  }
+
   // ── Catálogos ─────────────────────────────────────────────────────
   getPlans(): Observable<Plan[]> {
     return this._http
@@ -277,6 +312,27 @@ export class AffiliateMembersService {
   getBranchesDropdown(): Observable<Branch[]> {
     return this._http
       .get<Branch[]>(`${environment.urlBD}/branches/dropdown`, { headers: this.getHeaders() })
+      .pipe(catchError(() => of([])));
+  }
+
+  // Reemplazan las listas hardcodeadas de origen del afiliado y motivo de
+  // deshabilitación: ahora salen de affiliate_origins / deactivation_reasons.
+  // El `id` es lo que se manda al crear/editar/deshabilitar (originId /
+  // reasonTypeId); `code`/`label` son solo para mostrar y para formatear
+  // valores ya guardados que llegan del backend.
+  getOrigins(): Observable<{ id: number; code: string; label: string }[]> {
+    return this._http
+      .get<{ id: number; code: string; label: string }[]>(`${environment.urlBD}/affiliate-origins/dropdown`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(() => of([])));
+  }
+
+  getDeactivationReasons(): Observable<{ id: number; code: string; label: string }[]> {
+    return this._http
+      .get<{ id: number; code: string; label: string }[]>(`${environment.urlBD}/deactivation-reasons/dropdown`, {
+        headers: this.getHeaders(),
+      })
       .pipe(catchError(() => of([])));
   }
 

@@ -8,6 +8,7 @@ export interface DeactivateAffiliateFilters {
   company?: string;
   grouper?: string;
   reason?: string;
+  reasonTypeId?: number;
 }
 
 

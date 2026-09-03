@@ -56,7 +56,13 @@ export interface AffiliateMember {
   discount?: number;
   affiliateType?: 'INDEPENDIENTE' | 'DEPENDIENTE';
   isNew?: boolean;
-  referralType?: 'NUEVO' | 'REINGRESO' | 'REFERIDO';
+  // Viene de affiliate_origins (ver AffiliateMembersService.getOrigins): agregar
+  // un origen nuevo es un INSERT en esa tabla, no un deploy de este archivo.
+  // referralType (code) es solo para mostrar/exportar; originId (FK real) es
+  // lo que precarga el select al editar y lo que se vuelve a enviar.
+  referralType?: string;
+  originId?: number;
+  originDate?: string;
   // Datos ADRES
   eps?: string;
   arl?: number;
@@ -129,7 +135,11 @@ export interface CreateAffiliateMemberDto {
   affiliateType?: 'INDEPENDIENTE' | 'DEPENDIENTE';
   // isNew solo se captura al crear el afiliado; no se expone en edición
   isNew?: boolean;
-  referralType?: 'NUEVO' | 'REINGRESO' | 'REFERIDO';
+  // Id de affiliate_origins (FK real, no el code de texto) — ver
+  // AffiliateMembersService.getOrigins. Agregar un origen nuevo es un INSERT
+  // en esa tabla, no un deploy de este archivo.
+  originId?: number;
+  originDate?: string;
 }
 
 export interface UpdateAffiliateMemberDto extends Partial<Omit<CreateAffiliateMemberDto, 'isNew'>> {}

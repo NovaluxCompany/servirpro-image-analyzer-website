@@ -87,7 +87,8 @@
 
       <!-- Actions -->
       <div class="flex items-center gap-4">
-        <button type="submit" [disabled]="isLoading()"
+        <button type="submit" [disabled]="isSubmitBlocked()"
+          [title]="affiliatesForm?.hasDuplicates() ? 'Quita de la selección los afiliados que ya tienen una transacción este mes' : ''"
           class="flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50 disabled:cursor-not-allowed">
           @if (isLoading()) {
           <span class="inline-flex items-center gap-2">
@@ -99,6 +100,8 @@
             </svg>
             Creando transacción...
           </span>
+          } @else if (affiliatesForm?.hasDuplicates()) {
+          Quita los afiliados duplicados para continuar
           } @else {
           Crear Transacción
           }

@@ -7,6 +7,7 @@ import { AffiliatesFormComponent } from '../../components/affiliates-form/affili
 import { ImageUploaderComponent } from '../../components/image-uploader/image-uploader';
 import { Affiliate } from '../../interfaces/affiliate.interface';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { ToastService } from '../../../../core/service/toast.service';
 
 @Component({
   selector: 'app-transaction-create',
@@ -21,6 +22,7 @@ export class TransactionCreateComponent {
   private _transactionsService = inject(TransactionsService);
   private _router = inject(Router);
   private _permission = inject(PermissionService);
+  private _toast = inject(ToastService);
 
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
@@ -40,7 +42,7 @@ export class TransactionCreateComponent {
   });
 
   onAffiliatesChanged(affiliates: Affiliate[]): void {
-    const totalPrice = affiliates.reduce((sum, affiliate) => sum + affiliate.price, 0);
+    const totalPrice = affiliates.reduce((sum, affiliate) => sum + affiliate.price - (affiliate.discount || 0), 0);
     this.form.get('totalValue')?.setValue(totalPrice);
     this.updateValuePaid();
   }
@@ -54,8 +56,23 @@ export class TransactionCreateComponent {
     this.form.get('amountPaid')?.setValue(totalValue);
   }
 
+  /** Bloquea el botón de crear transacción mientras algún afiliado
+   *  seleccionado ya tenga una transacción registrada este mes — respaldo
+   *  por si el usuario no ve el aviso inline en la fila. */
+  isSubmitBlocked(): boolean {
+    return this.isLoading() || !!this.affiliatesForm?.hasDuplicates();
+  }
+
   onSubmit(): void {
     this.errorMessage.set(null);
+
+    if (this.affiliatesForm.hasDuplicates()) {
+      this.errorMessage.set(
+        'Uno o más afiliados seleccionados ya tienen una transacción registrada este mes. Quítalos de la selección antes de continuar.',
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     // Obtener referencia del formulario de afiliados
     const reference = this.affiliatesForm.getReference();
@@ -123,8 +140,12 @@ export class TransactionCreateComponent {
       },
       error: (error) => {
         this.isLoading.set(false);
-        this.errorMessage.set(error.message);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // A partir de aquí la transacción YA se mandó a crear: el error es
+        // de la petición (backend/Siigo/inesperado), no de datos mal
+        // llenados en el formulario — se muestra por notificación en vez
+        // del texto rojo inline (ese queda reservado para validación
+        // mientras se completa el formulario, ver validaciones arriba).
+        this._toast.showError(error.message);
       }
     });
   }

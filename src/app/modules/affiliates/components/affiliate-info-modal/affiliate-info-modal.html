@@ -50,6 +50,9 @@
           <div><dt class="text-xs text-gray-500">Fecha de ingreso</dt><dd class="text-sm font-medium text-gray-900">{{ formatDate(affiliate()?.entryDate) }}</dd></div>
           <div><dt class="text-xs text-gray-500">Tipo de afiliado</dt><dd class="text-sm font-medium text-gray-900">{{ display(affiliate()?.affiliateType) }}</dd></div>
           <div><dt class="text-xs text-gray-500">Origen</dt><dd class="text-sm font-medium text-gray-900">{{ referralTypeLabel(affiliate()?.referralType) }}</dd></div>
+          @if (affiliate()?.referralType === 'META' || affiliate()?.referralType === 'WEB') {
+          <div><dt class="text-xs text-gray-500">Fecha de origen</dt><dd class="text-sm font-medium text-gray-900">{{ formatDate(affiliate()?.originDate) }}</dd></div>
+          }
           <div><dt class="text-xs text-gray-500">Estado</dt>
             <dd class="text-sm font-medium">
               <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="affiliate()?.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
