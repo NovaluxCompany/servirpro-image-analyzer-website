@@ -1,11 +1,19 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { BillingPeriodsService } from '../../services/billing-periods.service';
 import { BillingPeriod } from '../../interfaces/billing-period.interface';
 import { BillingPeriodFilters } from '../../interfaces/billing-period-filters.interface';
 import { SiigoInvoicePayload, SiigoInvoicePricingBreakdown } from '../../interfaces/siigo-invoice-payload.interface';
 import { BillingPeriodFiltersComponent } from '../../components/billing-period-filters/billing-period-filters';
 import { SendToSiigoModalComponent } from '../../components/send-to-siigo-modal/send-to-siigo-modal';
+import {
+  BulkSendToSiigoModalComponent,
+  BulkSendRow,
+  BULK_STATUS_WAITING_USER,
+  BULK_STATUS_WAITING_SEND,
+} from '../../components/bulk-send-to-siigo-modal/bulk-send-to-siigo-modal';
 import { ToastService } from '../../../../core/service/toast.service';
 import { ConfigGeneralService } from '../../../../core/service/config-general.service';
 import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
@@ -14,7 +22,7 @@ import { TableScrollComponent } from '../../../../shared/components/table-scroll
 @Component({
   selector: 'app-billing-periods-list',
   standalone: true,
-  imports: [CommonModule, BillingPeriodFiltersComponent, SendToSiigoModalComponent, PageSizeControlComponent, TableScrollComponent],
+  imports: [CommonModule, BillingPeriodFiltersComponent, SendToSiigoModalComponent, BulkSendToSiigoModalComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './billing-periods-list.html',
 })
 export class BillingPeriodsListComponent implements OnInit {
@@ -26,10 +34,18 @@ export class BillingPeriodsListComponent implements OnInit {
 
   showSendModal = signal(false);
   isLoadingPayload = signal(false);
+  isSavingLateFee = signal(false);
   selectedPayload = signal<SiigoInvoicePayload | null>(null);
   selectedPricingBreakdown = signal<SiigoInvoicePricingBreakdown | null>(null);
   selectedPeriodIsUncertain = signal(false);
+  selectedPeriodLateFee = signal(0);
   private selectedPeriodId: number | null = null;
+
+  showBulkModal = signal(false);
+  isLoadingBulkRows = signal(false);
+  isSendingBulk = signal(false);
+  bulkRows = signal<BulkSendRow[]>([]);
+  selectedForBulk = signal<Set<number>>(new Set());
 
   pageSize = signal(MIN_PAGE_SIZE);
 
@@ -68,6 +84,9 @@ export class BillingPeriodsListComponent implements OnInit {
     INVOICED: 'Enviado',
     ERROR: 'Error',
     UNCERTAIN: '⚠ Verificar en Siigo',
+    // Periodo incluido en un lote que Siigo ya aceptó; el resultado real
+    // llega después por webhook. No es un error: es la espera normal.
+    SENDING: '⏳ Enviando (lote Siigo)',
   };
 
   onFilterApplied(filters: BillingPeriodFilters): void {
@@ -84,12 +103,14 @@ export class BillingPeriodsListComponent implements OnInit {
     this.currentPage.set(1);
     this.totalPages.set(0);
     this.totalItems.set(0);
+    this.selectedForBulk.set(new Set());
   }
 
   loadBillingPeriods(page: number = this.currentPage()): void {
     if (!this.currentFilters) return;
 
     this.isLoading.set(true);
+    this.selectedForBulk.set(new Set());
     this._service.getPaginatedBillingPeriods(this.currentFilters, page, this.pageSize()).subscribe({
       next: (response) => {
         this.billingPeriods.set(response.data);
@@ -144,11 +165,32 @@ export class BillingPeriodsListComponent implements OnInit {
   onSendToSiigo(period: BillingPeriod): void {
     this.selectedPeriodId = period.id;
     this.selectedPeriodIsUncertain.set(period.siigoInvoiceStatus === 'UNCERTAIN');
+    this.selectedPeriodLateFee.set(Number(period.lateFee) || 0);
     this.isLoadingPayload.set(true);
     this.selectedPayload.set(null);
     this.selectedPricingBreakdown.set(null);
     this.showSendModal.set(true);
-    this.fetchPayloadPreview(period.id, 0, { closeModalOnMismatch: true });
+    this.fetchPayloadPreview(period.id, Number(period.lateFee) || 0, { closeModalOnMismatch: true });
+  }
+
+  onSaveLateFee(lateFee: number): void {
+    if (this.selectedPeriodId === null) return;
+    const periodId = this.selectedPeriodId;
+
+    this.isSavingLateFee.set(true);
+    this._service.saveLateFee(periodId, lateFee).subscribe({
+      next: () => {
+        this.isSavingLateFee.set(false);
+        this.selectedPeriodLateFee.set(lateFee);
+        this._toastService.showSuccess('Mora guardada correctamente');
+        this.loadBillingPeriods();
+        this.fetchPayloadPreview(periodId, lateFee, { closeModalOnMismatch: false });
+      },
+      error: (err) => {
+        this.isSavingLateFee.set(false);
+        this._toastService.showError(err?.message ?? 'No fue posible guardar la mora');
+      },
+    });
   }
 
   onLateFeeChanged(lateFee: number): void {
@@ -194,6 +236,7 @@ export class BillingPeriodsListComponent implements OnInit {
         this.selectedPayload.set(null);
         this.selectedPricingBreakdown.set(null);
         this.selectedPeriodIsUncertain.set(false);
+        this.selectedPeriodLateFee.set(0);
         this.selectedPeriodId = null;
         this._toastService.showSuccess('Factura creada en Siigo correctamente');
         this.loadBillingPeriods();
@@ -215,12 +258,163 @@ export class BillingPeriodsListComponent implements OnInit {
     this.selectedPayload.set(null);
     this.selectedPricingBreakdown.set(null);
     this.selectedPeriodIsUncertain.set(false);
+    this.selectedPeriodLateFee.set(0);
     this.selectedPeriodId = null;
   }
 
   clientLabel(period: BillingPeriod): string {
     const client = period.affiliation?.client;
     return client ? `${client.fullName} (${client.documentNumber})` : `Afiliación #${period.affiliationId}`;
+  }
+
+  // Un periodo solo puede seleccionarse para el envío masivo si cumple con
+  // una regla de pricing (mismo plan/grouper/categoría de la tabla
+  // siigo_pricing_rules) y no fue ya facturado — misma condición que
+  // habilita el botón individual "Enviar a Siigo".
+  isEligibleForBulk(period: BillingPeriod): boolean {
+    // SENDING queda fuera: el periodo ya está en un lote aceptado por Siigo,
+    // esperando el webhook con el resultado real — reenviarlo ahora solo
+    // duplicaría la espera (aunque sería seguro por la Idempotency-Key).
+    return !!period.hasSiigoMatch && period.siigoInvoiceStatus !== 'INVOICED' && period.siigoInvoiceStatus !== 'SENDING';
+  }
+
+  isSelectedForBulk(period: BillingPeriod): boolean {
+    return this.selectedForBulk().has(period.id);
+  }
+
+  toggleBulkSelection(period: BillingPeriod): void {
+    if (!this.isEligibleForBulk(period)) return;
+    this.selectedForBulk.update((current) => {
+      const next = new Set(current);
+      if (next.has(period.id)) {
+        next.delete(period.id);
+      } else {
+        next.add(period.id);
+      }
+      return next;
+    });
+  }
+
+  selectedBulkCount(): number {
+    return this.selectedForBulk().size;
+  }
+
+  private eligiblePeriodsOnPage(): BillingPeriod[] {
+    return this.billingPeriods().filter((p) => this.isEligibleForBulk(p));
+  }
+
+  isAllEligibleSelected(): boolean {
+    const eligible = this.eligiblePeriodsOnPage();
+    return eligible.length > 0 && eligible.every((p) => this.selectedForBulk().has(p.id));
+  }
+
+  toggleSelectAllEligible(): void {
+    const eligible = this.eligiblePeriodsOnPage();
+    if (eligible.length === 0) return;
+
+    const allSelected = this.isAllEligibleSelected();
+    this.selectedForBulk.update((current) => {
+      const next = new Set(current);
+      for (const period of eligible) {
+        if (allSelected) {
+          next.delete(period.id);
+        } else {
+          next.add(period.id);
+        }
+      }
+      return next;
+    });
+  }
+
+  hasBulkEligiblePeriods(): boolean {
+    return this.selectedBulkCount() >= 2;
+  }
+
+  private selectedPeriodsForBulk(): BillingPeriod[] {
+    const selectedIds = this.selectedForBulk();
+    return this.billingPeriods().filter((p) => selectedIds.has(p.id));
+  }
+
+  onOpenBulkSend(): void {
+    const selected = this.selectedPeriodsForBulk();
+    if (selected.length < 2) {
+      this._toastService.showError('Selecciona al menos 2 afiliados para enviar a Siigo de forma masiva.');
+      return;
+    }
+
+    this.showBulkModal.set(true);
+    this.isLoadingBulkRows.set(true);
+    this.bulkRows.set([]);
+
+    const previews$ = selected.map((period) =>
+      this._service.getSiigoInvoicePayloadPreview(period.id, Number(period.lateFee) || 0).pipe(
+        catchError(() => of(null)),
+      ),
+    );
+
+    forkJoin(previews$).subscribe((previews) => {
+      const rows: BulkSendRow[] = selected.map((period, index) => ({
+        periodId: period.id,
+        affiliateName: this.clientLabel(period),
+        lateFee: Number(period.lateFee) || 0,
+        valueToSend: previews[index]?.pricingBreakdown?.total ?? null,
+        status: BULK_STATUS_WAITING_USER,
+      }));
+      this.bulkRows.set(rows);
+      this.isLoadingBulkRows.set(false);
+    });
+  }
+
+  onBulkConfirmed(periodIds: number[]): void {
+    this.bulkRows.update((rows) => rows.map((r) => ({ ...r, status: BULK_STATUS_WAITING_SEND })));
+    this.isSendingBulk.set(true);
+
+    this._service.sendToSiigoBulk(periodIds).subscribe({
+      next: (result) => {
+        this.isSendingBulk.set(false);
+        const statusByPeriodId = new Map(result.results.map((r) => [r.id, r]));
+        this.bulkRows.update((rows) =>
+          rows.map((r) => {
+            const item = statusByPeriodId.get(r.periodId);
+            if (!item) return r;
+            let status: string;
+            if (item.status === 'INVOICED') {
+              status = 'Enviado';
+            } else if (item.status === 'SENDING') {
+              // Siigo procesa el lote de forma asíncrona: esto solo confirma
+              // que lo aceptó, no que la factura ya se creó. El resultado
+              // real llega después por webhook (ver loadBillingPeriods()).
+              status = 'Enviado a Siigo, esperando confirmación...';
+            } else {
+              status = `Error: ${item.errorMessage ?? 'No fue posible enviar la factura'}`;
+            }
+            return { ...r, status };
+          }),
+        );
+
+        if (result.queued > 0) {
+          this._toastService.showInfo(
+            `${result.queued} factura(s) enviada(s) a Siigo en lote, esperando confirmación` +
+              (result.failed > 0 ? `. ${result.failed} con error inmediato.` : '.'),
+          );
+        } else {
+          this._toastService.showSuccess(`Se enviaron ${result.succeeded} facturas de ${result.total}`);
+        }
+        this.selectedForBulk.set(new Set());
+        this.loadBillingPeriods();
+      },
+      error: (err) => {
+        this.isSendingBulk.set(false);
+        this._toastService.showError(err?.message ?? 'No fue posible completar el envío masivo a Siigo');
+        this.loadBillingPeriods();
+      },
+    });
+  }
+
+  onCancelBulkSend(): void {
+    if (this.isSendingBulk()) return;
+    this.showBulkModal.set(false);
+    this.bulkRows.set([]);
   }
 
   downloadExcel(): void {

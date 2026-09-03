@@ -7,6 +7,7 @@ import { BillingPeriod } from '../interfaces/billing-period.interface';
 import { BillingPeriodFilters } from '../interfaces/billing-period-filters.interface';
 import { PaginatedResponse } from '../../transactions/interfaces/paginated-response.interface';
 import { SiigoInvoicePayloadPreview } from '../interfaces/siigo-invoice-payload.interface';
+import { BulkSendToSiigoResult } from '../interfaces/bulk-send-to-siigo-result.interface';
 
 export interface SendToSiigoRequest {
   lateFee?: number;
@@ -66,6 +67,18 @@ export class BillingPeriodsService {
   sendToSiigo(id: number, request: SendToSiigoRequest): Observable<BillingPeriod> {
     return this._http
       .post<BillingPeriod>(`${this.baseUrl}/${id}/send-to-siigo`, request, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError));
+  }
+
+  saveLateFee(id: number, lateFee: number): Observable<BillingPeriod> {
+    return this._http
+      .patch<BillingPeriod>(`${this.baseUrl}/${id}/late-fee`, { lateFee }, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError));
+  }
+
+  sendToSiigoBulk(periodIds: number[]): Observable<BulkSendToSiigoResult> {
+    return this._http
+      .post<BulkSendToSiigoResult>(`${this.baseUrl}/send-to-siigo/bulk`, { periodIds }, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError));
   }
 

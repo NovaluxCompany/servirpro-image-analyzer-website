@@ -7,25 +7,38 @@
         <h1 class="text-3xl font-bold text-gray-900">Periodos de Facturación</h1>
         <p class="mt-1 text-sm text-gray-500">Consulta de periodos de facturación de afiliados</p>
       </div>
-      <button
-        type="button"
-        (click)="downloadExcel()"
-        [disabled]="!hasSearched() || isDownloadingExcel()"
-        class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-green-700 rounded-lg hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        @if (isDownloadingExcel()) {
-        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-        </svg>
-        Descargando...
-        } @else {
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-        </svg>
-        Descargar (Excel)
-        }
-      </button>
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          (click)="onOpenBulkSend()"
+          [disabled]="!hasSearched() || !hasBulkEligiblePeriods()"
+          class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+          Enviar a Siigo Masivo{{ selectedBulkCount() > 0 ? ' (' + selectedBulkCount() + ')' : '' }}
+        </button>
+        <button
+          type="button"
+          (click)="downloadExcel()"
+          [disabled]="!hasSearched() || isDownloadingExcel()"
+          class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-green-700 rounded-lg hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          @if (isDownloadingExcel()) {
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          Descargando...
+          } @else {
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Descargar (Excel)
+          }
+        </button>
+      </div>
     </div>
 
     <!-- Filters -->
@@ -41,6 +54,17 @@
         <table class="w-full text-sm text-left text-gray-600">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
             <tr>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">
+                @if (hasSearched() && !isLoading()) {
+                <input
+                  type="checkbox"
+                  title="Seleccionar todos los elegibles de esta página"
+                  class="w-4 h-4 text-blue-700 border-gray-300 rounded focus:ring-blue-500"
+                  [checked]="isAllEligibleSelected()"
+                  (change)="toggleSelectAllEligible()"
+                />
+                }
+              </th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Acciones</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Afiliado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Periodo</th>
@@ -57,6 +81,7 @@
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Valor acumulado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Completo</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado factura Siigo</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Error Siigo</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Transacción nueva</th>
             </tr>
           </thead>
@@ -65,6 +90,7 @@
             @if (isLoading()) {
             @for (i of [1,2,3,4,5]; track i) {
             <tr class="animate-pulse">
+              <td class="px-4 py-3"><div class="h-4 w-4 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-5 w-24 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-4 w-40 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
@@ -81,18 +107,19 @@
               <td class="px-4 py-3"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-5 w-16 bg-gray-200 rounded-full"></div></td>
               <td class="px-4 py-3"><div class="h-5 w-20 bg-gray-200 rounded-full"></div></td>
+              <td class="px-4 py-3"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
               <td class="px-4 py-3"><div class="h-5 w-16 bg-gray-200 rounded-full"></div></td>
             </tr>
             }
             } @else if (!hasSearched()) {
             <tr>
-              <td colspan="17" class="px-4 py-16 text-center">
+              <td colspan="19" class="px-4 py-16 text-center">
                 <p class="text-gray-500 font-medium">Selecciona un rango de fechas y presiona Buscar para ver los periodos de facturación</p>
               </td>
             </tr>
             } @else if (billingPeriods().length === 0) {
             <tr>
-              <td colspan="17" class="px-4 py-16 text-center">
+              <td colspan="19" class="px-4 py-16 text-center">
                 <div class="flex flex-col items-center gap-3">
                   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,7 +135,17 @@
             @for (period of billingPeriods(); track period.id) {
             <tr class="hover:bg-gray-50 transition-colors">
               <td class="px-4 py-3 whitespace-nowrap">
-                @if (period.hasSiigoMatch && period.siigoInvoiceStatus !== 'INVOICED') {
+                @if (isEligibleForBulk(period)) {
+                <input
+                  type="checkbox"
+                  class="w-4 h-4 text-blue-700 border-gray-300 rounded focus:ring-blue-500"
+                  [checked]="isSelectedForBulk(period)"
+                  (change)="toggleBulkSelection(period)"
+                />
+                }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                @if (period.hasSiigoMatch && period.siigoInvoiceStatus !== 'INVOICED' && period.siigoInvoiceStatus !== 'SENDING') {
                 <button
                   type="button"
                   (click)="onSendToSiigo(period)"
@@ -147,6 +184,7 @@
                 {{ statusLabel(period.siigoInvoiceStatus) }}
                 }
               </td>
+              <td class="px-4 py-3 max-w-xs truncate" [title]="period.siigoErrorMessage ?? ''">{{ period.siigoErrorMessage ?? '-' }}</td>
               <td class="px-4 py-3 whitespace-nowrap">
                 @if (period.isNewTransaction) {
                 <span class="px-2.5 py-1 text-xs font-medium text-blue-800 bg-blue-100 rounded-full">Sí</span>
@@ -207,12 +245,24 @@
     <app-send-to-siigo-modal
       [isVisible]="showSendModal()"
       [isLoading]="isLoadingPayload()"
+      [isSavingLateFee]="isSavingLateFee()"
       [payload]="selectedPayload()"
       [pricingBreakdown]="selectedPricingBreakdown()"
       [isUncertain]="selectedPeriodIsUncertain()"
+      [currentLateFee]="selectedPeriodLateFee()"
       (confirmed)="onConfirmSendToSiigo($event)"
       (cancelled)="onCancelSendToSiigo()"
       (lateFeeChanged)="onLateFeeChanged($event)"
+      (lateFeeSaved)="onSaveLateFee($event)"
+    />
+
+    <app-bulk-send-to-siigo-modal
+      [isVisible]="showBulkModal()"
+      [isLoadingRows]="isLoadingBulkRows()"
+      [isSending]="isSendingBulk()"
+      [rows]="bulkRows()"
+      (confirmed)="onBulkConfirmed($event)"
+      (cancelled)="onCancelBulkSend()"
     />
 
   </div>
