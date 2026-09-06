@@ -10,8 +10,10 @@ import { AffiliateInfoModalComponent } from '../../components/affiliate-info-mod
 import { AffiliateDocumentsModalComponent } from '../../components/affiliate-documents-modal/affiliate-documents-modal';
 import { AffiliateSendEmailObservationModalComponent } from '../../components/affiliate-send-email-observation-modal/affiliate-send-email-observation-modal';
 import { AffiliateSendWhatsappModalComponent } from '../../components/affiliate-send-whatsapp-modal/affiliate-send-whatsapp-modal';
+import { IncapacityFormModalComponent } from '../../../incapacities/components/incapacity-form-modal/incapacity-form-modal';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { INCAPACITIES_MENU_PATH } from '../../../incapacities/incapacities.routes';
 import { ConfigGeneralService } from '../../../../core/service/config-general.service';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
@@ -22,7 +24,7 @@ import { debounceTime, Subject } from 'rxjs';
 @Component({
   selector: 'app-affiliates-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateSendWhatsappModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
+  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateSendWhatsappModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, IncapacityFormModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './affiliates-list.html',
 })
 export class AffiliatesListComponent implements OnInit {
@@ -67,6 +69,7 @@ export class AffiliatesListComponent implements OnInit {
   showSendWhatsappModal = signal(false);
   showInfoModal = signal(false);
   showDocumentsModal = signal(false);
+  showIncapacityModal = signal(false);
   formMode = signal<'create' | 'edit'>('create');
   selectedAffiliate = signal<AffiliateMember | null>(null);
 
@@ -262,6 +265,39 @@ export class AffiliatesListComponent implements OnInit {
   onInfoClosed(): void {
     this.showInfoModal.set(false);
     this.selectedAffiliate.set(null);
+  }
+
+  /**
+   * Abre el registro de incapacidad. El modal muestra primero el histórico
+   * del afiliado, que es lo que permite detectar un trámite duplicado antes
+   * de radicar.
+   *
+   * El permiso se valida contra '/incapacidades', NO contra la ruta actual:
+   * el usuario está parado en /afiliados, y `check('create')` sin path
+   * resolvería contra ese menú — daría permiso a cualquiera que pueda crear
+   * afiliados, que no es lo mismo que poder radicar una incapacidad.
+   */
+  openIncapacities(affiliate: AffiliateMember): void {
+    if (
+      !this._permission.check(
+        'create',
+        INCAPACITIES_MENU_PATH,
+        'Tu rol no tiene permiso para radicar incapacidades.',
+      )
+    ) {
+      return;
+    }
+    this.selectedAffiliate.set(affiliate);
+    this.showIncapacityModal.set(true);
+  }
+
+  /** El botón solo se muestra si el rol puede radicar. */
+  canCreateIncapacities(): boolean {
+    return this._permission.can('create', INCAPACITIES_MENU_PATH);
+  }
+
+  onIncapacityModalClosed(): void {
+    this.showIncapacityModal.set(false);
   }
 
   openDocuments(affiliate: AffiliateMember): void {

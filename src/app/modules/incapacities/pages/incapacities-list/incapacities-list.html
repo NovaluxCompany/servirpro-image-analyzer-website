@@ -1,0 +1,257 @@
+<div class="min-h-screen p-6 bg-gray-50">
+  <div class="max-w-full mx-auto">
+
+    <!-- Header -->
+    <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Incapacidades</h1>
+        <p class="mt-1 text-sm text-gray-500">Radicación, soportes y seguimiento de las incapacidades de los afiliados</p>
+      </div>
+
+      <!-- Contadores: lo que hay pendiente es lo que la gente viene a mirar,
+           y antes había que filtrar para saberlo. -->
+      <div class="flex flex-wrap gap-2">
+        <button type="button" (click)="filterByServirpro('PENDIENTE')"
+          class="px-4 py-2 text-left transition-colors bg-white border rounded-xl hover:border-gray-300"
+          [class]="servirproStatusFilter() === 'PENDIENTE' ? 'border-blue-400 ring-1 ring-blue-200' : 'border-gray-200'">
+          <span class="block text-xs font-medium text-gray-500">Pendientes Servirpro</span>
+          <span class="block text-lg font-bold text-gray-900 tabular-nums">{{ pendingServirproCount() }}</span>
+        </button>
+        <button type="button" (click)="filterByPilaPending()"
+          class="px-4 py-2 text-left transition-colors bg-white border rounded-xl hover:border-gray-300"
+          [class]="routeFilter() === 'CYA' && pilaFilter() === 'false' ? 'border-blue-400 ring-1 ring-blue-200' : 'border-gray-200'">
+          <span class="block text-xs font-medium text-gray-500">Sin registrar en PILA</span>
+          <span class="block text-lg font-bold text-gray-900 tabular-nums">{{ pilaPendingCount() }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="p-5 mb-6 bg-white border border-gray-200 shadow-sm rounded-2xl">
+      <div class="flex items-center gap-2 mb-3">
+        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+        </svg>
+        <span class="text-sm font-semibold text-gray-700">Filtros de búsqueda</span>
+        @if (hasActiveFilters()) {
+          <button type="button" (click)="clearFilters()"
+            class="flex items-center gap-1 ml-auto text-xs font-medium text-blue-600 hover:text-blue-800">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Limpiar filtros
+          </button>
+        }
+      </div>
+
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <label for="servirproStatus" class="block mb-1 text-xs font-medium text-gray-600">Estado Servirpro</label>
+          <select id="servirproStatus"
+            class="w-full px-3 text-sm bg-white border border-gray-300 rounded-lg h-[38px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            [ngModel]="servirproStatusFilter()" (ngModelChange)="servirproStatusFilter.set($event); onFilterChange()">
+            <option value="">Todos</option>
+            @for (status of servirproStatuses; track status) {
+              <option [value]="status">{{ statusLabel(status) }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label for="thirdPartyStatus" class="block mb-1 text-xs font-medium text-gray-600">Estado tercero</label>
+          <select id="thirdPartyStatus"
+            class="w-full px-3 text-sm bg-white border border-gray-300 rounded-lg h-[38px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            [ngModel]="thirdPartyStatusFilter()" (ngModelChange)="thirdPartyStatusFilter.set($event); onFilterChange()">
+            <option value="">Todos</option>
+            @for (status of thirdPartyStatuses; track status) {
+              <option [value]="status">{{ statusLabel(status) }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label for="routeFilter" class="block mb-1 text-xs font-medium text-gray-600">Destino</label>
+          <select id="routeFilter"
+            class="w-full px-3 text-sm bg-white border border-gray-300 rounded-lg h-[38px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            [ngModel]="routeFilter()" (ngModelChange)="routeFilter.set($event); onFilterChange()">
+            <option value="">Todos</option>
+            @for (route of routes; track route) {
+              <option [value]="route">{{ route }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label for="pilaFilter" class="block mb-1 text-xs font-medium text-gray-600">Registrado en PILA</label>
+          <select id="pilaFilter"
+            class="w-full px-3 text-sm bg-white border border-gray-300 rounded-lg h-[38px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            [ngModel]="pilaFilter()" (ngModelChange)="pilaFilter.set($event); onFilterChange()">
+            <option value="">Todos</option>
+            <option value="true">Sí</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="bg-white border border-gray-200 shadow-sm rounded-2xl">
+      <div class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 border-b border-gray-100">
+        <p class="text-sm text-gray-500">
+          <span class="font-semibold text-gray-900 tabular-nums">{{ totalItems() }}</span>
+          {{ totalItems() === 1 ? 'incapacidad' : 'incapacidades' }}
+          @if (hasActiveFilters()) { <span class="text-gray-400">(filtradas)</span> }
+        </p>
+        <app-page-size-control [pageSize]="pageSize()" (pageSizeChange)="onPageSizeChange($event)" />
+      </div>
+
+      <app-table-scroll>
+        <table class="w-full text-sm text-left text-gray-600">
+          <thead class="text-xs text-gray-700 uppercase border-b border-gray-200 bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Acciones</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Afiliado</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Documento</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Inicio</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fin</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Días</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado Servirpro</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado tercero</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Destino</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">PILA</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Correo</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Soportes</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (incapacity of incapacities(); track incapacity.id) {
+              <tr class="border-b border-gray-100 hover:bg-gray-50"
+                [class.bg-amber-50/40]="incapacity.servirproStatus === 'PENDIENTE'">
+                <td class="px-4 py-3">
+                  <div class="flex flex-wrap gap-1.5">
+                    <button type="button" (click)="openStatusModal(incapacity, 'SERVIRPRO')"
+                      class="px-2.5 py-1 text-xs font-medium text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50">
+                      Servirpro
+                    </button>
+                    <button type="button" (click)="openStatusModal(incapacity, 'TERCERO')"
+                      class="px-2.5 py-1 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100">
+                      Tercero
+                    </button>
+                    @if (incapacity.routedTo === 'CYA') {
+                      <button type="button" (click)="togglePila(incapacity)" [disabled]="busyId() === incapacity.id"
+                        class="px-2.5 py-1 text-xs font-medium border rounded-lg disabled:opacity-50"
+                        [class]="incapacity.registeredInPila
+                          ? 'text-emerald-700 border-emerald-200 hover:bg-emerald-50'
+                          : 'text-gray-700 border-gray-300 hover:bg-gray-100'">
+                        {{ incapacity.registeredInPila ? 'Quitar PILA' : 'Marcar PILA' }}
+                      </button>
+                    }
+                    @if (incapacity.routedTo === 'GESTION' && !incapacity.emailSent) {
+                      <button type="button" (click)="resendEmail(incapacity)" [disabled]="busyId() === incapacity.id"
+                        class="px-2.5 py-1 text-xs font-medium text-amber-800 border border-amber-300 rounded-lg hover:bg-amber-50 disabled:opacity-50">
+                        Reenviar correo
+                      </button>
+                    }
+                  </div>
+                </td>
+                <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ affiliateName(incapacity) }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ affiliateDocument(incapacity) }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ grouperName(incapacity) }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ formatDate(incapacity.startDate) }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ formatDate(incapacity.endDate) }}</td>
+                <td class="px-4 py-3 tabular-nums whitespace-nowrap">{{ incapacity.days }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="statusClass(incapacity.servirproStatus)">
+                    {{ statusLabel(incapacity.servirproStatus) }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="statusClass(incapacity.thirdPartyStatus)">
+                    {{ statusLabel(incapacity.thirdPartyStatus) }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ incapacity.routedTo ?? '—' }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  @if (incapacity.routedTo === 'CYA') {
+                    {{ incapacity.registeredInPila ? 'Sí' : 'No' }}
+                  } @else {
+                    <span class="text-gray-400">No aplica</span>
+                  }
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  @if (incapacity.routedTo === 'GESTION') {
+                    <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                      [class]="incapacity.emailSent ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
+                      {{ incapacity.emailSent ? 'Enviado' : 'Pendiente' }}
+                    </span>
+                  } @else {
+                    <span class="text-gray-400">No aplica</span>
+                  }
+                </td>
+                <td class="px-4 py-3">
+                  <app-incapacity-documents-list [incapacityId]="incapacity.id" [documents]="incapacity.documents ?? []" />
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="13" class="px-4 py-16 text-center">
+                  @if (isLoading()) {
+                    <span class="inline-flex items-center gap-2 text-gray-500">
+                      <svg class="w-4 h-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                      </svg>
+                      Cargando incapacidades...
+                    </span>
+                  } @else {
+                    <div class="flex flex-col items-center gap-2">
+                      <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M9 12h6m-3-3v6m-7 5h14a2 2 0 002-2V7a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      @if (hasActiveFilters()) {
+                        <p class="text-gray-500">Ninguna incapacidad coincide con estos filtros.</p>
+                        <button type="button" (click)="clearFilters()"
+                          class="text-sm font-medium text-blue-600 hover:text-blue-800">Limpiar filtros</button>
+                      } @else {
+                        <p class="text-gray-500">Todavía no hay incapacidades registradas.</p>
+                        <p class="text-xs text-gray-400">Se radican desde el listado de afiliados, con la opción "Enviar a incapacidades".</p>
+                      }
+                    </div>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </app-table-scroll>
+
+      @if (totalPages() > 1) {
+        <div class="flex items-center justify-between px-5 py-3 border-t border-gray-100">
+          <p class="text-sm text-gray-500">Página {{ currentPage() }} de {{ totalPages() }}</p>
+          <div class="flex gap-2">
+            <button type="button" (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1 || isLoading()"
+              class="px-3 py-1.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+              Anterior
+            </button>
+            <button type="button" (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() === totalPages() || isLoading()"
+              class="px-3 py-1.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+              Siguiente
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+
+  </div>
+</div>
+
+<app-incapacity-status-modal
+  [isVisible]="showStatusModal()"
+  [incapacity]="selectedIncapacity()"
+  [scope]="statusScope()"
+  (confirmed)="onStatusConfirmed()"
+  (cancelled)="onStatusCancelled()"
+/>

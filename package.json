@@ -9,6 +9,7 @@
     "test": "ng test",
     "test:e2e": "playwright test",
     "test:e2e:setup": "playwright test --project=setup",
+    "test:e2e:incapacities": "playwright test test/e2e/tests/incapacities.spec.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "scope-check": "node scripts/scope-check.js"

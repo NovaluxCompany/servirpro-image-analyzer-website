@@ -1,0 +1,62 @@
+@if (isLoading()) {
+  <div class="flex items-center gap-2 px-4 py-6 text-sm text-gray-500 border border-gray-200 rounded-xl bg-gray-50/60">
+    <svg class="w-4 h-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+    </svg>
+    Cargando histórico...
+  </div>
+
+} @else if (incapacities().length) {
+  <div class="overflow-x-auto border border-gray-200 rounded-xl">
+    <table class="w-full text-sm text-left text-gray-600">
+      <thead class="text-xs text-gray-700 uppercase border-b border-gray-200 bg-gray-50">
+        <tr>
+          <th class="px-3 py-2 font-semibold whitespace-nowrap">Inicio</th>
+          <th class="px-3 py-2 font-semibold whitespace-nowrap">Fin</th>
+          <th class="px-3 py-2 font-semibold whitespace-nowrap">Días</th>
+          <th class="px-3 py-2 font-semibold whitespace-nowrap">Servirpro</th>
+          <th class="px-3 py-2 font-semibold whitespace-nowrap">Tercero</th>
+          <th class="px-3 py-2 font-semibold whitespace-nowrap">Destino</th>
+          <th class="px-3 py-2 font-semibold whitespace-nowrap">Soportes</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (incapacity of incapacities(); track incapacity.id) {
+          <tr class="border-b border-gray-100 last:border-0">
+            <td class="px-3 py-2 whitespace-nowrap">{{ formatDate(incapacity.startDate) }}</td>
+            <td class="px-3 py-2 whitespace-nowrap">{{ formatDate(incapacity.endDate) }}</td>
+            <td class="px-3 py-2 tabular-nums whitespace-nowrap">{{ incapacity.days }}</td>
+            <td class="px-3 py-2 whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="statusClass(incapacity.servirproStatus)">
+                {{ statusLabel(incapacity.servirproStatus) }}
+              </span>
+            </td>
+            <td class="px-3 py-2 whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="statusClass(incapacity.thirdPartyStatus)">
+                {{ statusLabel(incapacity.thirdPartyStatus) }}
+              </span>
+            </td>
+            <td class="px-3 py-2 whitespace-nowrap">{{ incapacity.routedTo ?? '—' }}</td>
+            <td class="px-3 py-2">
+              <app-incapacity-documents-list [incapacityId]="incapacity.id" [documents]="incapacity.documents ?? []" />
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+} @else if (hasLoaded()) {
+  <!-- Sin histórico no se pinta la tabla: una cabecera de siete columnas sobre
+       una fila vacía ocupa lo mismo que datos reales y no dice nada. En el
+       modal de radicación este estado además es información útil, no un
+       vacío: significa que no hay un trámite anterior con el que chocar. -->
+  <div class="flex items-center gap-3 px-4 py-3 text-sm border border-gray-200 border-dashed rounded-xl bg-gray-50/60">
+    <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+    <span class="text-gray-600">Este afiliado no tiene incapacidades registradas.</span>
+  </div>
+}

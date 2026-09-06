@@ -1,0 +1,65 @@
+@if (isVisible() && incapacity()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-2xl">
+
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-base font-bold text-gray-900">{{ title() }}</h3>
+        <p class="mt-0.5 text-xs text-gray-500">
+          Incapacidad #{{ incapacity()?.id }} &middot; {{ incapacity()?.affiliation?.client?.fullName }}
+        </p>
+      </div>
+
+      <div class="px-6 py-5">
+        <fieldset class="flex flex-col gap-2">
+          <legend class="mb-2 text-xs font-medium text-gray-600">Nuevo estado</legend>
+          @for (option of options(); track option.value) {
+            <label class="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+              <input
+                type="radio"
+                name="incapacityStatus"
+                [value]="option.value"
+                [ngModel]="selectedStatus()"
+                (ngModelChange)="selectedStatus.set($event)"
+                class="text-blue-600"
+              />
+              {{ option.label }}
+            </label>
+          }
+        </fieldset>
+
+        @if (showApprovalNotice()) {
+          <p class="p-3 mt-4 text-xs rounded-lg text-emerald-800 bg-emerald-50">
+            Al aprobar, la incapacidad se envía al destino que corresponda a la agrupadora del afiliado
+            y el estado del tercero pasa a <strong>En proceso</strong>. Si el destino es Gestión, sale el correo con los soportes.
+          </p>
+        }
+
+        <div class="flex flex-col gap-1 mt-4">
+          <label for="observation" class="text-xs font-medium text-gray-600">
+            Observación@if (requiresObservation()) {<span class="text-red-600"> *</span>}
+          </label>
+          <textarea
+            id="observation"
+            rows="3"
+            maxlength="2000"
+            [ngModel]="observation()"
+            (ngModelChange)="observation.set($event)"
+            class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <button type="button" (click)="onCancel()" [disabled]="isSaving()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirm()" [disabled]="isSaving()"
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+          {{ isSaving() ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

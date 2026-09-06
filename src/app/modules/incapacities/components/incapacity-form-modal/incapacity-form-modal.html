@@ -1,0 +1,237 @@
+@if (isVisible() && affiliationId()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="relative flex flex-col w-full max-w-4xl max-h-[92vh] overflow-hidden bg-white shadow-2xl rounded-2xl">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between gap-3 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-800">
+        <div>
+          <h3 class="text-base font-bold text-white">Enviar a incapacidades</h3>
+          <p class="text-xs text-blue-100">{{ affiliateName() }} &middot; {{ affiliateDocument() }}</p>
+        </div>
+        <button type="button" (click)="onClose()" class="transition-colors text-white/80 hover:text-white" aria-label="Cerrar">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="px-6 py-5 overflow-y-auto">
+
+        <!-- Histórico primero: es lo que evita radicar dos veces lo mismo -->
+        <h4 class="mb-3 text-xs font-semibold tracking-wide text-gray-400 uppercase">Histórico de incapacidades</h4>
+        <app-incapacity-history [affiliationId]="affiliationId()" [enabled]="isVisible()" />
+
+        <h4 class="mt-6 mb-3 text-xs font-semibold tracking-wide text-gray-400 uppercase">Datos de la incapacidad</h4>
+        <form [formGroup]="form" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+          <div class="flex flex-col gap-1">
+            <label for="startDate" class="text-xs font-medium text-gray-600">Fecha de inicio *</label>
+            <input id="startDate" type="date" formControlName="startDate"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="endDate" class="text-xs font-medium text-gray-600">Fecha de fin *</label>
+            <input id="endDate" type="date" formControlName="endDate"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            @if (hasDateOrderError()) {
+              <p class="text-xs text-red-600">La fecha de fin no puede ser anterior a la de inicio.</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="originId" class="text-xs font-medium text-gray-600">Origen</label>
+            <select id="originId" formControlName="originId" [attr.disabled]="isLoadingCatalogs() ? '' : null"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <option value="">{{ isLoadingCatalogs() ? 'Cargando...' : 'Sin especificar' }}</option>
+              @for (origin of origins(); track origin.id) {
+                <option [value]="origin.id">{{ origin.label }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="entityTypeId" class="text-xs font-medium text-gray-600">Entidad que responde</label>
+            <select id="entityTypeId" formControlName="entityTypeId" [attr.disabled]="isLoadingCatalogs() ? '' : null"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <option value="">{{ isLoadingCatalogs() ? 'Cargando...' : 'Sin especificar' }}</option>
+              @for (entity of entityTypes(); track entity.id) {
+                <option [value]="entity.id">{{ entity.label }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-gray-600">Diagnóstico (CIE-10)</label>
+            <!-- Modo servidor: la CIE-10 no se carga completa, se consulta al
+                 escribir. Se guarda el id (FK), no el código. -->
+            <app-searchable-select
+              formControlName="diagnosisId"
+              [options]="diagnosisOptions()"
+              [serverSearch]="true"
+              [isLoading]="isSearchingDiagnoses()"
+              (searchChange)="onDiagnosisSearch($event)"
+              placeholder="Buscar por código o descripción..."
+            />
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="days" class="text-xs font-medium text-gray-600">Días de incapacidad</label>
+            <!-- Se autocompleta con el rango de fechas, pero es editable: el
+                 certificado médico no siempre coincide con el calendario. -->
+            <input id="days" type="number" formControlName="days" min="1" max="730" inputmode="numeric"
+              (input)="onDaysInput()"
+              class="px-3 py-2 text-sm font-semibold text-gray-900 border border-gray-300 rounded-lg tabular-nums focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            @if (daysDifferFromCalendar()) {
+              <p class="text-xs text-amber-700">
+                El rango de fechas son {{ calendarDays() }} días. Se guardará el valor que escribiste.
+              </p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1 sm:col-span-2">
+            <label for="servirproObservation" class="text-xs font-medium text-gray-600">Observación</label>
+            <textarea id="servirproObservation" formControlName="servirproObservation" rows="2" maxlength="2000"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+          </div>
+        </form>
+
+        <!-- ── Soportes ────────────────────────────────────────────── -->
+        <div class="flex flex-wrap items-baseline justify-between gap-2 mt-8 mb-1">
+          <h4 class="text-xs font-semibold tracking-wide text-gray-400 uppercase">Soportes</h4>
+          <span class="text-xs" [class]="missingRequired() ? 'text-red-600 font-medium' : 'text-emerald-700'">
+            @if (missingRequired()) {
+              Falta el documento de la incapacidad
+            } @else {
+              {{ attachedCount() }} de {{ documentSlots.length }} adjuntos
+            }
+          </span>
+        </div>
+        <p class="mb-3 text-xs text-gray-500">
+          PDF, JPG o PNG &middot; máximo 10 MB por archivo. Puedes arrastrarlos sobre cada recuadro.
+        </p>
+
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          @for (slot of documentSlots; track slot.type) {
+            <div
+              (dragover)="onDragOver(slot.type, $event)"
+              (dragleave)="onDragLeave()"
+              (drop)="onDrop(slot.type, $event)"
+              class="relative flex flex-col gap-2 p-3 transition-colors border rounded-xl"
+              [class]="attachedFile(slot.type)
+                ? (slot.type === 'HISTORIA_CLINICA' ? 'border-amber-300 bg-amber-50/60' : 'border-emerald-300 bg-emerald-50/60')
+                : draggingOver() === slot.type
+                  ? 'border-blue-400 bg-blue-50 border-dashed'
+                  : fileError(slot.type)
+                    ? 'border-red-300 bg-red-50/60'
+                    : 'border-gray-200 border-dashed hover:border-gray-300 bg-gray-50/40'">
+
+              <!-- Encabezado del slot -->
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="flex items-center gap-1.5 text-sm font-medium text-gray-800">
+                    @if (slot.type === 'HISTORIA_CLINICA') {
+                      <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    }
+                    <span class="truncate">{{ slot.label }}</span>
+                  </p>
+                  @if (slot.required) {
+                    <span class="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-red-700 uppercase rounded bg-red-100">
+                      Obligatorio
+                    </span>
+                  }
+                </div>
+
+                @if (attachedFile(slot.type)) {
+                  <svg class="w-5 h-5 shrink-0" [class]="slot.type === 'HISTORIA_CLINICA' ? 'text-amber-600' : 'text-emerald-600'"
+                    fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                  </svg>
+                }
+              </div>
+
+              @if (slot.hint) {
+                <p class="text-xs leading-snug text-amber-800">{{ slot.hint }}</p>
+              }
+
+              <!-- El input nativo queda oculto: el <label> es el área clickeable
+                   y así el control se ve igual en todos los navegadores. Sigue
+                   siendo un input real, no un div, para que funcione el teclado. -->
+              <input
+                [id]="'file-' + slot.type"
+                type="file"
+                accept="application/pdf,image/jpeg,image/png"
+                (change)="onFileChange(slot.type, $event)"
+                class="sr-only"
+              />
+
+              @if (attachedFile(slot.type); as file) {
+                <div class="flex items-center gap-2 px-2 py-1.5 bg-white border border-gray-200 rounded-lg">
+                  <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span class="flex-1 min-w-0 text-xs text-gray-700 truncate" [title]="file.name">{{ file.name }}</span>
+                  <span class="text-[10px] text-gray-400 shrink-0 tabular-nums">{{ formatSize(file.size) }}</span>
+                  <button type="button" (click)="removeFile(slot.type)"
+                    class="p-0.5 text-gray-400 rounded shrink-0 hover:text-red-600 hover:bg-red-50"
+                    [attr.aria-label]="'Quitar ' + slot.label">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <label [attr.for]="'file-' + slot.type"
+                  class="text-xs font-medium text-blue-600 cursor-pointer hover:text-blue-800 w-fit">
+                  Reemplazar archivo
+                </label>
+              } @else {
+                <label [attr.for]="'file-' + slot.type"
+                  class="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 transition-colors bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 hover:text-gray-800">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Seleccionar archivo
+                </label>
+              }
+
+              @if (fileError(slot.type); as error) {
+                <p class="flex items-start gap-1 text-xs text-red-600">
+                  <svg class="w-3.5 h-3.5 mt-px shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M18 10A8 8 0 112 10a8 8 0 0116 0zm-8-4a1 1 0 011 1v3a1 1 0 11-2 0V7a1 1 0 011-1zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                  </svg>
+                  {{ error }}
+                </p>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <button type="button" (click)="onClose()" [disabled]="isSaving()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+          Cancelar
+        </button>
+        <button type="button" (click)="save()" [disabled]="isSaving()"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed">
+          @if (isSaving()) {
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            Guardando...
+          } @else {
+            Registrar incapacidad
+          }
+        </button>
+      </div>
+
+    </div>
+  </div>
+}
