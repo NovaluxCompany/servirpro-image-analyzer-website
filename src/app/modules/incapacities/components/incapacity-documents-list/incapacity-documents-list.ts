@@ -33,8 +33,36 @@ export class IncapacityDocumentsListComponent {
     RIPS: 'RIPS',
   };
 
+  /**
+   * Etiqueta corta para el chip. La larga se conserva en el `title`, que es
+   * donde no cuesta nada.
+   *
+   * Con cinco soportes, las etiquetas completas hacían que la celda ocupara
+   * más alto que el resto de la fila — "Autorización de pago a terceros"
+   * sola mide casi lo mismo que la columna entera.
+   */
+  private readonly shortLabels: Record<string, string> = {
+    CERT_BANCARIO: 'Cert. bancario',
+    INCAPACIDAD: 'Incapacidad',
+    HISTORIA_CLINICA: 'H. clínica',
+    AUTORIZACION_PAGO_TERCERO: 'Autorización',
+    RIPS: 'RIPS',
+  };
+
   label(type: string): string {
     return this.labels[type] ?? type;
+  }
+
+  shortLabel(type: string): string {
+    return this.shortLabels[type] ?? this.label(type);
+  }
+
+  /** Texto del tooltip: nombre completo + qué implica abrirlo. */
+  tooltip(document: IncapacityDocument): string {
+    const name = this.label(document.documentType);
+    return document.isSensitive
+      ? `${name} — dato sensible: requiere permiso y queda registrada la consulta`
+      : `${name} — se abre en una pestaña nueva`;
   }
 
   /**
