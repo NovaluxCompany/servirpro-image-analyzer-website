@@ -6,6 +6,7 @@ export interface CatalogItem {
 export interface Plan extends CatalogItem {
   price?: number;
   description?: string;
+  affiliateType?: 'DEPENDIENTE' | 'INDEPENDIENTE';
 }
 
 export interface Company extends CatalogItem {}
