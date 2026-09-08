@@ -87,8 +87,18 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   // SelectOption arrays for searchable dropdowns
+  // Los planes DEPENDIENTE e INDEPENDIENTE pueden compartir nombre (mismo
+  // "EPS", "ARL1", etc. con precio distinto por tipo) — se filtra por el
+  // "Tipo de afiliado" ya elegido en el formulario para no mostrar ambos
+  // mezclados. El plan ya seleccionado se conserva en la lista aunque no
+  // matchee (dato legado o durante el patch inicial en modo edición), para
+  // no vaciar el select por debajo del usuario.
   get planOptions(): SelectOption[] {
-    return this.plans().map((p) => ({ value: String(p.id), label: p.name }));
+    const currentType = this.form.get('affiliateType')?.value ?? 'DEPENDIENTE';
+    const selectedPlanId = this.form.get('planId')?.value;
+    return this.plans()
+      .filter((p) => p.affiliateType === currentType || String(p.id) === String(selectedPlanId))
+      .map((p) => ({ value: String(p.id), label: p.name }));
   }
   get companyOptions(): SelectOption[] {
     return this.companies().map((c) => ({ value: String(c.id), label: c.name }));
