@@ -4,6 +4,7 @@ import { Observable, catchError, of, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../../core/service/token.service';
 import {
+  CancelIncapacityDto,
   Cie10Diagnosis,
   CreateIncapacityDto,
   Incapacity,
@@ -46,11 +47,16 @@ export class IncapacitiesService {
     let params = new HttpParams().set('page', page.toString()).set('limit', limit.toString());
 
     if (filters.affiliationId) params = params.set('affiliationId', filters.affiliationId.toString());
+    if (filters.documentNumber) params = params.set('documentNumber', filters.documentNumber);
+    if (filters.type) params = params.set('type', filters.type);
     if (filters.servirproStatus) params = params.set('servirproStatus', filters.servirproStatus);
     if (filters.thirdPartyStatus) params = params.set('thirdPartyStatus', filters.thirdPartyStatus);
     if (filters.routedTo) params = params.set('routedTo', filters.routedTo);
     if (filters.registeredInPila !== undefined) {
       params = params.set('registeredInPila', String(filters.registeredInPila));
+    }
+    if (filters.cancelled !== undefined) {
+      params = params.set('cancelled', String(filters.cancelled));
     }
 
     return this._http
@@ -158,6 +164,13 @@ export class IncapacitiesService {
       .pipe(catchError(this.handleError));
   }
 
+  /** Envía el correo a Gestión y, solo si se entrega, aprueba y enruta. Si falla, no cambia nada. */
+  sendEmailAndApprove(id: number): Observable<Incapacity> {
+    return this._http
+      .post<Incapacity>(`${this.baseUrl}/${id}/send-email-approve`, {}, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError));
+  }
+
   /**
    * `documentTypes` viaja en el mismo orden que `files`: el backend rechaza
    * la carga si las dos listas no coinciden en cantidad.
@@ -196,6 +209,41 @@ export class IncapacitiesService {
       .delete<void>(`${this.baseUrl}/${incapacityId}/documents/${documentId}`, {
         headers: this.getHeaders(),
       })
+      .pipe(catchError(this.handleError));
+  }
+
+  /** Anular: reversible-con-rastro, requiere el permiso 'cancel'. */
+  cancel(id: number, dto: CancelIncapacityDto): Observable<Incapacity> {
+    return this._http
+      .patch<Incapacity>(`${this.baseUrl}/${id}/cancel`, dto, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError));
+  }
+
+  /** Borrado físico. El backend ya lo restringe a Administrador; acá solo se muestra el botón si el permiso está. */
+  remove(id: number): Observable<void> {
+    return this._http
+      .delete<void>(`${this.baseUrl}/${id}`, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Reporte Excel. Se pide con responseType 'blob': el navegador arma la
+   * descarga, no hay nada que parsear como JSON.
+   */
+  exportToExcel(filters: IncapacityFilters = {}): Observable<Blob> {
+    let params = new HttpParams();
+    if (filters.documentNumber) params = params.set('documentNumber', filters.documentNumber);
+    if (filters.type) params = params.set('type', filters.type);
+    if (filters.servirproStatus) params = params.set('servirproStatus', filters.servirproStatus);
+    if (filters.thirdPartyStatus) params = params.set('thirdPartyStatus', filters.thirdPartyStatus);
+    if (filters.routedTo) params = params.set('routedTo', filters.routedTo);
+    if (filters.registeredInPila !== undefined) {
+      params = params.set('registeredInPila', String(filters.registeredInPila));
+    }
+    if (filters.cancelled !== undefined) params = params.set('cancelled', String(filters.cancelled));
+
+    return this._http
+      .get(`${this.baseUrl}/export/excel`, { headers: this.getHeaders(), params, responseType: 'blob' })
       .pipe(catchError(this.handleError));
   }
 

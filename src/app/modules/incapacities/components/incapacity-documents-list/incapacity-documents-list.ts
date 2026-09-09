@@ -1,11 +1,15 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, inject, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IncapacitiesService } from '../../services/incapacities.service';
 import { IncapacityDocument } from '../../interfaces/incapacity.interface';
 import { ToastService } from '../../../../core/service/toast.service';
 
 /**
- * Chips para abrir los soportes de una incapacidad.
+ * Botón de "..." que despliega los soportes de una incapacidad.
+ *
+ * Antes se pintaban como chips en la celda: con muchos soportes la fila de
+ * la tabla crecía de alto. Ahora es un desplegable de posición fija (igual
+ * que el menú de Acciones), así la celda siempre ocupa lo mismo.
  *
  * Componente aparte porque lo usan tres pantallas: el listado, el histórico
  * dentro del modal de registro y la pestaña de la ficha del afiliado.
@@ -19,11 +23,19 @@ import { ToastService } from '../../../../core/service/toast.service';
 export class IncapacityDocumentsListComponent {
   private _service = inject(IncapacitiesService);
   private _toast = inject(ToastService);
+  private _elementRef = inject(ElementRef<HTMLElement>);
 
   incapacityId = input.required<number>();
   documents = input<IncapacityDocument[]>([]);
 
   openingId = signal<number | null>(null);
+  isOpen = signal(false);
+  dropdownPos = signal<{ top: number | null; bottom: number | null; left: number; maxHeight: number }>({
+    top: 0,
+    bottom: null,
+    left: 0,
+    maxHeight: 320,
+  });
 
   private readonly labels: Record<string, string> = {
     CERT_BANCARIO: 'Certificado bancario',
@@ -31,30 +43,17 @@ export class IncapacityDocumentsListComponent {
     HISTORIA_CLINICA: 'Historia clínica',
     AUTORIZACION_PAGO_TERCERO: 'Autorización de pago a terceros',
     RIPS: 'RIPS',
-  };
-
-  /**
-   * Etiqueta corta para el chip. La larga se conserva en el `title`, que es
-   * donde no cuesta nada.
-   *
-   * Con cinco soportes, las etiquetas completas hacían que la celda ocupara
-   * más alto que el resto de la fila — "Autorización de pago a terceros"
-   * sola mide casi lo mismo que la columna entera.
-   */
-  private readonly shortLabels: Record<string, string> = {
-    CERT_BANCARIO: 'Cert. bancario',
-    INCAPACIDAD: 'Incapacidad',
-    HISTORIA_CLINICA: 'H. clínica',
-    AUTORIZACION_PAGO_TERCERO: 'Autorización',
-    RIPS: 'RIPS',
+    AUTORIZACION_BANCARIA: 'Autorización bancaria',
+    RUAF: 'RUAF',
+    CERTIFICADO_NACIDO_VIVO: 'Certificado de nacido vivo',
+    REGISTRO_CIVIL: 'Registro civil',
+    SOAT: 'SOAT',
+    LICENCIA_CONDUCCION: 'Licencia de conducción',
+    FURIPS: 'FURIPS',
   };
 
   label(type: string): string {
     return this.labels[type] ?? type;
-  }
-
-  shortLabel(type: string): string {
-    return this.shortLabels[type] ?? this.label(type);
   }
 
   /** Texto del tooltip: nombre completo + qué implica abrirlo. */
@@ -63,6 +62,38 @@ export class IncapacityDocumentsListComponent {
     return document.isSensitive
       ? `${name} — dato sensible: requiere permiso y queda registrada la consulta`
       : `${name} — se abre en una pestaña nueva`;
+  }
+
+  toggle(event: MouseEvent, buttonEl: HTMLElement): void {
+    event.stopPropagation();
+    if (this.isOpen()) {
+      this.isOpen.set(false);
+      return;
+    }
+
+    const rect = buttonEl.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const opensUpward = spaceBelow < 240 && spaceAbove > spaceBelow;
+
+    this.dropdownPos.set({
+      top: opensUpward ? null : rect.bottom + 4,
+      bottom: opensUpward ? window.innerHeight - rect.top + 4 : null,
+      left: rect.left,
+      maxHeight: Math.max(160, (opensUpward ? spaceAbove : spaceBelow) - 12),
+    });
+    this.isOpen.set(true);
+  }
+
+  close(): void {
+    this.isOpen.set(false);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (this.isOpen() && !this._elementRef.nativeElement.contains(event.target as Node)) {
+      this.isOpen.set(false);
+    }
   }
 
   /**

@@ -2,36 +2,72 @@
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
     <div class="w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-2xl">
 
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-base font-bold text-gray-900">{{ title() }}</h3>
-        <p class="mt-0.5 text-xs text-gray-500">
-          Incapacidad #{{ incapacity()?.id }} &middot; {{ incapacity()?.affiliation?.client?.fullName }}
-        </p>
+      <div class="flex items-center justify-between gap-3 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-800">
+        <div class="flex items-center gap-3">
+          <div class="flex items-center justify-center rounded-lg w-9 h-9 bg-white/20 shrink-0">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">{{ title() }}</h3>
+            <p class="mt-0.5 text-xs text-blue-100">
+              Incapacidad #{{ incapacity()?.id }} &middot; {{ incapacity()?.affiliation?.client?.fullName }}
+            </p>
+          </div>
+        </div>
+        <button type="button" (click)="onCancel()" [disabled]="isSaving()" class="transition-colors text-white/80 hover:text-white disabled:opacity-50" aria-label="Cerrar">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       <div class="px-6 py-5">
         <fieldset class="flex flex-col gap-2">
           <legend class="mb-2 text-xs font-medium text-gray-600">Nuevo estado</legend>
-          @for (option of options(); track option.value) {
+          @for (option of options(); track option.id) {
             <label class="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
               <input
                 type="radio"
                 name="incapacityStatus"
-                [value]="option.value"
-                [ngModel]="selectedStatus()"
-                (ngModelChange)="selectedStatus.set($event)"
+                [value]="option.id"
+                [ngModel]="selectedStatusId()"
+                (ngModelChange)="selectedStatusId.set($event)"
                 class="text-blue-600"
               />
               {{ option.label }}
             </label>
+          } @empty {
+            <p class="text-xs text-gray-400">Cargando estados...</p>
           }
         </fieldset>
 
         @if (showApprovalNotice()) {
           <p class="p-3 mt-4 text-xs rounded-lg text-emerald-800 bg-emerald-50">
             Al aprobar, la incapacidad se envía al destino que corresponda a la agrupadora del afiliado
-            y el estado del tercero pasa a <strong>En proceso</strong>. Si el destino es Gestión, sale el correo con los soportes.
+            y el estado del tercero pasa a <strong>En proceso</strong>. Si el destino es Gestión, sale el correo con los soportes;
+            si es CYA, el estado del tercero queda en <strong>Enviado a CYA</strong>.
           </p>
+        }
+
+        @if (showPaymentTypeField()) {
+          <div class="flex flex-col gap-1 mt-4">
+            <label for="paymentType" class="text-xs font-medium text-gray-600">
+              Tipo de pago<span class="text-red-600"> *</span>
+            </label>
+            <select
+              id="paymentType"
+              [ngModel]="paymentType()"
+              (ngModelChange)="paymentType.set($event)"
+              class="px-3 text-sm bg-white border border-gray-300 rounded-lg h-[38px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Selecciona...</option>
+              <option value="INTERNO">Interno</option>
+              <option value="EXTERNO">Externo</option>
+            </select>
+          </div>
         }
 
         <div class="flex flex-col gap-1 mt-4">

@@ -32,13 +32,6 @@ export class IncapacityHistoryComponent {
   isLoading = signal(false);
   hasLoaded = signal(false);
 
-  private readonly statusLabels: Record<string, string> = {
-    PENDIENTE: 'Pendiente',
-    EN_PROCESO: 'En proceso',
-    APROBADO: 'Aprobado',
-    RECHAZADO: 'Rechazado',
-  };
-
   constructor() {
     effect(() => {
       const affiliationId = this.affiliationId();
@@ -63,10 +56,6 @@ export class IncapacityHistoryComponent {
         this.hasLoaded.set(true);
       },
     });
-  }
-
-  statusLabel(status: string): string {
-    return this.statusLabels[status] ?? status;
   }
 
   statusClass(status: string): string {

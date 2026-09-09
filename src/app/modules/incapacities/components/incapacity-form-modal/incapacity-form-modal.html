@@ -25,13 +25,22 @@
         <form [formGroup]="form" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
           <div class="flex flex-col gap-1">
-            <label for="startDate" class="text-xs font-medium text-gray-600">Fecha de inicio *</label>
+            <label for="type" class="text-xs font-medium text-gray-600">Tipo de incapacidad <span class="text-red-500">*</span></label>
+            <select id="type" formControlName="type"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <option value="NUEVA">Incapacidad nueva</option>
+              <option value="PRORROGA">Incapacidad prórroga</option>
+            </select>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="startDate" class="text-xs font-medium text-gray-600">Fecha de inicio <span class="text-red-500">*</span></label>
             <input id="startDate" type="date" formControlName="startDate"
               class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
           </div>
 
           <div class="flex flex-col gap-1">
-            <label for="endDate" class="text-xs font-medium text-gray-600">Fecha de fin *</label>
+            <label for="endDate" class="text-xs font-medium text-gray-600">Fecha de fin <span class="text-red-500">*</span></label>
             <input id="endDate" type="date" formControlName="endDate"
               class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
             @if (hasDateOrderError()) {
@@ -60,6 +69,16 @@
               }
             </select>
           </div>
+
+          @if (showIssuingEntityField()) {
+            <div class="flex flex-col gap-1">
+              <label for="issuingEntityName" class="text-xs font-medium text-gray-600">Entidad que emite (AFP)</label>
+              <input id="issuingEntityName" type="text" formControlName="issuingEntityName"
+                placeholder="Nombre del fondo de pensiones"
+                class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              <p class="text-xs text-gray-400">No hay un valor por defecto para AFP: escríbela a mano.</p>
+            </div>
+          }
 
           <div class="flex flex-col gap-1">
             <label class="text-xs font-medium text-gray-600">Diagnóstico (CIE-10)</label>
@@ -101,24 +120,28 @@
           <h4 class="text-xs font-semibold tracking-wide text-gray-400 uppercase">Soportes</h4>
           <span class="text-xs" [class]="missingRequired() ? 'text-red-600 font-medium' : 'text-emerald-700'">
             @if (missingRequired()) {
-              Falta el documento de la incapacidad
+              Faltan documentos obligatorios
             } @else {
-              {{ attachedCount() }} de {{ documentSlots.length }} adjuntos
+              {{ attachedCount() }} adjuntos
             }
           </span>
         </div>
         <p class="mb-3 text-xs text-gray-500">
           PDF, JPG o PNG &middot; máximo 10 MB por archivo. Puedes arrastrarlos sobre cada recuadro.
+          Los soportes en gris se habilitan al elegir el origen de la incapacidad.
         </p>
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          @for (slot of documentSlots; track slot.type) {
+          @for (slot of documentSlots(); track slot.type) {
             <div
-              (dragover)="onDragOver(slot.type, $event)"
+              (dragover)="slot.enabled && onDragOver(slot.type, $event)"
               (dragleave)="onDragLeave()"
-              (drop)="onDrop(slot.type, $event)"
+              (drop)="slot.enabled && onDrop(slot.type, $event)"
               class="relative flex flex-col gap-2 p-3 transition-colors border rounded-xl"
-              [class]="attachedFile(slot.type)
+              [class.opacity-50]="!slot.enabled"
+              [class]="!slot.enabled
+                ? 'border-gray-200 border-dashed bg-gray-50'
+                : attachedFile(slot.type)
                 ? (slot.type === 'HISTORIA_CLINICA' ? 'border-amber-300 bg-amber-50/60' : 'border-emerald-300 bg-emerald-50/60')
                 : draggingOver() === slot.type
                   ? 'border-blue-400 bg-blue-50 border-dashed'
@@ -137,10 +160,13 @@
                       </svg>
                     }
                     <span class="truncate">{{ slot.label }}</span>
+                    @if (slot.enabled && slot.required) {
+                      <span class="text-red-500">*</span>
+                    }
                   </p>
-                  @if (slot.required) {
-                    <span class="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-red-700 uppercase rounded bg-red-100">
-                      Obligatorio
+                  @if (!slot.enabled) {
+                    <span class="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-gray-500 uppercase rounded bg-gray-200">
+                      Elige el origen
                     </span>
                   }
                 </div>
@@ -164,6 +190,7 @@
                 [id]="'file-' + slot.type"
                 type="file"
                 accept="application/pdf,image/jpeg,image/png"
+                [disabled]="!slot.enabled"
                 (change)="onFileChange(slot.type, $event)"
                 class="sr-only"
               />
@@ -189,8 +216,11 @@
                   Reemplazar archivo
                 </label>
               } @else {
-                <label [attr.for]="'file-' + slot.type"
-                  class="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 transition-colors bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 hover:text-gray-800">
+                <label [attr.for]="slot.enabled ? 'file-' + slot.type : null"
+                  class="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors"
+                  [class]="slot.enabled
+                    ? 'text-gray-600 bg-white border border-gray-300 cursor-pointer hover:bg-gray-50 hover:text-gray-800'
+                    : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />

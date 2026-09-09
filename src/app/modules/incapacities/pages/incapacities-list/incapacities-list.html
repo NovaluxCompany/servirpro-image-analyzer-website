@@ -8,6 +8,16 @@
         <p class="mt-1 text-sm text-gray-500">Radicación, soportes y seguimiento de las incapacidades de los afiliados</p>
       </div>
 
+      @if (permission.can('export')) {
+        <button type="button" (click)="exportExcel()" [disabled]="isExporting()"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          {{ isExporting() ? 'Exportando...' : 'Exportar Excel' }}
+        </button>
+      }
+
       <!-- Contadores: lo que hay pendiente es lo que la gente viene a mirar,
            y antes había que filtrar para saberlo. -->
       <div class="flex flex-wrap gap-2">
@@ -47,13 +57,33 @@
 
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
+          <label for="documentNumberFilter" class="block mb-1 text-xs font-medium text-gray-600">Cédula</label>
+          <input id="documentNumberFilter" type="text" placeholder="Número de documento"
+            class="w-full px-3 text-sm bg-white border border-gray-300 rounded-lg h-[38px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            [ngModel]="documentNumberFilter()" (ngModelChange)="documentNumberFilter.set($event)"
+            (keyup.enter)="onFilterChange()" (blur)="onFilterChange()" />
+        </div>
+
+        <div>
+          <label for="typeFilter" class="block mb-1 text-xs font-medium text-gray-600">Tipo</label>
+          <select id="typeFilter"
+            class="w-full px-3 text-sm bg-white border border-gray-300 rounded-lg h-[38px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            [ngModel]="typeFilter()" (ngModelChange)="typeFilter.set($event); onFilterChange()">
+            <option value="">Todos</option>
+            @for (type of incapacityTypes; track type) {
+              <option [value]="type">{{ type === 'PRORROGA' ? 'Prórroga' : 'Nueva' }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
           <label for="servirproStatus" class="block mb-1 text-xs font-medium text-gray-600">Estado Servirpro</label>
           <select id="servirproStatus"
             class="w-full px-3 text-sm bg-white border border-gray-300 rounded-lg h-[38px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             [ngModel]="servirproStatusFilter()" (ngModelChange)="servirproStatusFilter.set($event); onFilterChange()">
             <option value="">Todos</option>
-            @for (status of servirproStatuses; track status) {
-              <option [value]="status">{{ statusLabel(status) }}</option>
+            @for (status of servirproStatusCatalog(); track status.id) {
+              <option [value]="status.code">{{ status.label }}</option>
             }
           </select>
         </div>
@@ -64,8 +94,8 @@
             class="w-full px-3 text-sm bg-white border border-gray-300 rounded-lg h-[38px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             [ngModel]="thirdPartyStatusFilter()" (ngModelChange)="thirdPartyStatusFilter.set($event); onFilterChange()">
             <option value="">Todos</option>
-            @for (status of thirdPartyStatuses; track status) {
-              <option [value]="status">{{ statusLabel(status) }}</option>
+            @for (status of thirdPartyStatusCatalog(); track status.id) {
+              <option [value]="status.code">{{ status.label }}</option>
             }
           </select>
         </div>
@@ -92,6 +122,14 @@
             <option value="false">No</option>
           </select>
         </div>
+
+        <div class="flex items-end">
+          <label class="flex items-center gap-2 text-sm text-gray-700 h-[38px]">
+            <input type="checkbox" [ngModel]="showCancelled()" (ngModelChange)="toggleCancelledView()"
+              class="w-4 h-4 text-blue-600 border-gray-300 rounded" />
+            Ver solo anuladas
+          </label>
+        </div>
       </div>
     </div>
 
@@ -111,65 +149,165 @@
           <thead class="text-xs text-gray-700 uppercase border-b border-gray-200 bg-gray-50">
             <tr>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Acciones</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Soportes</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Tipo</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Afiliado</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Documento</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Empresa</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Agrupadora</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">EPS</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Edad</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Inicio</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Fin</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Días</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado Servirpro</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado tercero</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado interno</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Pago</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado CYA / Gestión</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Destino</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">PILA</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Correo</th>
-              <th class="px-4 py-3 font-semibold whitespace-nowrap">Soportes</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Radicado por</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Entidad emisora</th>
             </tr>
           </thead>
           <tbody>
             @for (incapacity of incapacities(); track incapacity.id) {
               <tr class="border-b border-gray-100 hover:bg-gray-50"
-                [class.bg-amber-50/40]="incapacity.servirproStatus === 'PENDIENTE'">
+                [class.bg-amber-50/40]="incapacity.servirproStatus.code === 'PENDIENTE'">
                 <td class="px-4 py-3">
-                  <div class="flex flex-wrap gap-1.5">
-                    <button type="button" (click)="openStatusModal(incapacity, 'SERVIRPRO')"
-                      class="px-2.5 py-1 text-xs font-medium text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50">
-                      Servirpro
+                  <div>
+                    <button type="button" #actionBtn
+                      (click)="toggleDropdown(incapacity.id, actionBtn); $event.stopPropagation()"
+                      class="inline-flex items-center justify-center w-8 h-8 text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                      title="Acciones">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
+                      </svg>
                     </button>
-                    <button type="button" (click)="openStatusModal(incapacity, 'TERCERO')"
-                      class="px-2.5 py-1 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100">
-                      Tercero
-                    </button>
-                    @if (incapacity.routedTo === 'CYA') {
-                      <button type="button" (click)="togglePila(incapacity)" [disabled]="busyId() === incapacity.id"
-                        class="px-2.5 py-1 text-xs font-medium border rounded-lg disabled:opacity-50"
-                        [class]="incapacity.registeredInPila
-                          ? 'text-emerald-700 border-emerald-200 hover:bg-emerald-50'
-                          : 'text-gray-700 border-gray-300 hover:bg-gray-100'">
-                        {{ incapacity.registeredInPila ? 'Quitar PILA' : 'Marcar PILA' }}
-                      </button>
-                    }
-                    @if (incapacity.routedTo === 'GESTION' && !incapacity.emailSent) {
-                      <button type="button" (click)="resendEmail(incapacity)" [disabled]="busyId() === incapacity.id"
-                        class="px-2.5 py-1 text-xs font-medium text-amber-800 border border-amber-300 rounded-lg hover:bg-amber-50 disabled:opacity-50">
-                        Reenviar correo
-                      </button>
+
+                    @if (openDropdownId() === incapacity.id) {
+                      <div class="fixed z-50 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 overflow-y-auto"
+                        [style.top.px]="dropdownPos().top"
+                        [style.bottom.px]="dropdownPos().bottom"
+                        [style.left.px]="dropdownPos().left"
+                        [style.max-height.px]="dropdownPos().maxHeight">
+
+                        <button type="button" (click)="openStatusModal(incapacity, 'SERVIRPRO'); closeDropdown()"
+                          class="flex items-center w-full gap-2 px-3 py-2 text-xs text-left text-blue-700 transition-colors hover:bg-blue-50">
+                          <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Estado Servirpro
+                        </button>
+                        <button type="button" (click)="openStatusModal(incapacity, 'TERCERO'); closeDropdown()"
+                          class="flex items-center w-full gap-2 px-3 py-2 text-xs text-left text-gray-700 transition-colors hover:bg-gray-50">
+                          <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-4.13a4 4 0 11-4-4 4 4 0 014 4zm6 0a4 4 0 11-1.13-2.79" />
+                          </svg>
+                          Estado {{ resolveThirdPartyRoute(incapacity) === 'CYA' ? 'CYA' : 'Gestión' }}
+                        </button>
+                        @if (incapacity.routedTo === 'CYA') {
+                          <button type="button" (click)="togglePila(incapacity); closeDropdown()" [disabled]="busyId() === incapacity.id"
+                            class="flex items-center w-full gap-2 px-3 py-2 text-xs text-left transition-colors disabled:opacity-50"
+                            [class]="incapacity.registeredInPila ? 'text-emerald-700 hover:bg-emerald-50' : 'text-gray-700 hover:bg-gray-50'">
+                            <span [class]="incapacity.registeredInPila ? 'w-2 h-2 rounded-full bg-emerald-500 shrink-0' : 'w-2 h-2 rounded-full bg-gray-300 shrink-0'"></span>
+                            {{ incapacity.registeredInPila ? 'Quitar PILA' : 'Marcar PILA' }}
+                          </button>
+                        }
+                        @if (isGestionRoute(incapacity) && !incapacity.emailSent && permission.can('approve')) {
+                          <button type="button" (click)="openSendEmailModal(incapacity); closeDropdown()" [disabled]="busyId() === incapacity.id"
+                            class="flex items-center w-full gap-2 px-3 py-2 text-xs text-left text-amber-800 transition-colors hover:bg-amber-50 disabled:opacity-50">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Enviar correo
+                          </button>
+                        }
+                        <button type="button" (click)="openTraceModal(incapacity); closeDropdown()"
+                          class="flex items-center w-full gap-2 px-3 py-2 text-xs text-left text-indigo-700 transition-colors hover:bg-indigo-50">
+                          <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Ver trámite
+                        </button>
+                        @if (!incapacity.cancelled && permission.can('cancel')) {
+                          <button type="button" (click)="cancelIncapacity(incapacity); closeDropdown()" [disabled]="busyId() === incapacity.id"
+                            class="flex items-center w-full gap-2 px-3 py-2 text-xs text-left text-orange-700 transition-colors hover:bg-orange-50 disabled:opacity-50">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M18.364 5.636L5.636 18.364M12 21a9 9 0 100-18 9 9 0 000 18z" />
+                            </svg>
+                            Anular
+                          </button>
+                        }
+                        @if (permission.can('delete')) {
+                          <button type="button" (click)="removeIncapacity(incapacity); closeDropdown()" [disabled]="busyId() === incapacity.id"
+                            class="flex items-center w-full gap-2 px-3 py-2 text-xs text-left text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Eliminar
+                          </button>
+                        }
+                      </div>
                     }
                   </div>
                 </td>
-                <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ affiliateName(incapacity) }}</td>
-                <td class="px-4 py-3 whitespace-nowrap">{{ affiliateDocument(incapacity) }}</td>
+                <td class="px-4 py-3">
+                  <app-incapacity-documents-list [incapacityId]="incapacity.id" [documents]="incapacity.documents ?? []" />
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                    [class]="incapacity.type === 'PRORROGA' ? 'bg-purple-100 text-purple-700' : 'bg-sky-100 text-sky-700'">
+                    {{ typeLabel(incapacity) }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+                    [class]="incapacity.cancelled ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'">
+                    {{ incapacity.cancelled ? 'Anulada' : 'Activa' }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <div class="flex flex-col">
+                    <span class="font-medium text-gray-900">{{ affiliateName(incapacity) }}</span>
+                    <span class="text-xs text-gray-500">{{ affiliateDocument(incapacity) }}</span>
+                  </div>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ companyName(incapacity) }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ grouperName(incapacity) }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ epsName(incapacity) }}</td>
+                <td class="px-4 py-3 tabular-nums whitespace-nowrap">{{ age(incapacity) }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ formatDate(incapacity.startDate) }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ formatDate(incapacity.endDate) }}</td>
                 <td class="px-4 py-3 tabular-nums whitespace-nowrap">{{ incapacity.days }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="statusClass(incapacity.servirproStatus)">
-                    {{ statusLabel(incapacity.servirproStatus) }}
+                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="statusClass(incapacity.servirproStatus.code)">
+                    {{ incapacity.servirproStatus.label }}
                   </span>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="statusClass(incapacity.thirdPartyStatus)">
-                    {{ statusLabel(incapacity.thirdPartyStatus) }}
+                  @if (incapacity.servirproStatus.code === 'PAGADO') {
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                      Pagada
+                    </span>
+                    @if (incapacity.paymentType) {
+                      <span class="block mt-1 text-xs text-gray-500">{{ incapacity.paymentType === 'INTERNO' ? 'Interno' : 'Externo' }}</span>
+                    }
+                  } @else {
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">
+                      Pendiente
+                    </span>
+                  }
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="statusClass(incapacity.thirdPartyStatus.code)">
+                    {{ incapacity.thirdPartyStatus.label }}
                   </span>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ incapacity.routedTo ?? '—' }}</td>
@@ -190,13 +328,12 @@
                     <span class="text-gray-400">No aplica</span>
                   }
                 </td>
-                <td class="px-4 py-3">
-                  <app-incapacity-documents-list [incapacityId]="incapacity.id" [documents]="incapacity.documents ?? []" />
-                </td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ filedBy(incapacity) }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ issuingEntity(incapacity) }}</td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="13" class="px-4 py-16 text-center">
+                <td colspan="19" class="px-4 py-16 text-center">
                   @if (isLoading()) {
                     <span class="inline-flex items-center gap-2 text-gray-500">
                       <svg class="w-4 h-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24" aria-hidden="true">
@@ -252,6 +389,174 @@
   [isVisible]="showStatusModal()"
   [incapacity]="selectedIncapacity()"
   [scope]="statusScope()"
+  [resolvedThirdPartyRoute]="selectedIncapacity() ? resolveThirdPartyRoute(selectedIncapacity()!) : null"
   (confirmed)="onStatusConfirmed()"
   (cancelled)="onStatusCancelled()"
 />
+
+<app-incapacity-trace-modal
+  [isVisible]="showTraceModal()"
+  [incapacity]="traceIncapacity()"
+  (closed)="closeTraceModal()"
+/>
+
+@if (showSendEmailModal() && sendEmailTarget(); as incapacity) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+      <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-emerald-600 to-emerald-700">
+        <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h3 class="text-base font-bold text-white">Enviar correo</h3>
+      </div>
+
+      <div class="px-6 py-5">
+        <div class="flex items-center justify-center mb-4">
+          <div class="w-16 h-16 rounded-full flex items-center justify-center bg-emerald-100">
+            <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+        </div>
+        <p class="text-center text-sm text-gray-700 leading-relaxed">
+          ¿Enviar el correo de la incapacidad <strong>#{{ incapacity.id }}</strong>
+          de <strong>{{ incapacity.affiliation?.client?.fullName }}</strong>?
+        </p>
+        <p class="mt-3 text-center text-xs text-gray-400">
+          Si el correo se entrega correctamente, la incapacidad quedará Aprobada automáticamente.
+        </p>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <button type="button" (click)="closeSendEmailModal()" [disabled]="isSendingEmail()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmSendEmailAndApprove()" [disabled]="isSendingEmail()"
+          class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+          @if (isSendingEmail()) {
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Enviando...
+          } @else {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            Sí, enviar correo
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showCancelModal() && cancelTarget(); as incapacity) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+      <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600">
+        <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M18.364 5.636L5.636 18.364M12 21a9 9 0 100-18 9 9 0 000 18z" />
+          </svg>
+        </div>
+        <h3 class="text-base font-bold text-white">Anular incapacidad</h3>
+      </div>
+
+      <div class="px-6 py-5">
+        <p class="text-sm text-gray-700 leading-relaxed">
+          Vas a anular la incapacidad <strong>#{{ incapacity.id }}</strong>
+          de <strong>{{ incapacity.affiliation?.client?.fullName }}</strong>.
+        </p>
+        <div class="mt-4">
+          <label for="cancelReason" class="block mb-1 text-xs font-medium text-gray-600">
+            Motivo de la anulación <span class="text-red-500">*</span>
+          </label>
+          <textarea id="cancelReason" rows="3" maxlength="2000"
+            [ngModel]="cancelReason()" (ngModelChange)="cancelReason.set($event)"
+            placeholder="Escribe por qué se anula esta incapacidad"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"></textarea>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <button type="button" (click)="closeCancelModal()" [disabled]="isCancelling()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmCancelIncapacity()" [disabled]="isCancelling()"
+          class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:ring-4 focus:ring-orange-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+          @if (isCancelling()) {
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Anulando...
+          } @else {
+            Sí, anular
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showDeleteModal() && deleteTarget(); as incapacity) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+      <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-red-600 to-red-700">
+        <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </div>
+        <h3 class="text-base font-bold text-white">Eliminar incapacidad</h3>
+      </div>
+
+      <div class="px-6 py-5">
+        <div class="flex items-center justify-center mb-4">
+          <div class="w-16 h-16 rounded-full flex items-center justify-center bg-red-100">
+            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+        </div>
+        <p class="text-center text-sm text-gray-700 leading-relaxed">
+          ¿Eliminar permanentemente la incapacidad <strong>#{{ incapacity.id }}</strong>
+          de <strong>{{ incapacity.affiliation?.client?.fullName }}</strong>?
+        </p>
+        <p class="mt-3 text-center text-xs text-gray-400">Esta acción no se puede deshacer.</p>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <button type="button" (click)="cancelDelete()" [disabled]="isDeleting()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmDelete()" [disabled]="isDeleting()"
+          class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+          @if (isDeleting()) {
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Eliminando...
+          } @else {
+            Sí, eliminar
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

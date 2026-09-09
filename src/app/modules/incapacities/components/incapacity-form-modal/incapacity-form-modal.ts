@@ -3,9 +3,15 @@ import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { IncapacitiesService } from '../../services/incapacities.service';
-import { CatalogItem, IncapacityDocumentType } from '../../interfaces/incapacity.interface';
+import {
+  CatalogItem,
+  Incapacity,
+  IncapacityDocumentType,
+  IncapacityType,
+} from '../../interfaces/incapacity.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 import { ToastService } from '../../../../core/service/toast.service';
+import { TokenService } from '../../../../core/service/token.service';
 import { IncapacityHistoryComponent } from '../incapacity-history/incapacity-history';
 
 /** Mismo tope que valida el backend (MAX_INCAPACITY_DAYS en el DTO). */
@@ -25,8 +31,31 @@ interface DocumentSlot {
   type: IncapacityDocumentType;
   label: string;
   required: boolean;
+  /** false hasta que se elige un origen que lo incluya en su matriz — ver originGatedSlots. */
+  enabled: boolean;
   hint?: string;
 }
+
+/** Slots fijos: no dependen del origen elegido. */
+const BASE_SLOTS: Omit<DocumentSlot, 'enabled'>[] = [
+  { type: 'INCAPACIDAD', label: 'Incapacidad', required: true },
+  { type: 'HISTORIA_CLINICA', label: 'Historia clínica', required: true,
+    hint: 'Dato sensible: solo lo abre quien tenga el permiso, y cada consulta queda registrada.' },
+  { type: 'CERT_BANCARIO', label: 'Certificado bancario (no mayor a 30 días)', required: true },
+  { type: 'AUTORIZACION_BANCARIA', label: 'Autorización bancaria', required: true },
+  { type: 'AUTORIZACION_PAGO_TERCERO', label: 'Autorización a terceros', required: false,
+    hint: 'Solo si la cuenta bancaria no es del afiliado.' },
+];
+
+/** Universo de slots que dependen del origen elegido — deshabilitados hasta entonces. */
+const ORIGIN_GATED_SLOTS: Partial<Record<IncapacityDocumentType, string>> = {
+  RUAF: 'RUAF',
+  CERTIFICADO_NACIDO_VIVO: 'Certificado de nacido vivo',
+  REGISTRO_CIVIL: 'Registro civil',
+  SOAT: 'SOAT',
+  LICENCIA_CONDUCCION: 'Licencia de conducción',
+  FURIPS: 'FURIPS',
+};
 
 /**
  * Modal de "Enviar a incapacidades": histórico del afiliado arriba,
@@ -49,6 +78,7 @@ export class IncapacityFormModalComponent {
   private _fb = inject(FormBuilder);
   private _service = inject(IncapacitiesService);
   private _toast = inject(ToastService);
+  private _tokenService = inject(TokenService);
 
   isVisible = input<boolean>(false);
   affiliationId = input<number | null>(null);
@@ -66,24 +96,13 @@ export class IncapacityFormModalComponent {
   /** Slot sobre el que se está arrastrando un archivo, para resaltarlo. */
   draggingOver = signal<IncapacityDocumentType | null>(null);
 
-  readonly documentSlots: DocumentSlot[] = [
-    { type: 'INCAPACIDAD', label: 'Incapacidad', required: true },
-    { type: 'CERT_BANCARIO', label: 'Certificado bancario', required: false },
-    {
-      type: 'HISTORIA_CLINICA',
-      label: 'Historia clínica',
-      required: false,
-      hint: 'Dato sensible: solo lo abre quien tenga el permiso, y cada consulta queda registrada.',
-    },
-    { type: 'AUTORIZACION_PAGO_TERCERO', label: 'Autorización de pago a terceros', required: false },
-    { type: 'RIPS', label: 'RIPS', required: false },
-  ];
-
   // Parametrizados en base de datos (incapacity_origins /
-  // incapacity_entity_types). Se cargan al abrir el modal, no al arrancar la
-  // app: son dos listas cortas que solo hacen falta acá.
+  // incapacity_entity_types), más la matriz de documentos obligatorios por
+  // origen. Se cargan al abrir el modal, no al arrancar la app: son listas
+  // cortas que solo hacen falta acá.
   origins = signal<CatalogItem[]>([]);
   entityTypes = signal<CatalogItem[]>([]);
+  documentRequirements = signal<Record<string, { documentType: IncapacityDocumentType; required: boolean }[]>>({});
   isLoadingCatalogs = signal(false);
   private catalogsLoaded = false;
 
@@ -94,18 +113,99 @@ export class IncapacityFormModalComponent {
   isSearchingDiagnoses = signal(false);
 
   form = this._fb.group({
+    type: ['NUEVA' as IncapacityType, Validators.required],
     startDate: ['', Validators.required],
     endDate: ['', Validators.required],
     days: [null as number | null, [Validators.min(1), Validators.max(MAX_INCAPACITY_DAYS)]],
     originId: [''],
     entityTypeId: [''],
+    issuingEntityName: [''],
     diagnosisId: [''],
     servirproObservation: [''],
   });
 
+  /** Código (no id) del origen elegido — la matriz de documentos y las etiquetas van por code. */
+  selectedOriginCode = computed(() => {
+    const originId = this.formValue().originId;
+    if (!originId) return null;
+    return this.origins().find((o) => String(o.id) === String(originId))?.code ?? null;
+  });
+
+  selectedEntityTypeCode = computed(() => {
+    const entityTypeId = this.formValue().entityTypeId;
+    if (!entityTypeId) return null;
+    return this.entityTypes().find((e) => String(e.id) === String(entityTypeId))?.code ?? null;
+  });
+
+  /**
+   * Slots del formulario de soportes: los fijos siempre visibles y
+   * habilitados, más el universo de "origin-gated" — deshabilitados hasta
+   * elegir un origen, y de esos, solo se habilitan y se marcan obligatorios
+   * los que la matriz del origen elegido efectivamente pide.
+   */
+  documentSlots = computed<DocumentSlot[]>(() => {
+    const originCode = this.selectedOriginCode();
+    const requiredTypes = new Set(
+      originCode ? (this.documentRequirements()[originCode] ?? []).map((r) => r.documentType) : [],
+    );
+
+    // El rol "Incapacidad" gestiona el trámite sin acceso a cuentas bancarias
+    // del afiliado, así que para ese rol este soporte no puede ser obligatorio.
+    const isIncapacidadRole = this._tokenService.hasRole('Incapacidad');
+    const base: DocumentSlot[] = BASE_SLOTS.map((slot) => ({
+      ...slot,
+      enabled: true,
+      required: slot.type === 'AUTORIZACION_BANCARIA' && isIncapacidadRole ? false : slot.required,
+    }));
+    const gated: DocumentSlot[] = (Object.keys(ORIGIN_GATED_SLOTS) as IncapacityDocumentType[]).map((type) => ({
+      type,
+      label: ORIGIN_GATED_SLOTS[type]!,
+      enabled: requiredTypes.has(type),
+      required: requiredTypes.has(type),
+    }));
+
+    return [...base, ...gated];
+  });
+
+  /** Solo cuenta contra "obligatorios" los que además están habilitados (origen elegido). */
+  missingRequired = computed(() =>
+    this.documentSlots().some((slot) => slot.enabled && slot.required && !this.files()[slot.type]),
+  );
+
+  /**
+   * Entidad que emite el certificado, según quién responde:
+   * - EPS: se hereda sola de la EPS del afiliado (el backend la resuelve al
+   *   leer/exportar — ver IncapacitiesService —, así que acá no se manda).
+   * - ARL: valor de negocio por defecto, no hay catálogo de proveedores ARL.
+   * - AFP: no hay un default de negocio, así que queda un campo abierto.
+   */
+  showIssuingEntityField = computed(() => this.selectedEntityTypeCode() === 'AFP');
+
+  private resolveIssuingEntityName(): string | undefined {
+    const code = this.selectedEntityTypeCode();
+    if (code === 'ARL') return 'Axxa Colpatria';
+    if (code === 'AFP') return this.form.getRawValue().issuingEntityName?.trim() || undefined;
+    return undefined;
+  }
+
   constructor() {
     effect(() => {
       if (this.isVisible()) this.loadCatalogs();
+    });
+
+    // Al desmarcar un slot origin-gated que ya no aplica (cambio de origen),
+    // se limpia el archivo que tuviera cargado: no debe viajar un soporte
+    // de un tipo que el origen actual ya no pide.
+    effect(() => {
+      const enabledTypes = new Set(this.documentSlots().filter((s) => s.enabled).map((s) => s.type));
+      const current = this.files();
+      const stale = Object.keys(current).filter(
+        (type) => !enabledTypes.has(type as IncapacityDocumentType),
+      ) as IncapacityDocumentType[];
+      if (stale.length === 0) return;
+      const next = { ...current };
+      stale.forEach((type) => delete next[type]);
+      this.files.set(next);
     });
 
     // Rellena los días al cambiar las fechas, MIENTRAS el usuario no los haya
@@ -117,25 +217,6 @@ export class IncapacityFormModalComponent {
       const calendar = this.calendarDays();
       if (this.daysTouchedByUser()) return;
       this.form.patchValue({ days: calendar }, { emitEvent: false });
-    });
-  }
-
-  /** Una sola vez por vida del componente: los catálogos no cambian mientras el modal está abierto. */
-  private loadCatalogs(): void {
-    if (this.catalogsLoaded || this.isLoadingCatalogs()) return;
-
-    this.isLoadingCatalogs.set(true);
-    this._service.getCatalogs().subscribe({
-      next: ({ origins, entityTypes }) => {
-        this.origins.set(origins);
-        this.entityTypes.set(entityTypes);
-        this.catalogsLoaded = true;
-        this.isLoadingCatalogs.set(false);
-      },
-      error: (error: Error) => {
-        this.isLoadingCatalogs.set(false);
-        this._toast.showError(`No se pudieron cargar los catálogos: ${error.message}`);
-      },
     });
   }
 
@@ -159,6 +240,26 @@ export class IncapacityFormModalComponent {
         results.map((d) => ({ value: String(d.id), label: `${d.code} — ${d.description}` })),
       );
       this.isSearchingDiagnoses.set(false);
+    });
+  }
+
+  /** Una sola vez por vida del componente: los catálogos no cambian mientras el modal está abierto. */
+  private loadCatalogs(): void {
+    if (this.catalogsLoaded || this.isLoadingCatalogs()) return;
+
+    this.isLoadingCatalogs.set(true);
+    this._service.getCatalogs().subscribe({
+      next: ({ origins, entityTypes, documentRequirements }) => {
+        this.origins.set(origins);
+        this.entityTypes.set(entityTypes);
+        this.documentRequirements.set(documentRequirements ?? {});
+        this.catalogsLoaded = true;
+        this.isLoadingCatalogs.set(false);
+      },
+      error: (error: Error) => {
+        this.isLoadingCatalogs.set(false);
+        this._toast.showError(`No se pudieron cargar los catálogos: ${error.message}`);
+      },
     });
   }
 
@@ -300,16 +401,15 @@ export class IncapacityFormModalComponent {
   /** Cuántos soportes van adjuntos, para el contador del encabezado. */
   attachedCount = computed(() => Object.keys(this.files()).length);
 
-  /** El obligatorio es uno solo; el resto son opcionales (CU-05). */
-  missingRequired = computed(() => !this.files()['INCAPACIDAD']);
-
   private reset(): void {
     this.form.reset({
+      type: 'NUEVA',
       startDate: '',
       endDate: '',
       days: null,
       originId: '',
       entityTypeId: '',
+      issuingEntityName: '',
       diagnosisId: '',
       servirproObservation: '',
     });
@@ -343,8 +443,8 @@ export class IncapacityFormModalComponent {
       this._toast.showError('La fecha de fin no puede ser anterior a la de inicio.');
       return;
     }
-    if (!this.files()['INCAPACIDAD']) {
-      this._toast.showError('Adjunta el documento de la incapacidad.');
+    if (this.missingRequired()) {
+      this._toast.showError('Adjunta los documentos obligatorios antes de guardar.');
       return;
     }
 
@@ -359,10 +459,12 @@ export class IncapacityFormModalComponent {
       .createIncapacity(
         {
           affiliationId,
+          type: raw.type ?? 'NUEVA',
           startDate: raw.startDate!,
           endDate: raw.endDate!,
           originId: raw.originId ? Number(raw.originId) : undefined,
           entityTypeId: raw.entityTypeId ? Number(raw.entityTypeId) : undefined,
+          issuingEntityName: this.resolveIssuingEntityName(),
           days: raw.days ? Number(raw.days) : undefined,
           diagnosisId: raw.diagnosisId ? Number(raw.diagnosisId) : undefined,
           servirproObservation: raw.servirproObservation || undefined,
