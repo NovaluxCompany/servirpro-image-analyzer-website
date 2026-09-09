@@ -46,6 +46,18 @@ async function openIncapacityModal(page: Page, affiliate: SafeAffiliate): Promis
 /** id de la incapacidad creada por el flujo de registro, compartido por los tests en serie. */
 let createdIncapacityId: number | null = null;
 
+/**
+ * El backend rechaza con 409 una segunda incapacidad del mismo afiliado con
+ * las MISMAS fechas exactas (ver assertNotDuplicate en
+ * incapacities.service.ts) — es una regla real anti-duplicados, no un bug.
+ * CU-01 crea un registro persistente con fechas fijas; sin este desfase,
+ * correr la suite dos veces el mismo día calendario choca con lo que dejó
+ * la corrida anterior. Solo se usa en las fechas del registro que CU-01
+ * crea y que CU-17/CU-18 reutilizan — el resto de tests de este archivo no
+ * persisten nada, así que no lo necesitan.
+ */
+const RUN_OFFSET_DAYS = 30 + Math.floor(Math.random() * 300);
+
 test.describe('Incapacidades', () => {
   // Los tests comparten datos reales del backend: se corren en serie y el
   // primero que falle no debe arrastrar a los siguientes con datos a medias.
@@ -152,8 +164,9 @@ test.describe('Incapacidades', () => {
 
     await incapacitiesPage.fillDates(isoDaysAgo(5), isoDaysAgo(1));
 
-    // Los otros cuatro soportes son opcionales: adjuntar uno de ellos NO
-    // reemplaza al documento de la incapacidad.
+    // Solo AUTORIZACION_PAGO_TERCERO es opcional; los otros tres soportes
+    // obligatorios (Historia clínica, Autorización bancaria, Incapacidad)
+    // siguen faltando aunque se adjunte el certificado bancario.
     await incapacitiesPage.attach('CERT_BANCARIO', SAMPLE_PDF);
 
     let posted = false;
@@ -162,8 +175,8 @@ test.describe('Incapacidades', () => {
     });
 
     await incapacitiesPage.submitFormButton.click();
-    await expect(incapacitiesPage.toast('Adjunta el documento de la incapacidad.')).toBeVisible();
-    expect(posted, 'no debe enviarse el POST sin el documento de la incapacidad').toBe(false);
+    await expect(incapacitiesPage.toast('Adjunta los documentos obligatorios antes de guardar.')).toBeVisible();
+    expect(posted, 'no debe enviarse el POST sin todos los documentos obligatorios').toBe(false);
   });
 
   test('CU-06: el front rechaza formato y tamaño antes de subir el archivo', async ({ page }) => {
@@ -193,31 +206,38 @@ test.describe('Incapacidades', () => {
     await incapacitiesPage.attach('INCAPACIDAD', SAMPLE_PDF);
     await expect(slot.getByText('Formato no permitido. Solo PDF, JPG o PNG.')).toHaveCount(0);
     await expect(slot.getByText(SAMPLE_PDF.name)).toBeVisible();
-    await expect(incapacitiesPage.formModal.getByText('1 de 5 adjuntos')).toBeVisible();
+    // Con solo este soporte todavía faltan los otros tres obligatorios
+    // (Historia clínica, Certificado bancario, Autorización bancaria).
+    await expect(incapacitiesPage.formModal.getByText('Faltan documentos obligatorios')).toBeVisible();
 
     await slot.getByRole('button', { name: 'Quitar Incapacidad' }).click();
     await expect(slot.getByText(SAMPLE_PDF.name)).toHaveCount(0);
-    await expect(
-      incapacitiesPage.formModal.getByText('Falta el documento de la incapacidad'),
-    ).toBeVisible();
+    await expect(incapacitiesPage.formModal.getByText('Faltan documentos obligatorios')).toBeVisible();
   });
 
   test('CU-01/03/04/36: registra la incapacidad desde la ficha y aparece en el listado', async ({ page }) => {
     const incapacitiesPage = new IncapacitiesPage(page);
-    const startDate = isoDaysAgo(5);
-    const endDate = isoDaysAgo(1);
+    const startDate = isoDaysAgo(5 + RUN_OFFSET_DAYS);
+    const endDate = isoDaysAgo(1 + RUN_OFFSET_DAYS);
 
     await openIncapacityModal(page, affiliate!);
     await incapacitiesPage.fillDates(startDate, endDate);
     // El diagnóstico ya no es texto libre: se busca contra la CIE-10 y se
     // guarda el id. Si el ambiente no tiene la tabla cargada, se radica sin él
     // (es opcional) en vez de fallar el flujo completo de registro.
-    await incapacitiesPage.pickDiagnosis('J00');
+    // Se busca por el código (A001), no por texto libre: la CIE-10 tiene
+    // ~14.000 filas y buscar por descripción es ambiguo entre ambientes.
+    await incapacitiesPage.pickDiagnosis('A001');
     // Origen y entidad salen de incapacity_origins / incapacity_entity_types:
     // se elige por posición porque los ids dependen del seed del ambiente.
     await incapacitiesPage.selectFirstCatalogOption('originId');
     await incapacitiesPage.selectFirstCatalogOption('entityTypeId');
+    // Los cuatro soportes que hoy son obligatorios (ver BASE_SLOTS en
+    // incapacity-form-modal.ts) — solo AUTORIZACION_PAGO_TERCERO es opcional.
     await incapacitiesPage.attach('INCAPACIDAD', SAMPLE_PDF);
+    await incapacitiesPage.attach('HISTORIA_CLINICA', SAMPLE_PDF);
+    await incapacitiesPage.attach('CERT_BANCARIO', SAMPLE_PDF);
+    await incapacitiesPage.attach('AUTORIZACION_BANCARIA', SAMPLE_PDF);
 
     const created = await incapacitiesPage.submitForm();
     createdIncapacityId = created.id;
@@ -234,8 +254,12 @@ test.describe('Incapacidades', () => {
     await expect(row).toContainText(toDisplayDate(endDate));
     await expect(row).toContainText('Pendiente');
 
-    // CU-04: el soporte queda tipificado, no suelto.
-    await expect(row.getByRole('button', { name: 'Incapacidad' })).toBeVisible();
+    // CU-04: el soporte queda tipificado, no suelto — se ve en el
+    // desplegable "..." de soportes, no como chips sueltos en la fila.
+    const soportesButton = incapacitiesPage.soportesButton(row);
+    await expect(soportesButton).toContainText('4');
+    await soportesButton.click();
+    await expect(incapacitiesPage.soportesPanel.getByText('Incapacidad', { exact: true })).toBeVisible();
   });
 
   // ── C. Estados ──────────────────────────────────────────────────────
@@ -245,7 +269,7 @@ test.describe('Incapacidades', () => {
     test.skip(!createdIncapacityId, 'Depende de la incapacidad registrada en el test anterior.');
 
     await incapacitiesPage.goto();
-    const row = await incapacitiesPage.findRowAcrossPages(affiliate!.documentNumber, isoDaysAgo(5));
+    const row = await incapacitiesPage.findRowAcrossPages(affiliate!.documentNumber, isoDaysAgo(5 + RUN_OFFSET_DAYS));
     const modal = await incapacitiesPage.openStatusModal(row, 'SERVIRPRO');
 
     let patched = false;
@@ -271,33 +295,42 @@ test.describe('Incapacidades', () => {
     const incapacitiesPage = new IncapacitiesPage(page);
     test.skip(!createdIncapacityId, 'Depende de la incapacidad registrada en el test anterior.');
 
-    const mapping = await incapacitiesPage.getRouteMapping();
-    const expectedRoute =
-      mapping.find((m) => m.active && Number(m.grouperId) === affiliate!.grouperId)?.route ?? null;
+    // Regla fija en código (IncapacityWorkflowService.resolveRoute, ver
+    // IncapacitiesPage.resolveExpectedRoute): agrupadora "GESTION" -> CYA,
+    // cualquier otra -> Gestión. Ya NO sale de incapacity_grouper_routes.
+    // `affiliate` lo eligió findAffiliateSafeToApprove(), que garantiza que
+    // esto da 'CYA' (si no, este test no debería correr).
+    const expectedRoute = IncapacitiesPage.resolveExpectedRoute(affiliate!.grouperName);
+    expect(expectedRoute, 'el afiliado elegido para este test debe enrutar a CYA, nunca a Gestión').toBe(
+      'CYA',
+    );
 
     await incapacitiesPage.goto();
-    const row = await incapacitiesPage.findRowAcrossPages(affiliate!.documentNumber, isoDaysAgo(5));
+    const row = await incapacitiesPage.findRowAcrossPages(affiliate!.documentNumber, isoDaysAgo(5 + RUN_OFFSET_DAYS));
     const updated = await incapacitiesPage.approveServirpro(row);
 
-    // CU-17
-    expect(updated.servirproStatus).toBe('APROBADO');
+    // CU-17 — servirproStatus/thirdPartyStatus vienen como el objeto
+    // completo del catálogo (id/code/label/...), no como un string suelto.
+    expect(updated.servirproStatus.code).toBe('APROBADO');
 
-    // CU-21 / CU-23: el destino sale de la agrupadora. Si la agrupadora no
-    // tiene ruta configurada (hoy, ORDINARIAS), se aprueba SIN destino y
-    // sin fallar — ese es el comportamiento acordado, no un error.
+    // CU-21 / CU-23: el destino sale de la agrupadora, siempre (ya no hay
+    // agrupadora "sin ruta configurada": toda agrupadora con nombre resuelve
+    // a CYA o a Gestión).
     expect(updated.routedTo ?? null).toBe(expectedRoute);
 
-    // CU-22: al enrutar, el estado del tercero pasa solo a "En proceso".
-    // Sin destino no hay tercero a quien mandarlo, así que se queda pendiente.
-    expect(updated.thirdPartyStatus).toBe(expectedRoute ? 'EN_PROCESO' : 'PENDIENTE');
+    // CU-22: applyRouting() siempre pasa primero por "En proceso", pero para
+    // CYA markSentToCya() lo pisa enseguida con "Enviado a CYA" — no hay
+    // tercero externo al que esperar, a diferencia de Gestión (que sí se
+    // queda en "En proceso" mientras se intenta el correo). Este test usa
+    // siempre un afiliado de ruta CYA (ver expectedRoute arriba).
+    const expectedThirdPartyCode = expectedRoute === 'CYA' ? 'ENVIADO_A_CYA' : 'EN_PROCESO';
+    expect(updated.thirdPartyStatus.code).toBe(expectedThirdPartyCode);
 
     // CU-19: los dos estados se muestran por separado en el listado.
-    const refreshed = incapacitiesPage.rowFor(affiliate!.documentNumber, isoDaysAgo(5));
+    const refreshed = incapacitiesPage.rowFor(affiliate!.documentNumber, isoDaysAgo(5 + RUN_OFFSET_DAYS));
     await expect(refreshed).toContainText('Aprobado');
-    if (expectedRoute) {
-      await expect(refreshed).toContainText('En proceso');
-      await expect(refreshed).toContainText(expectedRoute);
-    }
+    await expect(refreshed).toContainText(expectedRoute === 'CYA' ? 'Enviado a CYA' : 'En proceso');
+    await expect(refreshed).toContainText(expectedRoute);
   });
 
   // ── E/F. Listado ────────────────────────────────────────────────────
@@ -312,19 +345,22 @@ test.describe('Incapacidades', () => {
 
     const cyaRows = await incapacitiesPage.rows().count();
     if (cyaRows > 0 && (await incapacitiesPage.rows().first().locator('td').count()) > 1) {
-      await expect(
-        incapacitiesPage.rows().first().getByRole('button', { name: /PILA/ }),
-      ).toBeVisible();
+      const row = incapacitiesPage.rows().first();
+      await incapacitiesPage.openDropdown(row);
+      await expect(row.getByRole('button', { name: /PILA/ })).toBeVisible();
+      await page.keyboard.press('Escape').catch(() => {});
     }
 
-    // En Gestión, la columna PILA dice "No aplica" y no hay botón.
+    // En Gestión, la columna PILA dice "No aplica" y no hay botón para marcarla.
     const gestionUrl = await incapacitiesPage.applyFilter('routeFilter', 'GESTION');
     expect(gestionUrl).toContain('routedTo=GESTION');
 
     const gestionRows = await incapacitiesPage.rows().count();
     if (gestionRows > 0 && (await incapacitiesPage.rows().first().locator('td').count()) > 1) {
-      await expect(incapacitiesPage.rows().first().getByRole('button', { name: /PILA/ })).toHaveCount(0);
-      await expect(incapacitiesPage.rows().first()).toContainText('No aplica');
+      const row = incapacitiesPage.rows().first();
+      await expect(row).toContainText('No aplica');
+      await incapacitiesPage.openDropdown(row);
+      await expect(row.getByRole('button', { name: /PILA/ })).toHaveCount(0);
     }
   });
 
@@ -489,10 +525,17 @@ test.describe('Incapacidades — seguridad', () => {
 
     await page.goto('/incapacidades');
 
-    // El roleGuard saca al usuario de la ruta y le dice por qué.
+    // El roleGuard saca al usuario de la ruta y le dice por qué. El
+    // router.navigate() de salida es async y corre después del toast, así
+    // que se espera explícitamente en vez de leer page.url() al toque.
     await expect(page.getByRole('heading', { name: 'Incapacidades' })).toHaveCount(0);
     await expect(page.getByRole('alert').filter({ hasText: 'Tu rol no tiene acceso a esta sección.' })).toBeVisible();
-    expect(new URL(page.url()).pathname).not.toBe('/incapacidades');
+    await expect
+      .poll(() => new URL(page.url()).pathname, {
+        message: 'el roleGuard debe navegar fuera de /incapacidades',
+        timeout: 10_000,
+      })
+      .not.toBe('/incapacidades');
 
     await context.close();
   });

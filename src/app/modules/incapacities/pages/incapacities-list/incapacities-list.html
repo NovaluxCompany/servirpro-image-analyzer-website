@@ -176,13 +176,20 @@
                 [class.bg-amber-50/40]="incapacity.servirproStatus.code === 'PENDIENTE'">
                 <td class="px-4 py-3">
                   <div>
-                    <button type="button" #actionBtn
+                    <button type="button" #actionBtn [disabled]="busyId() === incapacity.id"
                       (click)="toggleDropdown(incapacity.id, actionBtn); $event.stopPropagation()"
-                      class="inline-flex items-center justify-center w-8 h-8 text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
-                      title="Acciones">
-                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
-                      </svg>
+                      class="inline-flex items-center justify-center w-8 h-8 text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      [title]="busyId() === incapacity.id ? 'Procesando...' : 'Acciones'">
+                      @if (busyId() === incapacity.id) {
+                        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                      } @else {
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
+                        </svg>
+                      }
                     </button>
 
                     @if (openDropdownId() === incapacity.id) {
