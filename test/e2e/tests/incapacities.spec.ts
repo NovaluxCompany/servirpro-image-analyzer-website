@@ -377,6 +377,66 @@ test.describe('Incapacidades', () => {
   });
 });
 
+// ── D. Enviar correo a Gestión ──────────────────────────────────────
+//
+// A diferencia del resto del suite (que evita a propósito los afiliados de
+// Gestión, ver el guardarraíl al inicio del archivo), este describe SÍ
+// necesita uno: "Enviar correo" solo existe para agrupadora Gestión y, al
+// confirmarlo, dispara un correo real por n8n. Se aísla en su propio bloque
+// serial para no mezclar ese envío real con el resto de los casos.
+test.describe('Incapacidades — enviar correo a Gestión', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  let gestionAffiliate: SafeAffiliate | null = null;
+
+  test.beforeEach(async ({ page }) => {
+    const incapacitiesPage = new IncapacitiesPage(page);
+    await incapacitiesPage.goto();
+    gestionAffiliate ??= await incapacitiesPage.findAffiliateRoutedToGestion();
+    test.skip(
+      !gestionAffiliate,
+      'No hay ningún afiliado activo cuya agrupadora enrute a Gestión en este ambiente.',
+    );
+  });
+
+  test('CU-24: "Enviar correo" envía y, solo si se entrega, aprueba la incapacidad y marca el correo como enviado', async ({
+    page,
+  }) => {
+    const incapacitiesPage = new IncapacitiesPage(page);
+    const startDate = isoDaysAgo(3);
+    const endDate = isoDaysAgo(1);
+
+    // Radica una incapacidad nueva para el afiliado de Gestión: el botón
+    // exige que el correo no se haya enviado todavía (!incapacity.emailSent).
+    await openIncapacityModal(page, gestionAffiliate!);
+    await incapacitiesPage.fillDates(startDate, endDate);
+    await incapacitiesPage.selectFirstCatalogOption('originId');
+    await incapacitiesPage.selectFirstCatalogOption('entityTypeId');
+    await incapacitiesPage.attach('INCAPACIDAD', SAMPLE_PDF);
+    await incapacitiesPage.submitForm();
+    await expect(incapacitiesPage.toast('Incapacidad registrada.')).toBeVisible();
+
+    await incapacitiesPage.goto();
+    const row = await incapacitiesPage.findRowAcrossPages(gestionAffiliate!.documentNumber, startDate);
+
+    const updated = await incapacitiesPage.sendEmailAndApprove(row);
+
+    // La aprobación y el emailSent solo llegan si el POST fue exitoso: es la
+    // misma llamada atómica, no dos pasos encadenados desde el front.
+    expect(updated.servirproStatus).toBe('APROBADO');
+    expect(updated.emailSent).toBe(true);
+    await expect(incapacitiesPage.toast('Correo enviado y incapacidad aprobada.')).toBeVisible();
+
+    const refreshed = incapacitiesPage.rowFor(gestionAffiliate!.documentNumber, startDate);
+    await expect(refreshed).toContainText('Aprobado');
+    await expect(refreshed).toContainText('Enviado');
+
+    // Ya enviado, el botón desaparece: no se puede reenviar desde esta acción.
+    const menuAfter = await incapacitiesPage.openActionsMenu(refreshed);
+    await expect(menuAfter.getByRole('button', { name: 'Enviar correo' })).toHaveCount(0);
+  });
+});
+
 // ── G. Seguridad ──────────────────────────────────────────────────────
 
 test.describe('Incapacidades — seguridad', () => {

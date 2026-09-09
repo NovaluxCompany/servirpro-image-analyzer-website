@@ -140,6 +140,44 @@ export class IncapacitiesPage {
     };
   }
 
+  /**
+   * Primer afiliado activo cuya agrupadora SÍ enruta a Gestión: es el único
+   * caso donde aparece el botón "Enviar correo" (isGestionRoute). Fail-closed
+   * igual que findAffiliateSafeToApprove: un grouperId no resoluble se
+   * descarta en vez de asumirlo enrutado a Gestión.
+   */
+  async findAffiliateRoutedToGestion(): Promise<SafeAffiliate | null> {
+    const headers = await this.authHeaders();
+    const mapping = await this.getRouteMapping();
+    const gestionGrouperIds = new Set(
+      mapping.filter((m) => m.active && m.route === 'GESTION').map((m) => Number(m.grouperId)),
+    );
+
+    const res = await this.page.request.get(`${API_URL}/affiliates?page=1&limit=100&isActive=true`, {
+      headers,
+    });
+    if (!res.ok()) return null;
+
+    const body = await res.json();
+    const items: any[] = body.data ?? body.items ?? [];
+
+    const candidate = items.find((item) => {
+      const grouperId = Number(item.grouperId);
+      if (!item.id || !item.fullName || !item.documentNumber) return false;
+      if (!Number.isFinite(grouperId)) return false; // fail-closed
+      return gestionGrouperIds.has(grouperId);
+    });
+
+    if (!candidate) return null;
+    return {
+      id: Number(candidate.id),
+      fullName: String(candidate.fullName),
+      documentNumber: String(candidate.documentNumber),
+      grouperId: Number(candidate.grouperId),
+      grouperName: String(candidate.grouperName ?? ''),
+    };
+  }
+
   // ── Modal "Enviar a incapacidades" (se abre desde la ficha del afiliado) ──
 
   get formModal(): Locator {
@@ -375,6 +413,51 @@ export class IncapacitiesPage {
       modal.getByRole('button', { name: 'Guardar' }).click(),
     ]);
     expect(response.ok(), `PATCH servirpro-status falló: ${await response.text()}`).toBe(true);
+    await expect(modal).toBeHidden();
+    await this.waitForTableLoaded();
+    return response.json();
+  }
+
+  // ── Menú de acciones (⋮) y "Enviar correo" ──────────────────────────
+
+  /** Abre el menú "Acciones" (⋮) de una fila y devuelve el panel flotante. */
+  async openActionsMenu(row: Locator): Promise<Locator> {
+    await row.getByTitle('Acciones').click();
+    const menu = this.page.locator('div.fixed.z-50.w-48');
+    await expect(menu).toBeVisible();
+    return menu;
+  }
+
+  get sendEmailModal(): Locator {
+    return this.page.locator('.fixed.inset-0.z-50').filter({ hasText: 'Enviar correo' });
+  }
+
+  /** Abre el modal de confirmación "Enviar correo" desde el menú de acciones de la fila. */
+  async openSendEmailModal(row: Locator): Promise<Locator> {
+    const menu = await this.openActionsMenu(row);
+    await menu.getByRole('button', { name: 'Enviar correo' }).click();
+    const modal = this.sendEmailModal;
+    await expect(modal).toBeVisible();
+    return modal;
+  }
+
+  /**
+   * Confirma "Sí, enviar correo" y devuelve la incapacidad actualizada que
+   * responde el POST /send-email-approve. Es una sola llamada atómica del
+   * backend: si el correo no se entrega, no aprueba ni marca emailSent (ver
+   * el comentario de IncapacitiesService.sendEmailAndApprove).
+   */
+  async sendEmailAndApprove(row: Locator): Promise<any> {
+    const modal = await this.openSendEmailModal(row);
+
+    const [response] = await Promise.all([
+      this.page.waitForResponse(
+        (res) =>
+          /\/incapacities\/\d+\/send-email-approve$/.test(res.url()) && res.request().method() === 'POST',
+      ),
+      modal.getByRole('button', { name: 'Sí, enviar correo' }).click(),
+    ]);
+    expect(response.ok(), `POST send-email-approve falló: ${await response.text()}`).toBe(true);
     await expect(modal).toBeHidden();
     await this.waitForTableLoaded();
     return response.json();
