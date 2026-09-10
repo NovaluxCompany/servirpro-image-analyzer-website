@@ -4,7 +4,7 @@ import { Observable, catchError, from, of, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../../core/service/token.service';
 import { AffiliateMember,CreateAffiliateMemberDto,UpdateAffiliateMemberDto,} from '../interfaces/affiliate-member.interface';
-import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, Branch, Department, CityOption, } from '../interfaces/catalog.interface';
+import { Plan, Company, Grouper, Advisor, Fidelizador, EpsItem, Pension, CompensationBox, Branch, Department, CityOption, } from '../interfaces/catalog.interface';
 import { PaginatedAffiliatesResponse } from '../interfaces/paginated-affiliates.interface';
 
 export interface AffiliateFilters {
@@ -14,6 +14,8 @@ export interface AffiliateFilters {
   cedula?: string;
   reference?: string;
   advisor?: string;
+  fidelizador?: string;
+  affiliateType?: 'INDEPENDIENTE' | 'DEPENDIENTE';
   isActive?: boolean;
   grupo?: string;
   entryDateFrom?: string;
@@ -41,6 +43,8 @@ export class AffiliateMembersService {
     if (filters.cedula) params = params.set('cedula', filters.cedula);
     if (filters.reference) params = params.set('reference', filters.reference);
     if (filters.advisor) params = params.set('advisor', filters.advisor);
+    if (filters.fidelizador) params = params.set('fidelizador', filters.fidelizador);
+    if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
     if (filters.isActive !== undefined) params = params.set('isActive', String(filters.isActive));
     if (filters.grupo) params = params.set('grupo', filters.grupo);
     if (filters.entryDateFrom) params = params.set('entryDateFrom', filters.entryDateFrom);
@@ -165,6 +169,8 @@ export class AffiliateMembersService {
     if (filters.cedula) params = params.set('cedula', filters.cedula);
     if (filters.reference) params = params.set('reference', filters.reference);
     if (filters.advisor) params = params.set('advisor', filters.advisor);
+    if (filters.fidelizador) params = params.set('fidelizador', filters.fidelizador);
+    if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
     if (filters.isActive !== undefined) {
       params = params.set('isActive', String(filters.isActive));
     }
@@ -268,9 +274,25 @@ export class AffiliateMembersService {
       .pipe(catchError(() => of([])));
   }
 
-  getAdvisors(): Observable<Advisor[]> {
+  // fidelizadorId filtra los asesores de ese fidelizador (formulario de
+  // afiliado, donde Asesor depende de Fidelización); sin él trae todos los
+  // asesores activos (filtros de listas que no dependen de un fidelizador).
+  getAdvisors(fidelizadorId?: string | number): Observable<Advisor[]> {
+    let params = new HttpParams();
+    if (fidelizadorId) {
+      params = params.set('fidelizadorId', String(fidelizadorId));
+    }
     return this._http
       .get<Advisor[]>(`${environment.urlBD}/advisors/dropdown`, {
+        headers: this.getHeaders(),
+        params,
+      })
+      .pipe(catchError(() => of([])));
+  }
+
+  getFidelizadores(): Observable<Fidelizador[]> {
+    return this._http
+      .get<Fidelizador[]>(`${environment.urlBD}/fidelizadores/dropdown`, {
         headers: this.getHeaders(),
       })
       .pipe(catchError(() => of([])));

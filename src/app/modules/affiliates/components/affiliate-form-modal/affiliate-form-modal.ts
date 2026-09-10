@@ -5,7 +5,7 @@ import { AffiliateMembersService } from '../../services/affiliate-members.servic
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
 import { AffiliateMember, CreateAffiliateMemberDto } from '../../interfaces/affiliate-member.interface';
-import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, Branch, Department, CityOption } from '../../interfaces/catalog.interface';
+import { Plan, Company, Grouper, Advisor, Fidelizador, EpsItem, Pension, CompensationBox, Branch, Department, CityOption } from '../../interfaces/catalog.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 import { forkJoin, of, switchMap } from 'rxjs';
 
@@ -54,6 +54,7 @@ export class AffiliateFormModalComponent implements OnInit {
   companies = signal<Company[]>([]);
   groupers = signal<Grouper[]>([]);
   advisors = signal<Advisor[]>([]);
+  fidelizadores = signal<Fidelizador[]>([]);
   epsList = signal<EpsItem[]>([]);
   pensions = signal<Pension[]>([]);
   compensationBoxes = signal<CompensationBox[]>([]);
@@ -108,6 +109,9 @@ export class AffiliateFormModalComponent implements OnInit {
   }
   get advisorOptions(): SelectOption[] {
     return this.advisors().map((a) => ({ value: String(a.id), label: a.name }));
+  }
+  get fidelizadorOptions(): SelectOption[] {
+    return this.fidelizadores().map((f) => ({ value: String(f.id), label: f.name }));
   }
   get epsOptions(): SelectOption[] {
     return this.epsList().map((e) => ({ value: String(e.id), label: e.name }));
@@ -165,6 +169,7 @@ export class AffiliateFormModalComponent implements OnInit {
     companyId: [''],
     grouperId: ['', Validators.required],
     advisorId: ['', Validators.required],
+    fidelizadorId: ['', Validators.required],
     epsId: [''],
     pensionId: [''],
     compensationBoxId: [''],
@@ -202,6 +207,9 @@ export class AffiliateFormModalComponent implements OnInit {
           this.loadEditData(this.affiliate()!);
         } else {
           this.loadCatalogs();
+          // "Asesor" depende de "Fidelización": arranca vacío, igual que Municipio
+          // arranca vacío hasta elegir Departamento (ver cities.set([]) más abajo).
+          this.advisors.set([]);
           this.formReady.set(true);
           this.citiesLoading.set(false);
           this.form.reset();
@@ -476,6 +484,11 @@ export class AffiliateFormModalComponent implements OnInit {
       }
     });
 
+    this.form.get('fidelizadorId')?.valueChanges.subscribe((fidelizadorId) => {
+      this.form.get('advisorId')?.setValue('', { emitEvent: false });
+      this.loadAdvisorsForFidelizador(fidelizadorId).subscribe();
+    });
+
     this.form.get('affiliateType')?.valueChanges.subscribe(() => {
       this.validateAffiliateType();
     });
@@ -574,7 +587,7 @@ export class AffiliateFormModalComponent implements OnInit {
       plans: this._service.getPlans(),
       companies: this._service.getCompanies(),
       groupers: this._service.getGroupers(),
-      advisors: this._service.getAdvisors(),
+      fidelizadores: this._service.getFidelizadores(),
       epsList: this._service.getEpsList(),
       references: this._service.getReferences(),
       pensions: this._service.getPensions(),
@@ -583,11 +596,11 @@ export class AffiliateFormModalComponent implements OnInit {
       branches: this._service.getBranchesDropdown(),
       origins: this._service.getOrigins(),
     }).pipe(
-      switchMap(({ plans, companies, groupers, advisors, epsList, references, pensions, compensationBoxes, departments, branches, origins }) => {
+      switchMap(({ plans, companies, groupers, fidelizadores, epsList, references, pensions, compensationBoxes, departments, branches, origins }) => {
         this.plans.set(plans);
         this.companies.set(companies);
         this.groupers.set(groupers);
-        this.advisors.set(advisors);
+        this.fidelizadores.set(fidelizadores);
         this.epsList.set(epsList);
         this.references.set(references);
         this.pensions.set(pensions);
@@ -607,19 +620,36 @@ export class AffiliateFormModalComponent implements OnInit {
     });
   }
 
-  // Modo edición: primero cargamos catálogos y las ciudades del departamento del
-  // afiliado, y solo cuando todo eso ya está disponible rellenamos el formulario.
-  // Así evitamos que patchForm() dispare valueChanges (planId, cityCode, etc.) con
-  // catálogos todavía vacíos, que borraban campos (profesión, ARL, AFP, CCF, EPS,
-  // municipio) y luego "aparecían solos" al reabrir el modal.
+  // "Asesor" depende de "Fidelización" igual que Municipio depende de
+  // Departamento: sin fidelizador elegido, la lista de asesores queda vacía.
+  private loadAdvisorsForFidelizador(fidelizadorId: string | number | null | undefined) {
+    if (!fidelizadorId) {
+      this.advisors.set([]);
+      return of([]);
+    }
+    return this._service.getAdvisors(fidelizadorId).pipe(
+      switchMap((advisors) => {
+        this.advisors.set(advisors);
+        return of(advisors);
+      }),
+    );
+  }
+
+  // Modo edición: primero cargamos catálogos, los asesores del fidelizador del
+  // afiliado y las ciudades del departamento del afiliado, y solo cuando todo eso
+  // ya está disponible rellenamos el formulario. Así evitamos que patchForm()
+  // dispare valueChanges (planId, cityCode, fidelizadorId, etc.) con catálogos
+  // todavía vacíos, que borraban campos (profesión, ARL, AFP, CCF, EPS, municipio,
+  // asesor) y luego "aparecían solos" al reabrir el modal.
   private loadEditData(a: AffiliateMember): void {
     this.citiesLoading.set(true);
     this.loadCatalogs$().pipe(
-      switchMap(() => a.departmentCode
-        ? this._service.getCitiesByDepartment(a.departmentCode)
-        : of([])),
+      switchMap(() => forkJoin({
+        cities: a.departmentCode ? this._service.getCitiesByDepartment(a.departmentCode) : of([]),
+        advisors: this.loadAdvisorsForFidelizador(a.fidelizadorId),
+      })),
     ).subscribe({
-      next: (cities) => {
+      next: ({ cities }) => {
         this.cities.set(cities);
         this.citiesLoading.set(false);
 
@@ -686,6 +716,7 @@ export class AffiliateFormModalComponent implements OnInit {
       planId: a.planId ? String(a.planId) : '',
       grouperId: a.grouperId ? String(a.grouperId) : '',
       advisorId: a.advisorId ? String(a.advisorId) : '',
+      fidelizadorId: a.fidelizadorId ? String(a.fidelizadorId) : '',
       epsId: a.epsId ? String(a.epsId) : '',
       isActive: a.isActive ?? true,
       discount: a.discount ?? null,
@@ -937,6 +968,7 @@ export class AffiliateFormModalComponent implements OnInit {
       companyId: toNumberOrNull(raw.companyId),
       grouperId: toNumberOrNull(raw.grouperId),
       advisorId: toNumberOrNull(raw.advisorId),
+      fidelizadorId: toNumberOrNull(raw.fidelizadorId),
       epsId: toNumberOrNull(raw.epsId),
       pensionId: toNumberOrNull(raw.pensionId),
       compensationBoxId: toNumberOrNull(raw.compensationBoxId),
