@@ -40,6 +40,8 @@ export interface AffiliateMember {
   grouperName?: string;
   advisorId?: string;
   advisorName?: string;
+  fidelizadorId?: string;
+  fidelizadorName?: string;
   epsId?: string;
   epsName?: string;
   pensionId?: string;
@@ -118,6 +120,7 @@ export interface CreateAffiliateMemberDto {
   companyId?: number | null;
   grouperId: number | null;
   advisorId: number | null;
+  fidelizadorId?: number | null;
   epsId?: number | null;
   pensionId?: number | null;
   compensationBoxId?: number | null;

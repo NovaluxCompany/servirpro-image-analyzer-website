@@ -5,6 +5,7 @@ export interface DeactivateAffiliateFilters {
   document?: string;
   reference?: string;
   advisor?: string;
+  fidelizador?: string;
   company?: string;
   grouper?: string;
   reason?: string;
@@ -61,6 +62,7 @@ export interface InactivationAffiliateRow {
   totalTransactions?: number;
   entryDate: string | null;
   advisor: string;
+  fidelizador: string;
   company: string;
   grouper: string;
   expectedAmount?: number;

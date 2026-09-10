@@ -50,12 +50,18 @@ export class AffiliatesListComponent implements OnInit {
   filterCedula = '';
   filterReference = '';
   filterAdvisor = '';
+  filterFidelizador = '';
   filterIsActive = '';
   filterGrupo = '';
   filterEntryDateFrom = '';
   filterEntryDateTo = '';
   filterPaymentStatus = '';
   advisorOptions = signal<SelectOption[]>([]);
+  fidelizadorOptions = signal<SelectOption[]>([]);
+  // id numérico de cada fidelizador por nombre (el filtro viaja al backend
+  // por nombre, igual que Asesor, pero la cascada necesita el id para pedir
+  // GET /advisors/dropdown?fidelizadorId=).
+  private fidelizadorIdByName = new Map<string, number>();
   referenceOptions = signal<SelectOption[]>([]);
   private departmentNameByCode = new Map<string, string>();
 
@@ -151,6 +157,7 @@ export class AffiliatesListComponent implements OnInit {
       cedula: this.filterCedula || undefined,
       reference: this.filterReference || undefined,
       advisor: this.filterAdvisor || undefined,
+      fidelizador: this.filterFidelizador || undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,
@@ -177,6 +184,13 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   private loadFilterOptions(): void {
+    this._service.getFidelizadores().subscribe((list) => {
+      this.fidelizadorOptions.set(list.map((f) => ({ value: f.name, label: f.name })));
+      this.fidelizadorIdByName = new Map(list.map((f) => [f.name, Number(f.id)]));
+    });
+    // Sin fidelización elegida, "Asesor" arranca con todos los activos (igual
+    // que hoy); al elegir una fidelización se filtra a sus asesores (ver
+    // onFidelizadorFilterChange), igual que en el modal de crear/editar.
     this._service.getAdvisors().subscribe((list) => {
       this.advisorOptions.set(list.map((a) => ({ value: a.name, label: a.name })));
     });
@@ -186,6 +200,18 @@ export class AffiliatesListComponent implements OnInit {
     this._service.getDepartments().subscribe((list: Department[]) => {
       this.departmentNameByCode = new Map(list.map((d) => [d.code, d.name]));
     });
+  }
+
+  // "Asesor" depende de "Fidelización", igual que en el modal de crear/editar
+  // afiliado: al elegir un fidelizador, el desplegable de asesor se limita a
+  // los suyos y se limpia la selección de asesor si ya no aplica.
+  onFidelizadorFilterChange(): void {
+    this.filterAdvisor = '';
+    const fidelizadorId = this.filterFidelizador ? this.fidelizadorIdByName.get(this.filterFidelizador) : undefined;
+    this._service.getAdvisors(fidelizadorId).subscribe((list) => {
+      this.advisorOptions.set(list.map((a) => ({ value: a.name, label: a.name })));
+    });
+    this.onDropdownFilterChange();
   }
 
   getDepartmentName(departmentCode: string | null | undefined): string {
@@ -209,17 +235,21 @@ export class AffiliatesListComponent implements OnInit {
     this.filterCedula = '';
     this.filterReference = '';
     this.filterAdvisor = '';
+    this.filterFidelizador = '';
     this.filterIsActive = '';
     this.filterGrupo = '';
     this.filterEntryDateFrom = '';
     this.filterEntryDateTo = '';
     this.filterPaymentStatus = '';
     this.currentPage.set(1);
+    this._service.getAdvisors().subscribe((list) => {
+      this.advisorOptions.set(list.map((a) => ({ value: a.name, label: a.name })));
+    });
     this.loadAffiliates();
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterFidelizador || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -389,6 +419,7 @@ export class AffiliatesListComponent implements OnInit {
       cedula: this.filterCedula || undefined,
       reference: this.filterReference || undefined,
       advisor: this.filterAdvisor || undefined,
+      fidelizador: this.filterFidelizador || undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,

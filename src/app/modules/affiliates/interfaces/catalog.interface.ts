@@ -12,6 +12,7 @@ export interface Plan extends CatalogItem {
 export interface Company extends CatalogItem {}
 export interface Grouper extends CatalogItem {}
 export interface Advisor extends CatalogItem {}
+export interface Fidelizador extends CatalogItem {}
 export interface EpsItem extends CatalogItem {}
 export interface Pension extends CatalogItem {}
 export interface CompensationBox extends CatalogItem {}
