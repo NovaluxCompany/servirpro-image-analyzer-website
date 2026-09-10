@@ -39,31 +39,37 @@ export class IncapacityTraceModalComponent {
   documentsOpen = signal(false);
 
   /**
-   * Dos líneas de tiempo, una por lado del trámite, cada una con lo más
-   * reciente arriba.
+   * Dos líneas de tiempo, cada una con lo más reciente arriba.
    *
-   * El reparto sigue el scope que graba el backend, pero agrupa por quién
-   * hace el trabajo, no por la etiqueta suelta:
+   * El corte NO es el `scope` que graba el backend, sino QUIÉN hizo la
+   * cosa. El scope mezcla las dos: `ENRUTAMIENTO` y el envío del correo se
+   * graban como TERCERO/CORREO porque afectan al tercero, pero los ejecuta
+   * Servirpro — y verlos en la columna del tercero hace parecer que el
+   * tercero hizo algo cuando ni se ha enterado.
    *
-   * - Servirpro: SERVIRPRO (radicación, cambios de estado) + GENERAL, que
-   *   hoy es solo la anulación — un acto interno, no del tercero.
-   * - Tercero: TERCERO (enrutamiento y estados) + CORREO y PILA, que NO
-   *   son eventos aparte: mandar el correo ES la gestión de Gestión, y
-   *   marcar PILA ES la gestión de CYA. Antes caían en un "Otros eventos"
-   *   al final, sin autor y en gris, siendo lo más delicado del módulo.
-   *
-   * DOCUMENTO queda fuera de las dos a propósito (ver documentEntries).
+   * - Servirpro: todo lo que ejecuta Servirpro — radicación, cambios de
+   *   estado interno, anulación, enrutamiento, envío del correo (y su
+   *   error) y la marca de PILA.
+   * - Tercero: solo los cambios de estado DEL tercero, que es lo que
+   *   responde a "¿en qué va del otro lado?".
    */
   private byDateDesc = (entries: IncapacityLogEntry[]) =>
     [...entries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+  /** Lo hace Servirpro aunque el backend lo grabe con scope del tercero. */
+  private isServirproWork(entry: IncapacityLogEntry): boolean {
+    if (entry.scope === 'SERVIRPRO' || entry.scope === 'GENERAL') return true;
+    if (entry.scope === 'CORREO' || entry.scope === 'PILA') return true;
+    return entry.scope === 'TERCERO' && entry.action === 'ENRUTAMIENTO';
+  }
+
   servirproEntries = computed(() =>
-    this.byDateDesc(this.entries().filter((e) => e.scope === 'SERVIRPRO' || e.scope === 'GENERAL')),
+    this.byDateDesc(this.entries().filter((e) => this.isServirproWork(e))),
   );
 
   thirdPartyEntries = computed(() =>
     this.byDateDesc(
-      this.entries().filter((e) => e.scope === 'TERCERO' || e.scope === 'CORREO' || e.scope === 'PILA'),
+      this.entries().filter((e) => e.scope === 'TERCERO' && !this.isServirproWork(e)),
     ),
   );
 
