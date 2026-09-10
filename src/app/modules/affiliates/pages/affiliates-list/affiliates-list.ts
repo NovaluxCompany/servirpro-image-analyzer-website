@@ -51,6 +51,7 @@ export class AffiliatesListComponent implements OnInit {
   filterReference = '';
   filterAdvisor = '';
   filterFidelizador = '';
+  filterAffiliateType = '';
   filterIsActive = '';
   filterGrupo = '';
   filterEntryDateFrom = '';
@@ -158,6 +159,7 @@ export class AffiliatesListComponent implements OnInit {
       reference: this.filterReference || undefined,
       advisor: this.filterAdvisor || undefined,
       fidelizador: this.filterFidelizador || undefined,
+      affiliateType: (this.filterAffiliateType === 'INDEPENDIENTE' || this.filterAffiliateType === 'DEPENDIENTE') ? this.filterAffiliateType : undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,
@@ -236,6 +238,7 @@ export class AffiliatesListComponent implements OnInit {
     this.filterReference = '';
     this.filterAdvisor = '';
     this.filterFidelizador = '';
+    this.filterAffiliateType = '';
     this.filterIsActive = '';
     this.filterGrupo = '';
     this.filterEntryDateFrom = '';
@@ -249,7 +252,7 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterFidelizador || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterFidelizador || this.filterAffiliateType || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -420,6 +423,7 @@ export class AffiliatesListComponent implements OnInit {
       reference: this.filterReference || undefined,
       advisor: this.filterAdvisor || undefined,
       fidelizador: this.filterFidelizador || undefined,
+      affiliateType: (this.filterAffiliateType === 'INDEPENDIENTE' || this.filterAffiliateType === 'DEPENDIENTE') ? this.filterAffiliateType : undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,

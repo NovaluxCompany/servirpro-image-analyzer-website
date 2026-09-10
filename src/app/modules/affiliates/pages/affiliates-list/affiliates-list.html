@@ -121,6 +121,16 @@
         </div>
 
         <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Tipo de afiliado</label>
+          <select [(ngModel)]="filterAffiliateType" (ngModelChange)="onDropdownFilterChange()"
+            class="w-full px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white h-[38px]">
+            <option value="">Todos</option>
+            <option value="DEPENDIENTE">Dependiente</option>
+            <option value="INDEPENDIENTE">Independiente</option>
+          </select>
+        </div>
+
+        <div>
           <label class="block mb-1 text-xs font-medium text-gray-600">Grupo</label>
           <select [(ngModel)]="filterGrupo" (ngModelChange)="onDropdownFilterChange()"
             class="w-full px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white h-[38px]">

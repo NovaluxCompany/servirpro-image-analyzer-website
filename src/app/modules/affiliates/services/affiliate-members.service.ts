@@ -15,6 +15,7 @@ export interface AffiliateFilters {
   reference?: string;
   advisor?: string;
   fidelizador?: string;
+  affiliateType?: 'INDEPENDIENTE' | 'DEPENDIENTE';
   isActive?: boolean;
   grupo?: string;
   entryDateFrom?: string;
@@ -43,6 +44,7 @@ export class AffiliateMembersService {
     if (filters.reference) params = params.set('reference', filters.reference);
     if (filters.advisor) params = params.set('advisor', filters.advisor);
     if (filters.fidelizador) params = params.set('fidelizador', filters.fidelizador);
+    if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
     if (filters.isActive !== undefined) params = params.set('isActive', String(filters.isActive));
     if (filters.grupo) params = params.set('grupo', filters.grupo);
     if (filters.entryDateFrom) params = params.set('entryDateFrom', filters.entryDateFrom);
@@ -168,6 +170,7 @@ export class AffiliateMembersService {
     if (filters.reference) params = params.set('reference', filters.reference);
     if (filters.advisor) params = params.set('advisor', filters.advisor);
     if (filters.fidelizador) params = params.set('fidelizador', filters.fidelizador);
+    if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
     if (filters.isActive !== undefined) {
       params = params.set('isActive', String(filters.isActive));
     }
