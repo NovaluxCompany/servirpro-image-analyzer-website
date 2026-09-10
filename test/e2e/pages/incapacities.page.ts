@@ -100,33 +100,46 @@ export class IncapacitiesPage {
   }
 
   /**
-   * Regla de negocio confirmada (2026-09-09), fija en código —
-   * IncapacityWorkflowService.resolveRoute() en el backend hace exactamente
-   * esto y ya NO consulta `incapacity_grouper_routes`: agrupadora "GESTION"
-   * enruta a CYA (sin correo); cualquier otra agrupadora enruta a Gestión
-   * (SÍ dispara un correo real por n8n al aprobar). getRouteMapping() de
-   * abajo sigue existiendo mientras la tabla exista, pero ya no es la fuente
-   * de verdad para esta decisión — no la uses para nada que dependa de si
-   * se manda o no un correo real.
+   * Gestión que le toca a una agrupadora, según `incapacity_grouper_routes`.
+   *
+   * No hay regla derivable del nombre: cada agrupadora tiene su gestión
+   * configurada como dato (hoy GESTION→GESTION, RESOLUCION→CYA, y
+   * ORDINARIAS sin mapeo), igual que IncapacityWorkflowService.resolveRoute()
+   * en el backend. Una agrupadora sin fila activa devuelve null.
    */
-  static resolveExpectedRoute(grouperName: string | null | undefined): IncapacityRoute | null {
-    const normalized = (grouperName ?? '').trim().toUpperCase();
-    if (!normalized) return null;
-    return normalized === 'GESTION' ? 'CYA' : 'GESTION';
+  static resolveRouteFor(mapping: RouteMapping[], grouperId: number): IncapacityRoute | null {
+    const row = mapping.find((m) => m.active && Number(m.grouperId) === grouperId);
+    return row?.route ?? null;
   }
 
   /**
-   * Primer afiliado activo cuya agrupadora enruta a CYA (o sea, NO dispara
-   * correo al aprobar) — hoy eso significa agrupadora literalmente "GESTION",
-   * ver resolveExpectedRoute().
+   * Primer afiliado activo cuya agrupadora se gestiona por CYA — o sea, el
+   * que NO dispara correo al aprobar.
    *
-   * GUARDARRAÍL: aprobar una incapacidad enrutada a Gestión dispara un correo
-   * real por n8n, y el suite no debe mandarle correo a nadie. El filtro es
-   * FAIL-CLOSED a propósito: un afiliado sin grouperName legible se descarta
-   * en vez de asumir que es seguro.
+   * GUARDARRAÍL: aprobar una incapacidad de una agrupadora gestionada por
+   * Gestión dispara un correo real por n8n, y el suite no debe mandarle
+   * correo a nadie. Es FAIL-CLOSED a propósito: si el grouperId no se puede
+   * resolver, o su agrupadora no está mapeada a CYA, se descarta en vez de
+   * asumir que es seguro.
    */
   async findAffiliateSafeToApprove(): Promise<SafeAffiliate | null> {
+    return this.findAffiliateWithRoute('CYA');
+  }
+
+  /**
+   * Primer afiliado activo cuya agrupadora se gestiona por Gestión: la
+   * condición que habilita "Enviar correo", tanto en el front
+   * (isGestionRoute) como en el backend (sendEmailAndApprove). Confirmar
+   * ese botón para este afiliado SÍ manda un correo real.
+   */
+  async findAffiliateRoutedToGestion(): Promise<SafeAffiliate | null> {
+    return this.findAffiliateWithRoute('GESTION');
+  }
+
+  private async findAffiliateWithRoute(route: IncapacityRoute): Promise<SafeAffiliate | null> {
     const headers = await this.authHeaders();
+    const mapping = await this.getRouteMapping();
+
     const res = await this.page.request.get(`${API_URL}/affiliates?page=1&limit=100&isActive=true`, {
       headers,
     });
@@ -140,80 +153,7 @@ export class IncapacitiesPage {
       const grouperId = Number(item.grouperId);
       if (!item.id || !item.fullName || !item.documentNumber) return false;
       if (!Number.isFinite(grouperId)) return false; // fail-closed
-      return IncapacitiesPage.resolveExpectedRoute(item.grouperName) === 'CYA';
-    });
-
-    if (!candidate) return null;
-    return {
-      id: Number(candidate.id),
-      fullName: String(candidate.fullName),
-      documentNumber: String(candidate.documentNumber),
-      grouperId: Number(candidate.grouperId),
-      grouperName: String(candidate.grouperName ?? ''),
-    };
-  }
-
-  /**
-   * Primer afiliado activo cuya agrupadora es literalmente "GESTION" —
-   * la única condición que habilita el botón "Enviar correo" (ver
-   * isGestionRoute() en incapacities-list.ts e
-   * IncapacityWorkflowService.sendEmailAndApprove()). Distinto del método
-   * de arriba a propósito: ese busca "seguro para aprobar sin correo"
-   * (agrupadora != GESTION), este busca justo lo contrario, para probar que
-   * el botón exista — sin llegar nunca a confirmarlo (eso sí mandaría un
-   * correo real).
-   */
-  async findAffiliateWithGestionGrouper(): Promise<SafeAffiliate | null> {
-    const headers = await this.authHeaders();
-    const res = await this.page.request.get(`${API_URL}/affiliates?page=1&limit=100&isActive=true`, {
-      headers,
-    });
-    if (!res.ok()) return null;
-
-    const body = await res.json();
-    const items: any[] = body.data ?? body.items ?? [];
-
-    const candidate = items.find((item) => {
-      if (!item.id || !item.fullName || !item.documentNumber) return false;
-      return String(item.grouperName ?? '').trim().toUpperCase() === 'GESTION';
-    });
-
-    if (!candidate) return null;
-    return {
-      id: Number(candidate.id),
-      fullName: String(candidate.fullName),
-      documentNumber: String(candidate.documentNumber),
-      grouperId: Number(candidate.grouperId),
-      grouperName: String(candidate.grouperName ?? ''),
-    };
-  }
-
-  /**
-   * Primer afiliado activo cuya agrupadora SÍ enruta a Gestión: es el único
-   * caso donde aparece el botón "Enviar correo" (isGestionRoute). Fail-closed
-   * igual que findAffiliateSafeToApprove: un grouperId no resoluble se
-   * descarta en vez de asumirlo enrutado a Gestión.
-   */
-  async findAffiliateRoutedToGestion(): Promise<SafeAffiliate | null> {
-    const headers = await this.authHeaders();
-    const mapping = await this.getRouteMapping();
-    const gestionGrouperIds = new Set(
-      mapping.filter((m) => m.active && m.route === 'GESTION').map((m) => Number(m.grouperId)),
-    );
-
-    const res = await this.page.request.get(`${API_URL}/affiliates?page=1&limit=100&isActive=true`, {
-      headers,
-    });
-    if (!res.ok()) return null;
-
-    const body = await res.json();
-    const items: any[] = body.data ?? body.items ?? [];
-
-    const candidate = items.find((item) => {
-      const grouperId = Number(item.grouperId);
-      if (!item.id || !item.fullName || !item.documentNumber) return false;
-      if (!Number.isFinite(grouperId)) return false; // fail-closed
-      return gestionGrouperIds.has(grouperId);
+      return IncapacitiesPage.resolveRouteFor(mapping, grouperId) === route;
     });
 
     if (!candidate) return null;
@@ -496,7 +436,7 @@ export class IncapacitiesPage {
   private static readonly FILTER_PARAM_NAMES: Record<string, string> = {
     servirproStatus: 'servirproStatus',
     thirdPartyStatus: 'thirdPartyStatus',
-    routeFilter: 'routedTo',
+    grouperFilter: 'grouperId',
     pilaFilter: 'registeredInPila',
   };
 
@@ -512,7 +452,7 @@ export class IncapacitiesPage {
    * podía resolver con la respuesta del filtro ANTERIOR en vez de la nueva.
    */
   async applyFilter(
-    field: 'servirproStatus' | 'thirdPartyStatus' | 'routeFilter' | 'pilaFilter',
+    field: 'servirproStatus' | 'thirdPartyStatus' | 'grouperFilter' | 'pilaFilter',
     value: string,
   ): Promise<string> {
     const paramName = IncapacitiesPage.FILTER_PARAM_NAMES[field];
@@ -578,15 +518,7 @@ export class IncapacitiesPage {
     return response.json();
   }
 
-  // ── Menú de acciones (⋮) y "Enviar correo" ──────────────────────────
-
-  /** Abre el menú "Acciones" (⋮) de una fila y devuelve el panel flotante. */
-  async openActionsMenu(row: Locator): Promise<Locator> {
-    await row.getByTitle('Acciones').click();
-    const menu = this.page.locator('div.fixed.z-50.w-48');
-    await expect(menu).toBeVisible();
-    return menu;
-  }
+  // ── Modal "Enviar correo" ────────────────────────────────────────────
 
   get sendEmailModal(): Locator {
     return this.page.locator('.fixed.inset-0.z-50').filter({ hasText: 'Enviar correo' });
@@ -594,11 +526,10 @@ export class IncapacitiesPage {
 
   /** Abre el modal de confirmación "Enviar correo" desde el menú de acciones de la fila. */
   async openSendEmailModal(row: Locator): Promise<Locator> {
-    const menu = await this.openActionsMenu(row);
-    await menu.getByRole('button', { name: 'Enviar correo' }).click();
-    const modal = this.sendEmailModal;
-    await expect(modal).toBeVisible();
-    return modal;
+    await this.openDropdown(row);
+    await row.getByRole('button', { name: 'Enviar correo' }).click();
+    await expect(this.sendEmailModal).toBeVisible();
+    return this.sendEmailModal;
   }
 
   /**
@@ -666,25 +597,6 @@ export class IncapacitiesPage {
     await row.getByRole('button', { name: 'Anular' }).click();
     await expect(this.cancelModal).toBeVisible();
     return this.cancelModal;
-  }
-
-  // ── Modal Enviar correo ───────────────────────────────────────────
-
-  get sendEmailModal(): Locator {
-    return this.page.locator('.fixed.inset-0.z-50').filter({ hasText: 'Enviar correo' });
-  }
-
-  /**
-   * Solo abre la modal y la devuelve — NUNCA confirmarla en un test contra
-   * un ambiente con el webhook de n8n activo: "Sí, enviar correo" manda un
-   * correo real. Los tests deben limitarse a verificar que aparece/se
-   * cierra con Cancelar.
-   */
-  async openSendEmailModal(row: Locator): Promise<Locator> {
-    await this.openDropdown(row);
-    await row.getByRole('button', { name: 'Enviar correo' }).click();
-    await expect(this.sendEmailModal).toBeVisible();
-    return this.sendEmailModal;
   }
 
   // ── Toasts ────────────────────────────────────────────────────────

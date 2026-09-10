@@ -14,11 +14,13 @@ test.use({ storageState: authStateFile('Administrador') });
  * Módulo de Incapacidades. Cada test dice qué caso de uso cubre (CU-xx de
  * docs/casos-de-uso-incapacidades).
  *
- * GUARDARRAÍL DE CORREOS: aprobar una incapacidad enrutada a Gestión dispara
- * un correo real por n8n. El afiliado del flujo de aprobación se elige
- * explícitamente entre los que NO enrutan a Gestión
- * (IncapacitiesPage.findAffiliateSafeToApprove, fail-closed). Si el ambiente
- * solo tiene afiliados de Gestión, el test se salta en vez de enviar.
+ * GUARDARRAÍL DE CORREOS: aprobar una incapacidad de una agrupadora
+ * gestionada por Gestión dispara un correo real por n8n. El afiliado del
+ * flujo de aprobación se elige explícitamente entre los que se gestionan por
+ * CYA (IncapacitiesPage.findAffiliateSafeToApprove, fail-closed contra
+ * `incapacity_grouper_routes`). Si el ambiente no tiene ninguno, el test se
+ * salta en vez de enviar. La única excepción, aislada y deliberada, es el
+ * describe "Incapacidades — enviar correo a Gestión" del final.
  */
 
 /** PDF mínimo válido, generado en memoria: no depende de un archivo del repo. */
@@ -289,18 +291,18 @@ test.describe('Incapacidades', () => {
     await expect(modal).toBeHidden();
   });
 
-  test('CU-17/19/21/22/23: aprobar del lado Servirpro enruta según la agrupadora y pasa al tercero a "En proceso"', async ({
+  test('CU-17/19/21/22/23: aprobar del lado Servirpro enruta según la agrupadora sin mover solo el estado del tercero', async ({
     page,
   }) => {
     const incapacitiesPage = new IncapacitiesPage(page);
     test.skip(!createdIncapacityId, 'Depende de la incapacidad registrada en el test anterior.');
 
-    // Regla fija en código (IncapacityWorkflowService.resolveRoute, ver
-    // IncapacitiesPage.resolveExpectedRoute): agrupadora "GESTION" -> CYA,
-    // cualquier otra -> Gestión. Ya NO sale de incapacity_grouper_routes.
-    // `affiliate` lo eligió findAffiliateSafeToApprove(), que garantiza que
-    // esto da 'CYA' (si no, este test no debería correr).
-    const expectedRoute = IncapacitiesPage.resolveExpectedRoute(affiliate!.grouperName);
+    // La gestión sale de `incapacity_grouper_routes`, una fila por
+    // agrupadora (IncapacityWorkflowService.resolveRoute) — no de una regla
+    // derivada del nombre. `affiliate` lo eligió findAffiliateSafeToApprove(),
+    // que garantiza que esto da 'CYA' (si no, este test no debería correr).
+    const mapping = await incapacitiesPage.getRouteMapping();
+    const expectedRoute = IncapacitiesPage.resolveRouteFor(mapping, affiliate!.grouperId);
     expect(expectedRoute, 'el afiliado elegido para este test debe enrutar a CYA, nunca a Gestión').toBe(
       'CYA',
     );
@@ -318,30 +320,43 @@ test.describe('Incapacidades', () => {
     // a CYA o a Gestión).
     expect(updated.routedTo ?? null).toBe(expectedRoute);
 
-    // CU-22: applyRouting() siempre pasa primero por "En proceso", pero para
-    // CYA markSentToCya() lo pisa enseguida con "Enviado a CYA" — no hay
-    // tercero externo al que esperar, a diferencia de Gestión (que sí se
-    // queda en "En proceso" mientras se intenta el correo). Este test usa
-    // siempre un afiliado de ruta CYA (ver expectedRoute arriba).
-    const expectedThirdPartyCode = expectedRoute === 'CYA' ? 'ENVIADO_A_CYA' : 'EN_PROCESO';
+    // CU-22: aprobar ya NO mueve solo el estado del tercero. Para CYA sigue
+    // quedando en "Enviado a CYA" (markSentToCya: la gestión de CYA es
+    // justamente cambiar ese estado, no hay tercero externo al que esperar).
+    // Para Gestión se queda como estaba: "En proceso" solo llega cuando el
+    // correo se entrega, por el botón "Enviar correo". Este test usa siempre
+    // un afiliado de ruta CYA (ver expectedRoute arriba).
+    const expectedThirdPartyCode = expectedRoute === 'CYA' ? 'ENVIADO_A_CYA' : 'PENDIENTE';
     expect(updated.thirdPartyStatus.code).toBe(expectedThirdPartyCode);
 
     // CU-19: los dos estados se muestran por separado en el listado.
     const refreshed = incapacitiesPage.rowFor(affiliate!.documentNumber, isoDaysAgo(5 + RUN_OFFSET_DAYS));
     await expect(refreshed).toContainText('Aprobado');
-    await expect(refreshed).toContainText(expectedRoute === 'CYA' ? 'Enviado a CYA' : 'En proceso');
+    await expect(refreshed).toContainText(expectedRoute === 'CYA' ? 'Enviado a CYA' : 'Pendiente');
     await expect(refreshed).toContainText(expectedRoute);
   });
 
   // ── E/F. Listado ────────────────────────────────────────────────────
 
-  test('CU-33/34: el check de PILA solo aparece en las incapacidades de CYA', async ({ page }) => {
+  test('CU-33/34: el check de PILA solo aparece en las incapacidades gestionadas por CYA', async ({
+    page,
+  }) => {
     const incapacitiesPage = new IncapacitiesPage(page);
     await incapacitiesPage.goto();
 
-    // CU-34: el filtro por destino existe y viaja al backend.
-    const cyaUrl = await incapacitiesPage.applyFilter('routeFilter', 'CYA');
-    expect(cyaUrl).toContain('routedTo=CYA');
+    // El filtro del listado es por AGRUPADORA, no por un "destino": la
+    // gestión (CYA / Gestión) se resuelve de la agrupadora, no al revés.
+    const mapping = await incapacitiesPage.getRouteMapping();
+    const cyaGrouper = mapping.find((m) => m.active && m.route === 'CYA');
+    const gestionGrouper = mapping.find((m) => m.active && m.route === 'GESTION');
+    test.skip(
+      !cyaGrouper || !gestionGrouper,
+      'El ambiente no tiene agrupadoras mapeadas a CYA y a Gestión para comparar.',
+    );
+
+    // CU-34: el filtro por agrupadora existe y viaja al backend.
+    const cyaUrl = await incapacitiesPage.applyFilter('grouperFilter', String(cyaGrouper!.grouperId));
+    expect(cyaUrl).toContain(`grouperId=${cyaGrouper!.grouperId}`);
 
     const cyaRows = await incapacitiesPage.rows().count();
     if (cyaRows > 0 && (await incapacitiesPage.rows().first().locator('td').count()) > 1) {
@@ -351,9 +366,12 @@ test.describe('Incapacidades', () => {
       await page.keyboard.press('Escape').catch(() => {});
     }
 
-    // En Gestión, la columna PILA dice "No aplica" y no hay botón para marcarla.
-    const gestionUrl = await incapacitiesPage.applyFilter('routeFilter', 'GESTION');
-    expect(gestionUrl).toContain('routedTo=GESTION');
+    // En las de Gestión, la columna PILA dice "No aplica" y no hay botón.
+    const gestionUrl = await incapacitiesPage.applyFilter(
+      'grouperFilter',
+      String(gestionGrouper!.grouperId),
+    );
+    expect(gestionUrl).toContain(`grouperId=${gestionGrouper!.grouperId}`);
 
     const gestionRows = await incapacitiesPage.rows().count();
     if (gestionRows > 0 && (await incapacitiesPage.rows().first().locator('td').count()) > 1) {
@@ -415,11 +433,12 @@ test.describe('Incapacidades', () => {
 
 // ── D. Enviar correo a Gestión ──────────────────────────────────────
 //
-// A diferencia del resto del suite (que evita a propósito los afiliados de
-// Gestión, ver el guardarraíl al inicio del archivo), este describe SÍ
-// necesita uno: "Enviar correo" solo existe para agrupadora Gestión y, al
-// confirmarlo, dispara un correo real por n8n. Se aísla en su propio bloque
-// serial para no mezclar ese envío real con el resto de los casos.
+// A diferencia del resto del suite (que a propósito solo usa afiliados de
+// agrupadoras gestionadas por CYA, ver el guardarraíl al inicio del
+// archivo), este describe SÍ necesita una agrupadora gestionada por Gestión:
+// "Enviar correo" solo aplica ahí y, al confirmarlo, dispara un correo real
+// por n8n. Se aísla en su propio bloque serial para no mezclar ese envío
+// real con el resto de los casos.
 test.describe('Incapacidades — enviar correo a Gestión', () => {
   test.describe.configure({ mode: 'serial' });
 
@@ -431,7 +450,7 @@ test.describe('Incapacidades — enviar correo a Gestión', () => {
     gestionAffiliate ??= await incapacitiesPage.findAffiliateRoutedToGestion();
     test.skip(
       !gestionAffiliate,
-      'No hay ningún afiliado activo cuya agrupadora enrute a Gestión en este ambiente.',
+      'No hay ningún afiliado activo cuya agrupadora se gestione por Gestión en este ambiente.',
     );
   });
 
@@ -444,11 +463,16 @@ test.describe('Incapacidades — enviar correo a Gestión', () => {
 
     // Radica una incapacidad nueva para el afiliado de Gestión: el botón
     // exige que el correo no se haya enviado todavía (!incapacity.emailSent).
+    // Los cuatro soportes obligatorios (ver BASE_SLOTS en
+    // incapacity-form-modal.ts) — solo AUTORIZACION_PAGO_TERCERO es opcional.
     await openIncapacityModal(page, gestionAffiliate!);
     await incapacitiesPage.fillDates(startDate, endDate);
     await incapacitiesPage.selectFirstCatalogOption('originId');
     await incapacitiesPage.selectFirstCatalogOption('entityTypeId');
     await incapacitiesPage.attach('INCAPACIDAD', SAMPLE_PDF);
+    await incapacitiesPage.attach('HISTORIA_CLINICA', SAMPLE_PDF);
+    await incapacitiesPage.attach('CERT_BANCARIO', SAMPLE_PDF);
+    await incapacitiesPage.attach('AUTORIZACION_BANCARIA', SAMPLE_PDF);
     await incapacitiesPage.submitForm();
     await expect(incapacitiesPage.toast('Incapacidad registrada.')).toBeVisible();
 
@@ -459,8 +483,13 @@ test.describe('Incapacidades — enviar correo a Gestión', () => {
 
     // La aprobación y el emailSent solo llegan si el POST fue exitoso: es la
     // misma llamada atómica, no dos pasos encadenados desde el front.
-    expect(updated.servirproStatus).toBe('APROBADO');
+    // servirproStatus viene como el objeto completo del catálogo (id/code/label/...).
+    expect(updated.servirproStatus.code).toBe('APROBADO');
     expect(updated.emailSent).toBe(true);
+
+    // El envío del correo es el ÚNICO punto donde el estado del tercero se
+    // mueve solo: aprobar por el modal ya no lo toca (ver applyRouting).
+    expect(updated.thirdPartyStatus.code).toBe('EN_PROCESO');
     await expect(incapacitiesPage.toast('Correo enviado y incapacidad aprobada.')).toBeVisible();
 
     const refreshed = incapacitiesPage.rowFor(gestionAffiliate!.documentNumber, startDate);
@@ -468,8 +497,8 @@ test.describe('Incapacidades — enviar correo a Gestión', () => {
     await expect(refreshed).toContainText('Enviado');
 
     // Ya enviado, el botón desaparece: no se puede reenviar desde esta acción.
-    const menuAfter = await incapacitiesPage.openActionsMenu(refreshed);
-    await expect(menuAfter.getByRole('button', { name: 'Enviar correo' })).toHaveCount(0);
+    await incapacitiesPage.openDropdown(refreshed);
+    await expect(refreshed.getByRole('button', { name: 'Enviar correo' })).toHaveCount(0);
   });
 });
 

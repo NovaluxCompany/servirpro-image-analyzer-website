@@ -9,14 +9,16 @@ test.use({ storageState: authStateFile('Administrador') });
  * Cubre los cambios de la sesión del 2026-09-09 sobre Incapacidades:
  * diagnóstico CIE-10 (restaurado), entidad que emite automática (EPS/ARL) o
  * abierta (AFP), soportes como desplegable "...", columna Estado
- * (Activa/Anulada), modales de confirmación de Eliminar/Anular/Enviar
- * correo, el rótulo CYA/Gestión basado en la agrupadora, y prórroga como
- * dato simple (sin elegir incapacidad padre).
+ * (Activa/Anulada), modales de confirmación de Eliminar/Anular, el rótulo
+ * CYA/Gestión basado en la agrupadora, y prórroga como dato simple (sin
+ * elegir incapacidad padre).
  *
- * GUARDARRAÍL DE CORREOS: "Enviar correo" y aprobar una incapacidad de
- * Gestión disparan un correo real por n8n. Estos tests SOLO abren y
- * cancelan esa modal — nunca hacen clic en "Sí, enviar correo" ni aprueban
- * una incapacidad enrutada a Gestión. Ver IncapacitiesPage.resolveExpectedRoute.
+ * GUARDARRAÍL DE CORREOS: aprobar una incapacidad de Gestión (o confirmar
+ * "Enviar correo") dispara un correo real por n8n. Ningún test de este
+ * archivo llega a eso — el flujo completo de "Enviar correo", con su
+ * confirmación real, vive aislado en incapacities.spec.ts (describe
+ * "Incapacidades — enviar correo a Gestión"). Ver
+ * IncapacitiesPage.resolveRouteFor.
  */
 
 /** PDF mínimo válido, generado en memoria: no depende de un archivo del repo. */
@@ -103,12 +105,13 @@ test.describe('Incapacidades — cambios de esta sesión', () => {
   test.beforeEach(async ({ page }) => {
     const incapacitiesPage = new IncapacitiesPage(page);
     await incapacitiesPage.goto();
-    // El mismo afiliado "seguro" de incapacities.spec.ts: hoy eso significa
-    // agrupadora "GESTION" (ver resolveExpectedRoute), que es justo la que
-    // habilita "Enviar correo" — conveniente para probar ambas cosas con el
-    // mismo afiliado sin arriesgar un correo real.
+    // El mismo afiliado "seguro" de incapacities.spec.ts: agrupadora
+    // gestionada por CYA, que es la que no dispara ningún correo real.
     affiliate ??= await incapacitiesPage.findAffiliateSafeToApprove();
-    test.skip(!affiliate, 'No hay ningún afiliado activo de agrupadora GESTION en este ambiente.');
+    test.skip(
+      !affiliate,
+      'No hay ningún afiliado activo cuya agrupadora se gestione por CYA en este ambiente.',
+    );
   });
 
   // ── Diagnóstico (restaurado) ─────────────────────────────────────────
@@ -290,39 +293,20 @@ test.describe('Incapacidades — cambios de esta sesión', () => {
     await incapacitiesPage.goto();
     const row = await incapacitiesPage.findRowAcrossPages(affiliate!.documentNumber, startDate);
 
-    // `affiliate` es de agrupadora "GESTION" -> por la regla de negocio, CYA.
-    const expectedLabel = IncapacitiesPage.resolveExpectedRoute(affiliate!.grouperName) === 'CYA'
-      ? 'Estado CYA'
-      : 'Estado Gestión';
+    // `affiliate` lo eligió findAffiliateSafeToApprove(): su agrupadora se
+    // gestiona por CYA, según incapacity_grouper_routes.
+    const mapping = await incapacitiesPage.getRouteMapping();
+    const expectedLabel =
+      IncapacitiesPage.resolveRouteFor(mapping, affiliate!.grouperId) === 'CYA'
+        ? 'Estado CYA'
+        : 'Estado Gestión';
 
     await incapacitiesPage.openDropdown(row);
     await expect(row.getByRole('button', { name: expectedLabel })).toBeVisible();
   });
 
-  // ── Modal "Enviar correo" ─────────────────────────────────────────────
-
-  test('Enviar correo: habilitado para agrupadora GESTION, con modal de confirmación — nunca se confirma en el test', async ({
-    page,
-  }) => {
-    const incapacitiesPage = new IncapacitiesPage(page);
-    const { startDate } = await registerMinimalIncapacity(page, incapacitiesPage, affiliate!, 15, 11);
-
-    await incapacitiesPage.goto();
-    const row = await incapacitiesPage.findRowAcrossPages(affiliate!.documentNumber, startDate);
-
-    let sendRequestFired = false;
-    page.on('request', (req) => {
-      if (req.method() === 'POST' && /\/incapacities\/\d+\/send-email-approve$/.test(req.url())) {
-        sendRequestFired = true;
-      }
-    });
-
-    const modal = await incapacitiesPage.openSendEmailModal(row);
-    await expect(modal).toContainText('quedará Aprobada automáticamente');
-
-    await modal.getByRole('button', { name: 'Cancelar' }).click();
-    await expect(modal).toBeHidden();
-
-    expect(sendRequestFired, 'abrir y cancelar la modal no debe llamar a send-email-approve').toBe(false);
-  });
+  // El flujo completo de "Enviar correo" (incluida la confirmación real) vive
+  // en incapacities.spec.ts, describe "Incapacidades — enviar correo a
+  // Gestión" — ese SÍ dispara un correo real por n8n a propósito, así que se
+  // mantiene aislado en su propio describe en vez de duplicarse aquí.
 });

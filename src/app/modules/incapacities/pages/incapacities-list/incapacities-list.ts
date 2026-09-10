@@ -4,8 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { IncapacitiesService } from '../../services/incapacities.service';
 import {
   CatalogItem,
+  GrouperOption,
   Incapacity,
   IncapacityFilters,
+  IncapacityGrouperRoute,
   IncapacityRoute,
   IncapacityType,
   ServirproStatusCode,
@@ -60,13 +62,27 @@ export class IncapacitiesListComponent implements OnInit {
   typeFilter = signal<IncapacityType | ''>('');
   servirproStatusFilter = signal<ServirproStatusCode | ''>('');
   thirdPartyStatusFilter = signal<ThirdPartyStatusCode | ''>('');
+  /**
+   * Gestión ya aplicada. NO es un filtro de pantalla — el visible es
+   * `grouperFilter`. Queda solo como mecanismo del atajo del contador
+   * "Sin registrar en PILA", que por definición es de las de CYA.
+   */
   routeFilter = signal<IncapacityRoute | ''>('');
+  grouperFilter = signal<string>('');
   pilaFilter = signal<'' | 'true' | 'false'>('');
   showCancelled = signal(false);
 
   /** Catálogos en BD, para las opciones del filtro y para pintar la insignia con la label real. */
   servirproStatusCatalog = signal<CatalogItem[]>([]);
   thirdPartyStatusCatalog = signal<CatalogItem[]>([]);
+  groupers = signal<GrouperOption[]>([]);
+
+  /**
+   * Mapa agrupadora → gestión (`incapacity_grouper_routes`). Es la única
+   * fuente para saber qué gestión le toca a cada agrupadora: no hay regla
+   * derivable en código, cada agrupadora se configura como dato.
+   */
+  grouperRoutes = signal<IncapacityGrouperRoute[]>([]);
 
   pendingServirproCount = signal(0);
   pilaPendingCount = signal(0);
@@ -88,6 +104,18 @@ export class IncapacitiesListComponent implements OnInit {
   isCancelling = signal(false);
 
   isExporting = signal(false);
+
+  /**
+   * El Excel sale con los filtros puestos, no con todo el histórico
+   * (exportExcel() manda buildFilters()). El botón vive junto al contador
+   * de la tabla justamente por eso, y el tooltip lo deja explícito: lo que
+   * se descarga es lo que se está viendo.
+   */
+  exportHint = computed(() =>
+    this.hasActiveFilters()
+      ? `Descarga las ${this.totalItems()} incapacidades filtradas`
+      : `Descarga las ${this.totalItems()} incapacidades`,
+  );
 
   // ── Dropdown acciones ─────────────────────────────────────────────
   openDropdownId = signal<number | null>(null);
@@ -127,7 +155,6 @@ export class IncapacitiesListComponent implements OnInit {
   }
 
   readonly incapacityTypes: IncapacityType[] = ['NUEVA', 'PRORROGA'];
-  readonly routes: IncapacityRoute[] = ['GESTION', 'CYA'];
 
   private readonly typeLabels: Record<IncapacityType, string> = {
     NUEVA: 'Nueva',
@@ -151,16 +178,27 @@ export class IncapacitiesListComponent implements OnInit {
       },
       error: (error: Error) => this._toast.showError(`No se pudieron cargar los estados: ${error.message}`),
     });
+    this._service.getGroupers().subscribe({
+      next: (groupers) => this.groupers.set(groupers),
+    });
+    // Sin este mapeo no se sabe qué gestión le toca a cada agrupadora: el
+    // rótulo del estado del tercero y el botón "Enviar correo" dependen de él.
+    this._service.getGrouperRoutes().subscribe({
+      next: (routes) => this.grouperRoutes.set(routes),
+      error: (error: Error) =>
+        this._toast.showError(`No se pudo cargar la gestión por agrupadora: ${error.message}`),
+    });
   }
 
   /**
-   * Habilita el botón "Enviar correo": agrupadora literalmente "GESTION",
-   * punto — a propósito NO usa resolveThirdPartyRoute() (que por la regla
-   * de negocio GESTION→CYA da lo contrario). Debe coincidir exactamente
-   * con la condición del backend (IncapacityWorkflowService.sendEmailAndApprove).
+   * Habilita el botón "Enviar correo": el correo es parte de la gestión de
+   * Gestión, así que aplica cuando la agrupadora del afiliado está mapeada
+   * a GESTION. Misma condición que el backend
+   * (IncapacityWorkflowService.sendEmailAndApprove), que también resuelve
+   * por agrupadora contra `incapacity_grouper_routes`.
    */
   isGestionRoute(incapacity: Incapacity): boolean {
-    return (incapacity.affiliation?.grouper?.name ?? '').trim().toUpperCase() === 'GESTION';
+    return this.resolveThirdPartyRoute(incapacity) === 'GESTION';
   }
 
   showSendEmailModal = signal(false);
@@ -201,17 +239,23 @@ export class IncapacitiesListComponent implements OnInit {
   }
 
   /**
-   * Etiqueta visual CYA/Gestión según el NOMBRE de la agrupadora del
-   * afiliado — a propósito, sin tocar `incapacity_grouper_routes` ni
-   * `routedTo`. Esta tabla maneja el enrutamiento real (correo automático,
-   * chequeo de PILA) y su dato hoy es un supuesto sin confirmar con
-   * negocio; este rótulo es puramente visual y no debe depender de eso.
-   * Regla confirmada con negocio: agrupadora "GESTION" se muestra como
-   * CYA; cualquier otra agrupadora se muestra como Gestión.
+   * Gestión que le corresponde a la incapacidad, resuelta por la agrupadora
+   * del afiliado contra `incapacity_grouper_routes`.
+   *
+   * No hay regla derivable en código: cada agrupadora tiene su gestión
+   * configurada como dato, y una agrupadora sin mapeo (hoy, ORDINARIAS) no
+   * tiene ninguna — por eso puede devolver null. Si el trámite ya se
+   * enrutó, manda lo que quedó registrado (`routedTo`): eso es lo que
+   * realmente pasó, no lo que hoy diría la configuración.
    */
-  resolveThirdPartyRoute(incapacity: Incapacity): IncapacityRoute {
-    const grouperName = (incapacity.affiliation?.grouper?.name ?? '').trim().toUpperCase();
-    return grouperName === 'GESTION' ? 'CYA' : 'GESTION';
+  resolveThirdPartyRoute(incapacity: Incapacity): IncapacityRoute | null {
+    if (incapacity.routedTo) return incapacity.routedTo;
+
+    const grouperId = incapacity.affiliation?.grouper?.id;
+    if (!grouperId) return null;
+
+    const mapping = this.grouperRoutes().find((r) => r.active && r.grouperId === grouperId);
+    return mapping?.route ?? null;
   }
 
   private buildFilters(): IncapacityFilters {
@@ -221,6 +265,7 @@ export class IncapacitiesListComponent implements OnInit {
     if (this.servirproStatusFilter()) filters.servirproStatus = this.servirproStatusFilter() as ServirproStatusCode;
     if (this.thirdPartyStatusFilter()) filters.thirdPartyStatus = this.thirdPartyStatusFilter() as ThirdPartyStatusCode;
     if (this.routeFilter()) filters.routedTo = this.routeFilter() as IncapacityRoute;
+    if (this.grouperFilter()) filters.grouperId = Number(this.grouperFilter());
     if (this.pilaFilter()) filters.registeredInPila = this.pilaFilter() === 'true';
     if (this.showCancelled()) filters.cancelled = true;
     return filters;
@@ -263,6 +308,7 @@ export class IncapacitiesListComponent implements OnInit {
       !!this.servirproStatusFilter() ||
       !!this.thirdPartyStatusFilter() ||
       !!this.routeFilter() ||
+      !!this.grouperFilter() ||
       !!this.pilaFilter() ||
       this.showCancelled(),
   );
@@ -273,6 +319,7 @@ export class IncapacitiesListComponent implements OnInit {
     this.servirproStatusFilter.set('');
     this.thirdPartyStatusFilter.set('');
     this.routeFilter.set('');
+    this.grouperFilter.set('');
     this.pilaFilter.set('');
     this.showCancelled.set(false);
     this.onFilterChange();
@@ -503,14 +550,38 @@ export class IncapacitiesListComponent implements OnInit {
     return incapacity.affiliation?.eps?.name ?? '—';
   }
 
-  /** Calculada al vuelo desde la fecha de nacimiento — no se almacena. */
+  /**
+   * La edad la guarda el backend al radicar (`incapacity.age`), calculada a
+   * la fecha de inicio de la incapacidad. No se recalcula acá: así el
+   * listado, el Excel y el correo muestran siempre el mismo número, y el
+   * valor no cambia con el paso del tiempo.
+   *
+   * El cálculo al vuelo queda solo para las incapacidades radicadas antes
+   * de que existiera esa columna. Cuenta por calendario, no dividiendo
+   * milisegundos entre 365,25 como antes: esa aproximación se equivocaba en
+   * un año justo alrededor del cumpleaños.
+   */
   age(incapacity: Incapacity): string {
-    const birthDate = incapacity.affiliation?.client?.birthDate;
+    if (incapacity.age !== null && incapacity.age !== undefined) {
+      return String(incapacity.age);
+    }
+
+    const birthDate = incapacity.birthDate ?? incapacity.affiliation?.client?.birthDate;
     if (!birthDate) return '—';
-    const years = Math.floor(
-      (Date.now() - new Date(birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000),
-    );
-    return String(years);
+
+    const birth = new Date(`${birthDate.slice(0, 10)}T00:00:00Z`);
+    const reference = new Date(`${incapacity.startDate.slice(0, 10)}T00:00:00Z`);
+    if (isNaN(birth.getTime()) || isNaN(reference.getTime())) return '—';
+
+    let years = reference.getUTCFullYear() - birth.getUTCFullYear();
+    const monthDiff = reference.getUTCMonth() - birth.getUTCMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && reference.getUTCDate() < birth.getUTCDate())) {
+      years--;
+    }
+
+    // Fuera de rango = fecha de nacimiento mal digitada en la ficha del
+    // afiliado. Mejor un guion que un número que nadie va a cuestionar.
+    return years >= 0 && years <= 130 ? String(years) : '—';
   }
 
   typeLabel(incapacity: Incapacity): string {

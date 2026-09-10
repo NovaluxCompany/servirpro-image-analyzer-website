@@ -7,6 +7,7 @@ import {
   CancelIncapacityDto,
   Cie10Diagnosis,
   CreateIncapacityDto,
+  GrouperOption,
   Incapacity,
   IncapacityDocument,
   IncapacityFilters,
@@ -126,6 +127,18 @@ export class IncapacitiesService {
     return this._http
       .get<IncapacityGrouperRoute[]>(`${this.baseUrl}/routes/mapping`, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Agrupadoras para el filtro del listado. Sale del catálogo general y no
+   * de `/routes/mapping` a propósito: ahí solo están las que ya tienen una
+   * gestión configurada, y el filtro debe poder mostrar también las que no
+   * (hoy, ORDINARIAS).
+   */
+  getGroupers(): Observable<GrouperOption[]> {
+    return this._http
+      .get<GrouperOption[]>(`${environment.urlBD}/groupers/dropdown`, { headers: this.getHeaders() })
+      .pipe(catchError(() => of([])));
   }
 
   /**

@@ -71,6 +71,17 @@ export interface Incapacity {
    * médico manda: si difiere, se guarda lo que escribió el usuario.
    */
   days: number;
+  /**
+   * Fecha de nacimiento y edad del afiliado al momento de radicar, copiadas
+   * por el backend desde la ficha del afiliado. `age` es la edad a
+   * `startDate`, no la de hoy: no cambia con el tiempo ni si después se
+   * corrige la ficha.
+   *
+   * Nulas cuando el afiliado no tiene fecha de nacimiento registrada, y en
+   * las incapacidades radicadas antes de que el backend las guardara.
+   */
+  birthDate: string | null;
+  age: number | null;
   diagnosis: Cie10Diagnosis | null;
   origin: CatalogItem | null;
   entityType: CatalogItem | null;
@@ -83,7 +94,11 @@ export interface Incapacity {
   paymentType: PaymentType | null;
   thirdPartyStatus: CatalogItem;
   thirdPartyObservation: string | null;
-  routedTo: string | null;
+  /**
+   * Gestión que ya se le aplicó al trámite, o null si todavía no se enrutó
+   * (o si su agrupadora no tiene gestión configurada — hoy, ORDINARIAS).
+   */
+  routedTo: IncapacityRoute | null;
   registeredInPila: boolean;
   emailSent: boolean;
   cancelled: boolean;
@@ -134,7 +149,14 @@ export interface IncapacityFilters {
   /** Code del catálogo (no id) — se filtra por texto, ver query-incapacities.dto.ts. */
   servirproStatus?: ServirproStatusCode | string;
   thirdPartyStatus?: ThirdPartyStatusCode | string;
+  /**
+   * Gestión ya aplicada al trámite. No se expone como filtro en pantalla
+   * (el filtro visible es por agrupadora): lo usa el atajo del contador
+   * "Sin registrar en PILA", que solo aplica a las de CYA.
+   */
   routedTo?: IncapacityRoute;
+  /** Agrupadora del afiliado: el filtro del listado. */
+  grouperId?: number;
   registeredInPila?: boolean;
   cancelled?: boolean;
 }
@@ -146,6 +168,15 @@ export interface IncapacityGrouperRoute {
   grouper?: { id: number; name: string };
   route: IncapacityRoute;
   active: boolean;
+}
+
+/**
+ * Agrupadora tal como la devuelve `/groupers/dropdown`, para el filtro del
+ * listado. El id llega como string en ese endpoint del catálogo general.
+ */
+export interface GrouperOption {
+  id: string;
+  name: string;
 }
 
 export interface IncapacityLogEntry {
