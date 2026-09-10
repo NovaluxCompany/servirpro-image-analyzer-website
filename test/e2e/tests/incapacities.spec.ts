@@ -321,7 +321,7 @@ test.describe('Incapacidades', () => {
     expect(updated.routedTo ?? null).toBe(expectedRoute);
 
     // CU-22: aprobar ya NO mueve solo el estado del tercero. Para CYA sigue
-    // quedando en "Enviado a CYA" (markSentToCya: la gestión de CYA es
+    // quedando en "Enviado para PILA" (markSentToCya: la gestión de CYA es
     // justamente cambiar ese estado, no hay tercero externo al que esperar).
     // Para Gestión se queda como estaba: "En proceso" solo llega cuando el
     // correo se entrega, por el botón "Enviar correo". Este test usa siempre
@@ -332,7 +332,7 @@ test.describe('Incapacidades', () => {
     // CU-19: los dos estados se muestran por separado en el listado.
     const refreshed = incapacitiesPage.rowFor(affiliate!.documentNumber, isoDaysAgo(5 + RUN_OFFSET_DAYS));
     await expect(refreshed).toContainText('Aprobado');
-    await expect(refreshed).toContainText(expectedRoute === 'CYA' ? 'Enviado a CYA' : 'Pendiente');
+    await expect(refreshed).toContainText(expectedRoute === 'CYA' ? 'Enviado para PILA' : 'Pendiente');
     await expect(refreshed).toContainText(expectedRoute);
   });
 

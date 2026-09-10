@@ -104,7 +104,9 @@ export class IncapacityTraceModalComponent {
     RECHAZADO: 'Rechazado',
     PAGADO: 'Pagado',
     TUTELA: 'Tutela',
-    ENVIADO_A_CYA: 'Enviado a CYA',
+    // El código interno sigue siendo ENVIADO_A_CYA; lo que ve el usuario
+    // es la gestión que sigue: el registro en PILA.
+    ENVIADO_A_CYA: 'Enviado para PILA',
   };
 
   private readonly actionLabels: Record<string, string> = {
@@ -119,7 +121,7 @@ export class IncapacityTraceModalComponent {
     ELIMINACION_DOCUMENTO: 'Documento eliminado',
     ENVIO_CORREO: 'Correo enviado',
     ERROR_CORREO: 'Error al enviar correo',
-    ENVIO_CYA: 'Enviado a CYA',
+    ENVIO_CYA: 'Enviado para PILA',
     ANULACION: 'Anulación',
   };
 
