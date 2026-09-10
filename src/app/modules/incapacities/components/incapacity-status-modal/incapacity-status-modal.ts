@@ -64,10 +64,16 @@ export class IncapacityStatusModalComponent {
 
   /**
    * PAGADO solo tiene sentido si ya está APROBADO (el backend también lo
-   * exige). ENVIADO_A_CYA solo se ofrece si la incapacidad está enrutada a
-   * CYA — es sobre todo informativo, porque ya se marca sola al aprobar
-   * (ver IncapacityWorkflowService.markSentToCya); este modal permite
-   * corregirlo a mano si hiciera falta.
+   * exige). El estado de CYA ("Enviado para PILA") solo se ofrece si la gestión
+   * de la incapacidad es CYA — es sobre todo informativo, porque ya se
+   * marca solo al aprobar (ver IncapacityWorkflowService.markSentToCya);
+   * este modal permite corregirlo a mano si hiciera falta.
+   *
+   * Se mira la MISMA ruta que usa el título: la resuelta desde la
+   * agrupadora, y `routedTo` como respaldo. Antes solo miraba `routedTo` y
+   * el resultado era una pantalla que se titulaba "Estado CYA" pero no
+   * ofrecía el estado de CYA, en las incapacidades aprobadas antes de que
+   * su agrupadora tuviera gestión configurada.
    */
   options = computed<CatalogItem[]>(() => {
     if (this.scope() === 'SERVIRPRO') {
@@ -77,7 +83,8 @@ export class IncapacityStatusModalComponent {
       );
     }
 
-    const routedToCya = this.incapacity()?.routedTo === 'CYA';
+    const routedToCya =
+      (this.resolvedThirdPartyRoute() ?? this.incapacity()?.routedTo) === 'CYA';
     return this.thirdPartyStatuses().filter(
       (s) => SELECTABLE_THIRD_PARTY_CODES.includes(s.code) && (s.code !== 'ENVIADO_A_CYA' || routedToCya),
     );
