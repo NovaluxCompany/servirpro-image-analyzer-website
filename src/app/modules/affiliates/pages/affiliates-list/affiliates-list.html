@@ -433,6 +433,18 @@
                     </button>
                     }
 
+                    <!-- Enviar a incapacidades (solo con permiso 'create' sobre /incapacidades) -->
+                    @if (canCreateIncapacities()) {
+                    <button type="button" (click)="openIncapacities(affiliate); closeDropdown()"
+                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-blue-700 hover:bg-blue-50 transition-colors">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M9 12h6m-3-3v6m-7 5h14a2 2 0 002-2V7a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Enviar a incapacidades
+                    </button>
+                    }
+
                   </div>
                   }
                 </div>
@@ -666,3 +678,10 @@
 
 <app-affiliate-send-whatsapp-modal [isVisible]="showSendWhatsappModal()" [affiliate]="selectedAffiliate()"
   (sent)="onWhatsappSent()" (cancelled)="onWhatsappModalCancelled()" />
+
+<app-incapacity-form-modal
+  [isVisible]="showIncapacityModal()"
+  [affiliationId]="selectedAffiliate()?.id ? +selectedAffiliate()!.id! : null"
+  [affiliateName]="selectedAffiliate()?.fullName ?? ''"
+  [affiliateDocument]="(selectedAffiliate()?.documentType ?? '') + ' ' + (selectedAffiliate()?.documentNumber ?? '')"
+  (closed)="onIncapacityModalClosed()" />

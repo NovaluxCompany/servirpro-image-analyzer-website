@@ -49,6 +49,11 @@ export const routes: Routes = [
                 loadChildren: () => import('./modules/update-company/update-company.routes').then(m => m.updateCompanyRoutes)
             },
             {
+                path: 'incapacidades',
+                canActivate: [roleGuard],
+                loadChildren: () => import('./modules/incapacities/incapacities.routes').then(m => m.incapacitiesRoutes)
+            },
+            {
                 path: 'usuarios',
                 canActivate: [roleGuard],
                 loadChildren: () => import('./modules/users/users.routes').then(m => m.usersRoutes)

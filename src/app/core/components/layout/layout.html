@@ -3,9 +3,12 @@
   <aside [class.w-64]="isSidebarExpanded()" [class.w-20]="!isSidebarExpanded()"
     class="fixed top-0 left-0 z-40 h-screen transition-all duration-300 ease-in-out shadow-xl"
     (mouseenter)="onSidebarMouseEnter()" (mouseleave)="onSidebarMouseLeave()">
-    <div class="h-full px-3 py-4 overflow-y-auto bg-gradient-to-b from-blue-600 to-blue-800">
+    <!-- Columna flex: logo y botón fijos, y SOLO el nav scrollea. Antes scrolleaba
+         el contenedor entero y el bloque de usuario (absolute bottom-4) quedaba
+         encima de los últimos items cuando el menú tenía muchas opciones. -->
+    <div class="flex flex-col h-full px-3 py-4 bg-gradient-to-b from-blue-600 to-blue-800">
       <!-- Logo/Header -->
-      <div class="flex items-center justify-between mb-8 px-2">
+      <div class="flex items-center justify-between mb-6 px-2 shrink-0">
         @if (isSidebarExpanded()) {
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
@@ -25,7 +28,7 @@
 
       <!-- Toggle Button -->
       <button type="button" (click)="toggleSidebar()"
-        class="w-full mb-6 px-2 py-2.5 text-white hover:bg-white/10 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 group">
+        class="w-full mb-4 px-2 py-2.5 shrink-0 text-white hover:bg-white/10 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 group">
         @if (isSidebarExpanded()) {
         <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor"
           viewBox="0 0 24 24">
@@ -41,7 +44,9 @@
       </button>
 
       <!-- Navigation Menu -->
-      <nav class="space-y-2">
+      <!-- min-h-0 es lo que deja que flex-1 encoja de verdad: sin eso el nav
+           crece hasta su alto natural y el overflow-y-auto nunca se activa. -->
+      <nav class="flex-1 min-h-0 overflow-y-auto space-y-1 sidebar-scroll">
         <!-- Transacciones -->
         @if (canSee('/transacciones')) {
         <a routerLink="/transacciones" routerLinkActive="bg-white/20 shadow-lg"
@@ -201,33 +206,34 @@
         </a>
         }
 
+        <!-- Incapacidades -->
+        @if (canSee('/incapacidades')) {
+        <a routerLink="/incapacidades" routerLinkActive="bg-white/20 shadow-lg"
+          [routerLinkActiveOptions]="{exact: false}"
+          class="flex items-center px-3 py-3 text-white rounded-lg hover:bg-white/10 transition-all duration-200 group">
+          <div class="flex items-center gap-3 flex-1">
+            <div
+              class="w-10 h-10 flex items-center justify-center rounded-lg bg-white/10 group-hover:bg-white/20 group-hover:scale-110 transition-all duration-200">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12h6m-3-3v6m-7 5h14a2 2 0 002-2V7a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            @if (isSidebarExpanded()) {
+            <span class="font-medium">Incapacidades</span>
+            }
+          </div>
+          @if (isSidebarExpanded() && isActiveRoute('/incapacidades')) {
+          <div class="w-1 h-8 bg-white rounded-full"></div>
+          }
+        </a>
+        }
+
         <!-- More menu items can be added here -->
       </nav>
 
-      <!-- User Section & Logout (at bottom) -->
-      <div class="absolute bottom-4 left-0 right-0 px-3 space-y-2">
-        <!-- Divider -->
-        <div class="border-t border-white/20 mb-4"></div>
-
-        <!-- User Info -->
-        @if (isSidebarExpanded()) {
-        <div class="px-3 py-3 bg-white/10 rounded-lg mb-2">
-          <div class="flex items-center gap-3">
-            <div
-              class="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-white truncate">{{ userName() }}</p>
-              <p class="text-xs text-blue-200 truncate">{{ userRole() }}</p>
-            </div>
-          </div>
-        </div>
-        }
-      </div>
+      <!-- El nombre y el rol del usuario viven solo en el avatar del header
+           (arriba a la derecha), que además es de donde se cierra sesión. -->
     </div>
   </aside>
 

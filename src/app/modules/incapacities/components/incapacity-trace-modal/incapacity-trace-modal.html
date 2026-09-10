@@ -1,0 +1,159 @@
+@if (isVisible() && incapacity(); as incapacity) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="w-full max-w-4xl overflow-hidden bg-white shadow-2xl rounded-2xl max-h-[85vh] flex flex-col">
+
+      <div class="flex items-center justify-between gap-3 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-800">
+        <div class="flex items-center gap-3">
+          <div class="flex items-center justify-center rounded-lg w-9 h-9 bg-white/20 shrink-0">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Trámite de la incapacidad</h3>
+            <p class="mt-0.5 text-xs text-blue-100">
+              #{{ incapacity.id }} &middot; {{ incapacity.affiliation?.client?.fullName }}
+            </p>
+          </div>
+        </div>
+        <button type="button" (click)="close()" class="transition-colors text-white/80 hover:text-white" aria-label="Cerrar">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Contexto del trámite: lo que no es de un lado ni del otro. -->
+      <div class="flex flex-wrap items-center gap-2 px-6 py-3 border-b border-gray-100 bg-gray-50">
+        <span class="px-2.5 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-full">
+          Agrupadora: <span class="font-semibold text-gray-900">{{ incapacity.affiliation?.grouper?.name ?? '—' }}</span>
+        </span>
+        @if (showsEmailChip()) {
+          <span class="px-2.5 py-1 text-xs font-semibold rounded-full"
+            [class]="incapacity.emailSent ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
+            Correo: {{ incapacity.emailSent ? 'Enviado' : 'Pendiente' }}
+          </span>
+        }
+        @if (incapacity.cancelled) {
+          <span class="px-2.5 py-1 text-xs font-semibold text-orange-700 bg-orange-100 rounded-full">Anulada</span>
+        }
+      </div>
+
+      <div class="flex-1 px-6 py-5 overflow-y-auto">
+        @if (isLoading()) {
+          <p class="text-sm text-center text-gray-500">Cargando trámite...</p>
+        } @else {
+
+          <!-- Switch entre los dos lados del trámite. Cada botón lleva el
+               estado de HOY de su lado, para saber a cuál entrar sin
+               tener que abrirlo primero. -->
+          <div class="flex flex-wrap gap-2 p-1 mb-5 bg-gray-100 rounded-xl">
+            <button type="button" (click)="activeSide.set('SERVIRPRO')"
+              [attr.aria-pressed]="activeSide() === 'SERVIRPRO'"
+              class="flex items-center justify-center flex-1 gap-2 px-3 py-2 text-sm font-medium transition-all rounded-lg"
+              [class]="activeSide() === 'SERVIRPRO' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
+              Servirpro
+              <span class="px-2 py-0.5 text-xs font-semibold rounded-full" [class]="statusChipClass(incapacity.servirproStatus.code)">
+                {{ incapacity.servirproStatus.label }}
+              </span>
+            </button>
+            <button type="button" (click)="activeSide.set('TERCERO')"
+              [attr.aria-pressed]="activeSide() === 'TERCERO'"
+              class="flex items-center justify-center flex-1 gap-2 px-3 py-2 text-sm font-medium transition-all rounded-lg"
+              [class]="activeSide() === 'TERCERO' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
+              {{ gestionLabel() }}
+              <span class="px-2 py-0.5 text-xs font-semibold rounded-full" [class]="statusChipClass(incapacity.thirdPartyStatus.code)">
+                {{ incapacity.thirdPartyStatus.label }}
+              </span>
+            </button>
+          </div>
+
+          <ol class="flex flex-col gap-4">
+            @for (entry of visibleEntries(); track entry.id) {
+              <li class="relative flex gap-3">
+                <div class="flex flex-col items-center shrink-0">
+                  <span class="w-2.5 h-2.5 mt-1.5 rounded-full ring-4 shrink-0" [class]="dotClass(entry)"></span>
+                  @if (!$last) {
+                    <span class="flex-1 w-px mt-1 bg-gray-200"></span>
+                  }
+                </div>
+
+                <div class="flex-1 pb-1 min-w-0"
+                  [class]="isError(entry) ? 'px-3 py-2 -mt-1 rounded-lg bg-red-50 border border-red-100' : ''">
+                  <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span class="text-sm font-semibold text-gray-900">{{ actionLabel(entry.action) }}</span>
+                    <span class="px-2 py-0.5 text-[11px] font-medium rounded-full" [class]="badgeClass(entry)">
+                      {{ scopeLabel(entry.scope) }}
+                    </span>
+                    <span class="ml-auto text-xs text-gray-400 whitespace-nowrap">{{ formatDateTime(entry.createdAt) }}</span>
+                  </div>
+
+                  @if (entry.oldValue || entry.newValue) {
+                    <p class="mt-1 text-xs text-gray-600">
+                      <span class="text-gray-400">{{ valueLabel(entry.oldValue) }}</span>
+                      <span class="mx-1 text-gray-300">&rarr;</span>
+                      <span class="font-semibold text-gray-900">{{ valueLabel(entry.newValue) }}</span>
+                    </p>
+                  }
+
+                  @if (entry.observation) {
+                    <p class="mt-1 text-xs italic text-gray-600">&laquo;{{ entry.observation }}&raquo;</p>
+                  }
+
+                  <p class="mt-1 text-xs text-gray-400">{{ entry.user?.name ?? entry.user?.email ?? 'Sistema' }}</p>
+                </div>
+              </li>
+            } @empty {
+              <li class="py-8 text-sm text-center text-gray-400">
+                Este lado del trámite todavía no tiene movimientos.
+              </li>
+            }
+          </ol>
+
+          <!-- Otros eventos: fuera de las dos líneas y plegado. -->
+          @if (documentEntries().length > 0) {
+            <div class="mt-6 border border-gray-200 rounded-xl">
+              <button type="button" (click)="documentsOpen.set(!documentsOpen())"
+                [attr.aria-expanded]="documentsOpen()"
+                class="flex items-center w-full gap-2 px-4 py-3 text-left transition-colors rounded-xl hover:bg-gray-50">
+                <svg class="w-4 h-4 text-gray-400 transition-transform shrink-0"
+                  [class.rotate-90]="documentsOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+                <span class="text-xs font-semibold tracking-wide text-gray-600 uppercase">Otros eventos</span>
+                <span class="px-2 py-0.5 text-xs font-semibold text-gray-600 bg-gray-100 rounded-full">
+                  {{ documentEntries().length }}
+                </span>
+                <span class="ml-auto text-xs text-gray-400">Soportes y consultas</span>
+              </button>
+
+              @if (documentsOpen()) {
+                <ol class="flex flex-col gap-2 px-4 pt-1 pb-4 border-t border-gray-100">
+                  @for (entry of documentEntries(); track entry.id) {
+                    <li class="flex flex-wrap items-center gap-2 pt-2 text-xs"
+                      [class]="isError(entry) ? 'px-2 py-1 rounded-lg bg-red-50 border border-red-100' : ''">
+                      <span class="w-1.5 h-1.5 rounded-full shrink-0" [class]="dotClass(entry)"></span>
+                      <span class="font-medium text-gray-700">{{ actionLabel(entry.action) }}</span>
+                      @if (entry.observation) { <span class="text-gray-500">{{ entry.observation }}</span> }
+                      <span class="text-gray-400">{{ entry.user?.name ?? entry.user?.email ?? 'Sistema' }}</span>
+                      <span class="ml-auto text-gray-400 whitespace-nowrap">{{ formatDateTime(entry.createdAt) }}</span>
+                    </li>
+                  }
+                </ol>
+              }
+            </div>
+          }
+        }
+      </div>
+
+      <div class="flex items-center justify-end px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <button type="button" (click)="close()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          Cerrar
+        </button>
+      </div>
+
+    </div>
+  </div>
+}
