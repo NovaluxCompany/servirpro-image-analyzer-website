@@ -303,6 +303,13 @@
                 }
                 @if (form.get('planId')?.disabled) {
                 <p class="mt-1 text-xs text-gray-500">Para cambiar el plan primero debe desactivar al afiliado.</p>
+                } @else if (isEdit && affiliateIsActive) {
+                <!-- Solo lo ven los roles con 'edit_plan_active'. El plan define
+                     lo que se le cobra, así que cambiarlo con el afiliado activo
+                     no es inocuo: conviene decirlo en vez de dejarlo pasar. -->
+                <p class="mt-1 text-xs text-amber-700">
+                  El afiliado está activo: cambiar el plan afecta lo que se le cobra este mes.
+                </p>
                 }
               </div>
 

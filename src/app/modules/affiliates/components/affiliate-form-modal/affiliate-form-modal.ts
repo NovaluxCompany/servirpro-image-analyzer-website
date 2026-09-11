@@ -26,6 +26,12 @@ export class AffiliateFormModalComponent implements OnInit {
   // por defecto— pueden corregirla a mano; el backend lo vuelve a validar.
   readonly canEditEntryDate = this._permission.can('edit_entry_date', '/afiliados');
 
+  // El plan solo se puede cambiar con el afiliado desactivado, salvo para los
+  // roles con 'edit_plan_active' —Administrador por defecto—. Obligar a
+  // desactivar y reactivar solo para corregir un plan mal digitado mueve la
+  // fecha de ingreso y ensucia la auditoría. El backend lo vuelve a validar.
+  readonly canEditPlanWhileActive = this._permission.can('edit_plan_active', '/afiliados');
+
   isVisible = input<boolean>(false);
   mode = input<'create' | 'edit'>('create');
   affiliate = input<AffiliateMember | null>(null);
@@ -658,14 +664,19 @@ export class AffiliateFormModalComponent implements OnInit {
         if (a.planId) {
           this.updatePlanLogic(String(a.planId));
         }
-        // El plan solo puede cambiarse mientras el afiliado está desactivado.
         this.affiliateIsActive = !!a.isActive;
-        if (a.isActive) {
+        // El plan solo puede cambiarse con el afiliado desactivado, salvo con
+        // el permiso 'edit_plan_active'.
+        if (a.isActive && !this.canEditPlanWhileActive) {
           this.form.get('planId')?.disable({ emitEvent: false });
-          // El origen del afiliado (y su fecha) solo pueden corregirse mientras está desactivado.
-          this.form.get('originId')?.disable({ emitEvent: false });
         } else {
           this.form.get('planId')?.enable({ emitEvent: false });
+        }
+        // El origen del afiliado (y su fecha) siguen la regla original: solo
+        // se corrigen con el afiliado desactivado.
+        if (a.isActive) {
+          this.form.get('originId')?.disable({ emitEvent: false });
+        } else {
           this.form.get('originId')?.enable({ emitEvent: false });
         }
         // Se llama después de fijar affiliateIsActive para que originDate quede
