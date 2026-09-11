@@ -7,6 +7,7 @@
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Fecha</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Referencia</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Asesor</th>
+        <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Fidelizador</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Afiliados</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Valor Total</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Valor Pagado</th>
@@ -25,6 +26,7 @@
             <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
             <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
             <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
+            <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
             <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded w-8"></div></td>
             <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
             <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
@@ -37,7 +39,7 @@
         }
       } @else if (transactions().length === 0) {
         <tr>
-          <td colspan="12" class="px-4 py-16 text-center">
+          <td colspan="13" class="px-4 py-16 text-center">
             <div class="flex flex-col items-center gap-3">
               <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                 <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,6 +118,9 @@
             </td>
             <td class="px-4 py-3 whitespace-nowrap">
               {{ getAdvisors(transaction) }}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              {{ getFidelizadores(transaction) }}
             </td>
             <td class="px-4 py-3 text-center">
               {{ getAffiliatesCount(transaction) }}
