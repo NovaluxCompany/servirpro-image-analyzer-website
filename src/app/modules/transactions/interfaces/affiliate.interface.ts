@@ -18,7 +18,11 @@ export interface Affiliate {
   arl?: number;
   compensationFund?: string;
   pension?: string;
+  // Asesor y fidelizador VIGENTES del afiliado, no los del día del pago: el
+  // backend los resuelve contra `affiliations` y solo cae al snapshot de la
+  // transacción si el cliente ya no tiene afiliación que consultar.
   advisor?: string | null;
+  fidelizador?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
