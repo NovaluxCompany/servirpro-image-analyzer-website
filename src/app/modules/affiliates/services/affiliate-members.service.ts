@@ -221,36 +221,6 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
-  // ── Envío de documentos por WhatsApp ────────────────────────────────
-  getWhatsappSourceNumbers(): Observable<{ id: number; ownerName: string }[]> {
-    return this._http
-      .get<{ id: number; ownerName: string }[]>(`${this.baseUrl}/whatsapp/source-numbers`, {
-        headers: this.getHeaders(),
-      })
-      .pipe(catchError(() => of([])));
-  }
-
-  sendWhatsapp(
-    affiliationId: number,
-    sourceNumberId: number,
-    destinationPhone: string,
-    files: { file: File; certType: 'EPS' | 'ARL' | 'CCF' | 'AFP' }[],
-  ): Observable<{ success: boolean; message: string }> {
-    const formData = new FormData();
-    formData.append('sourceNumberId', String(sourceNumberId));
-    formData.append('destinationPhone', destinationPhone);
-    files.forEach(({ file, certType }) => {
-      formData.append('files', file);
-      formData.append('certTypes', certType);
-    });
-
-    const token = this._tokenService.getToken();
-    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
-    return this._http
-      .post<{ success: boolean; message: string }>(`${this.baseUrl}/${affiliationId}/whatsapp-send`, formData, { headers })
-      .pipe(catchError(this.handleError));
-  }
-
   // ── Catálogos ─────────────────────────────────────────────────────
   getPlans(): Observable<Plan[]> {
     return this._http
