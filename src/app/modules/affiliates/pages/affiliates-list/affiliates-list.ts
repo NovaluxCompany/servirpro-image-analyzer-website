@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AffiliateMembersService, AffiliateFilters } from '../../services/affiliate-members.service';
 import { AffiliateMember, AffiliateDocument } from '../../interfaces/affiliate-member.interface';
 import { AffiliateFormModalComponent } from '../../components/affiliate-form-modal/affiliate-form-modal';
@@ -9,7 +10,6 @@ import { AffiliateSendEmailModalComponent } from '../../components/affiliate-sen
 import { AffiliateInfoModalComponent } from '../../components/affiliate-info-modal/affiliate-info-modal';
 import { AffiliateDocumentsModalComponent } from '../../components/affiliate-documents-modal/affiliate-documents-modal';
 import { AffiliateSendEmailObservationModalComponent } from '../../components/affiliate-send-email-observation-modal/affiliate-send-email-observation-modal';
-import { AffiliateSendWhatsappModalComponent } from '../../components/affiliate-send-whatsapp-modal/affiliate-send-whatsapp-modal';
 import { IncapacityFormModalComponent } from '../../../incapacities/components/incapacity-form-modal/incapacity-form-modal';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
@@ -24,7 +24,7 @@ import { debounceTime, Subject } from 'rxjs';
 @Component({
   selector: 'app-affiliates-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateSendWhatsappModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, IncapacityFormModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
+  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, IncapacityFormModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './affiliates-list.html',
 })
 export class AffiliatesListComponent implements OnInit {
@@ -32,6 +32,7 @@ export class AffiliatesListComponent implements OnInit {
   private _toast = inject(ToastService);
   private _permission = inject(PermissionService);
   private _configGeneralService = inject(ConfigGeneralService);
+  private _router = inject(Router);
 
   // ── Datos ─────────────────────────────────────────────────────────
   affiliates = signal<AffiliateMember[]>([]);
@@ -73,7 +74,6 @@ export class AffiliatesListComponent implements OnInit {
   showStatusModal = signal(false);
   showSendEmailModal = signal(false);
   showSendEmailObservationModal = signal(false);
-  showSendWhatsappModal = signal(false);
   showInfoModal = signal(false);
   showDocumentsModal = signal(false);
   showIncapacityModal = signal(false);
@@ -514,34 +514,8 @@ export class AffiliatesListComponent implements OnInit {
     return this.planIncludes(affiliate, 'AFP');
   }
 
-  // ── Check de documentos (EPS/ARL/CCF/Pensión) inline desde la tabla ────
-  // Antes solo se podía marcar el certificado abriendo el modal de edición
-  // completo; esto permite alternarlo directo desde la afiliación en la fila.
-  togglingCertId = signal<string | null>(null);
-
-  toggleCert(affiliate: AffiliateMember, field: 'certArl' | 'certEps' | 'certPension' | 'certCcf'): void {
-    if (!this._permission.check('edit', undefined, 'Tu rol no tiene permiso para editar afiliados.')) return;
-    if (!affiliate.id || this.togglingCertId() !== null) return;
-
-    const newValue = !affiliate[field];
-    this.togglingCertId.set(affiliate.id);
-    this._service
-      .updateAffiliate(affiliate.id, {
-        documentNumber: affiliate.documentNumber,
-        cityCode: affiliate.cityCode,
-        [field]: newValue,
-      })
-      .subscribe({
-        next: () => {
-          affiliate[field] = newValue;
-          this.togglingCertId.set(null);
-          this._toast.showSuccess('Certificado actualizado');
-        },
-        error: (err) => {
-          this._toast.showError(err.message ?? 'No se pudo actualizar el certificado');
-          this.togglingCertId.set(null);
-        },
-      });
+  goToDocumentUploads(): void {
+    this._router.navigate(['/afiliados/cargue-documentos']);
   }
 
   sendEmail(affiliate: AffiliateMember): void {
@@ -570,42 +544,6 @@ export class AffiliatesListComponent implements OnInit {
   onEmailModalCancelled(): void {
     this.showSendEmailModal.set(false);
     this.showSendEmailObservationModal.set(false);
-    this.selectedAffiliate.set(null);
-  }
-
-  // Reutiliza los flags cert_arl/cert_eps/cert_pension/cert_ccf (los mismos del
-  // toggle manual): el envío por WhatsApp los marca automáticamente al terminar.
-  // Se bloquea el reenvío solo cuando TODOS los certificados que aplican al plan
-  // ya están marcados; se desbloquea de nuevo al deshabilitar/habilitar (ver
-  // toggleStatus en el backend, que los resetea).
-  canSendWhatsapp(affiliate: AffiliateMember): boolean {
-    const applicable = [
-      this.planHasEps(affiliate) ? !!affiliate.certEps : null,
-      this.planHasArl(affiliate) ? !!affiliate.certArl : null,
-      this.planHasCcf(affiliate) ? !!affiliate.certCcf : null,
-      this.planHasPension(affiliate) ? !!affiliate.certPension : null,
-    ].filter((v): v is boolean => v !== null);
-
-    if (applicable.length === 0) return true;
-    return !applicable.every((sent) => sent);
-  }
-
-  sendWhatsapp(affiliate: AffiliateMember): void {
-    if (!this._permission.check('send_email', undefined, 'Tu rol no tiene permiso para enviar documentos de afiliación.')) {
-      return;
-    }
-    this.selectedAffiliate.set(affiliate);
-    this.showSendWhatsappModal.set(true);
-  }
-
-  onWhatsappSent(): void {
-    this.showSendWhatsappModal.set(false);
-    this.selectedAffiliate.set(null);
-    this.loadAffiliates();
-  }
-
-  onWhatsappModalCancelled(): void {
-    this.showSendWhatsappModal.set(false);
     this.selectedAffiliate.set(null);
   }
 

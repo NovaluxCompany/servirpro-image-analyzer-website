@@ -26,6 +26,15 @@
           }
         </button>
 
+        <button type="button" (click)="goToDocumentUploads()"
+          class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-300 shadow-md hover:shadow-lg transition-all duration-200">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+          </svg>
+          Cargue de Documentos
+        </button>
+
         <button type="button" (click)="openCreate()"
           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 shadow-md hover:shadow-lg transition-all duration-200">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -352,40 +361,6 @@
                     </button>
                     }
 
-                    <!-- Certificados: solo aparece el certificado del/los beneficios que trae el plan -->
-                    @if (planHasEps(affiliate)) {
-                    <button type="button" (click)="toggleCert(affiliate, 'certEps'); closeDropdown()"
-                      [disabled]="togglingCertId() === affiliate.id"
-                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
-                      <span [class]="affiliate.certEps ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500'"></span>
-                      {{ affiliate.certEps ? 'Desmarcar' : 'Marcar' }} certificado EPS
-                    </button>
-                    }
-                    @if (planHasArl(affiliate)) {
-                    <button type="button" (click)="toggleCert(affiliate, 'certArl'); closeDropdown()"
-                      [disabled]="togglingCertId() === affiliate.id"
-                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
-                      <span [class]="affiliate.certArl ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500'"></span>
-                      {{ affiliate.certArl ? 'Desmarcar' : 'Marcar' }} certificado ARL
-                    </button>
-                    }
-                    @if (planHasCcf(affiliate)) {
-                    <button type="button" (click)="toggleCert(affiliate, 'certCcf'); closeDropdown()"
-                      [disabled]="togglingCertId() === affiliate.id"
-                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
-                      <span [class]="affiliate.certCcf ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500'"></span>
-                      {{ affiliate.certCcf ? 'Desmarcar' : 'Marcar' }} certificado CCF
-                    </button>
-                    }
-                    @if (planHasPension(affiliate)) {
-                    <button type="button" (click)="toggleCert(affiliate, 'certPension'); closeDropdown()"
-                      [disabled]="togglingCertId() === affiliate.id"
-                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
-                      <span [class]="affiliate.certPension ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500'"></span>
-                      {{ affiliate.certPension ? 'Desmarcar' : 'Marcar' }} certificado Pensión
-                    </button>
-                    }
-
                     <!-- Enviar correo -->
                     @if (canSendEmail(affiliate)) {
                     <button type="button" (click)="sendEmail(affiliate); closeDropdown()"
@@ -406,8 +381,6 @@
                       }
                     </button>
                     }
-
-                    <!-- Enviar a WhatsApp: oculto temporalmente, funcionalidad aun no habilitada -->
 
                     <!-- Subir a Siigo -->
                     @if (affiliate.siigoSyncStatus !== 'SUCCESS') {
@@ -534,9 +507,6 @@
   @if (planHasEps(affiliate) && affiliate.epsName && affiliate.epsName !== 'N/A') {
     <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
       {{ affiliate.epsName }}
-      <button type="button" (click)="toggleCert(affiliate, 'certEps')" [disabled]="togglingCertId() === affiliate.id"
-        [title]="affiliate.certEps ? 'Con certificado (clic para desmarcar)' : 'Sin certificado (clic para marcar)'"
-        [class]="affiliate.certEps ? 'w-2 h-2 rounded-full bg-green-500 disabled:opacity-50' : 'w-2 h-2 rounded-full bg-red-500 disabled:opacity-50'"></button>
     </span>
   } @else {
     <span class="text-gray-400 font-semibold">&#8212;</span>
@@ -553,9 +523,6 @@
                 @if (planHasArl(affiliate)) {
                   <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
                     ARL {{ affiliate.arl }}
-                    <button type="button" (click)="toggleCert(affiliate, 'certArl')" [disabled]="togglingCertId() === affiliate.id"
-                      [title]="affiliate.certArl ? 'Con certificado (clic para desmarcar)' : 'Sin certificado (clic para marcar)'"
-                      [class]="affiliate.certArl ? 'w-2 h-2 rounded-full bg-green-500 disabled:opacity-50' : 'w-2 h-2 rounded-full bg-red-500 disabled:opacity-50'"></button>
                   </span>
                 } @else {
                   <span class="text-gray-400 font-semibold">&#8212;</span>
@@ -567,9 +534,6 @@
                 @if (planHasCcf(affiliate) && affiliate.compensationBoxName && affiliate.compensationBoxName !== '-' && affiliate.compensationBoxName !== 'N/A') {
                   <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
                     {{ affiliate.compensationBoxName }}
-                    <button type="button" (click)="toggleCert(affiliate, 'certCcf')" [disabled]="togglingCertId() === affiliate.id"
-                      [title]="affiliate.certCcf ? 'Con certificado (clic para desmarcar)' : 'Sin certificado (clic para marcar)'"
-                      [class]="affiliate.certCcf ? 'w-2 h-2 rounded-full bg-green-500 disabled:opacity-50' : 'w-2 h-2 rounded-full bg-red-500 disabled:opacity-50'"></button>
                   </span>
                 } @else {
                   <span class="text-gray-400 font-semibold">&#8212;</span>
@@ -581,9 +545,6 @@
                 @if (planHasPension(affiliate) && affiliate.pensionName && affiliate.pensionName !== '-' && affiliate.pensionName !== 'N/A') {
                   <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
                     {{ affiliate.pensionName }}
-                    <button type="button" (click)="toggleCert(affiliate, 'certPension')" [disabled]="togglingCertId() === affiliate.id"
-                      [title]="affiliate.certPension ? 'Con certificado (clic para desmarcar)' : 'Sin certificado (clic para marcar)'"
-                      [class]="affiliate.certPension ? 'w-2 h-2 rounded-full bg-green-500 disabled:opacity-50' : 'w-2 h-2 rounded-full bg-red-500 disabled:opacity-50'"></button>
                   </span>
                 } @else {
                   <span class="text-gray-400 font-semibold">&#8212;</span>
@@ -693,9 +654,6 @@
 
 <app-affiliate-send-email-observation-modal [isVisible]="showSendEmailObservationModal()" [affiliate]="selectedAffiliate()"
   (sent)="onEmailSent()" (cancelled)="onEmailModalCancelled()" />
-
-<app-affiliate-send-whatsapp-modal [isVisible]="showSendWhatsappModal()" [affiliate]="selectedAffiliate()"
-  (sent)="onWhatsappSent()" (cancelled)="onWhatsappModalCancelled()" />
 
 <app-incapacity-form-modal
   [isVisible]="showIncapacityModal()"
