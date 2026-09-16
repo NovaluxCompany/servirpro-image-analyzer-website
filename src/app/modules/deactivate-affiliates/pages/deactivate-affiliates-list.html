@@ -181,7 +181,18 @@
             </app-searchable-select>
           </div>
 
-          <!-- Asesor -->
+          <!-- Fidelización -->
+          <div>
+            <label class="block mb-1 text-xs font-medium text-gray-600">Fidelización</label>
+            <app-searchable-select
+              [options]="fidelizadorOptions()"
+              [ngModel]="filterFidelizador()"
+              (ngModelChange)="setFilterFidelizador($event)"
+              placeholder="Todas las fidelizaciones...">
+            </app-searchable-select>
+          </div>
+
+          <!-- Asesor: depende de la fidelización elegida arriba -->
           <div>
             <label class="block mb-1 text-xs font-medium text-gray-600">Asesor</label>
             <app-searchable-select

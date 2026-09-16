@@ -1,0 +1,183 @@
+<div class="min-h-screen p-6 bg-gray-50">
+  <div class="max-w-full mx-auto">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <div class="flex items-center gap-2">
+          <button type="button" (click)="goBack()" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 class="text-3xl font-bold text-gray-900">Cargue de Documentos</h1>
+        </div>
+        <p class="mt-1 text-sm text-gray-500">Cargue masivo de certificados y envío automático a WhatsApp</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" (click)="refresh()" [disabled]="isLoading()"
+          class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:outline-none focus:ring-gray-200 disabled:opacity-60 transition-all duration-200">
+          <svg class="w-4 h-4" [class.animate-spin]="isLoading()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Actualizar
+        </button>
+        <button type="button" (click)="showUploadModal.set(true)"
+          class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-300 shadow-md hover:shadow-lg transition-all duration-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Cargar documentos
+        </button>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-4">
+      <div class="flex items-center gap-2 mb-3">
+        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+        </svg>
+        <span class="text-sm font-semibold text-gray-700">Filtros de búsqueda</span>
+        @if (hasActiveFilters) {
+          <button type="button" (click)="clearFilters()"
+            class="ml-auto text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Limpiar filtros
+          </button>
+        }
+      </div>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Cédula o nombre</label>
+          <input type="text" [(ngModel)]="filterSearch" (ngModelChange)="onFilterChange()"
+            placeholder="Buscar..."
+            class="w-full px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 h-[38px]">
+        </div>
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Documento</label>
+          <select [(ngModel)]="filterDocumentTypeId" (ngModelChange)="onFilterChange()"
+            class="w-full px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white h-[38px]">
+            <option value="">Todos</option>
+            @for (type of documentTypes(); track type.id) {
+              <option [value]="type.id">{{ type.name }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Estado</label>
+          <select [(ngModel)]="filterStatus" (ngModelChange)="onFilterChange()"
+            class="w-full px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white h-[38px]">
+            <option value="">Todos</option>
+            <option value="QUEUED">En espera</option>
+            <option value="SENDING">Enviando</option>
+            <option value="ERROR">Error</option>
+            <option value="SUCCESS">Completado</option>
+          </select>
+        </div>
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Desde</label>
+          <input type="date" [(ngModel)]="filterDateFrom" (ngModelChange)="onFilterChange()"
+            class="w-full px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 h-[38px]">
+        </div>
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Hasta</label>
+          <input type="date" [(ngModel)]="filterDateTo" (ngModelChange)="onFilterChange()"
+            class="w-full px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 h-[38px]">
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200">
+      <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+        <p class="text-sm text-gray-500">
+          @if (!isLoading()) {
+            Total: <span class="font-semibold text-gray-800">{{ totalItems() }}</span> registros
+            &nbsp;&mdash;&nbsp; Página {{ currentPage() }} de {{ totalPages() || 1 }}
+          }
+        </p>
+        <app-page-size-control [pageSize]="pageSize()" (pageSizeChange)="onPageSizeChange($event)" />
+      </div>
+      <app-table-scroll>
+      <table class="min-w-full text-sm text-left">
+        <thead class="text-xs text-gray-500 uppercase bg-gray-50">
+          <tr>
+            <th class="px-4 py-3">Acciones</th>
+            <th class="px-4 py-3">Afiliado</th>
+            <th class="px-4 py-3">Cédula</th>
+            <th class="px-4 py-3">Documento</th>
+            <th class="px-4 py-3">Archivo</th>
+            <th class="px-4 py-3">Estado</th>
+            <th class="px-4 py-3">Creado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          @if (isLoading()) {
+            @for (i of [1,2,3,4,5]; track i) {
+              <tr class="animate-pulse">
+                <td class="px-4 py-3" colspan="7"><div class="h-4 bg-gray-100 rounded"></div></td>
+              </tr>
+            }
+          } @else if (items().length === 0) {
+            <tr>
+              <td class="px-4 py-10 text-center text-gray-400" colspan="7">
+                No hay registros de cargue de documentos.
+              </td>
+            </tr>
+          } @else {
+            @for (item of items(); track item.id) {
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3">
+                  <button type="button" (click)="viewDetail(item)"
+                    class="inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:text-blue-900">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Ver
+                  </button>
+                </td>
+                <td class="px-4 py-3 text-gray-900">{{ item.affiliation?.client?.fullName || '—' }}</td>
+                <td class="px-4 py-3 text-gray-600">{{ item.affiliation?.client?.documentNumber || item.cedulaDetected || '—' }}</td>
+                <td class="px-4 py-3 text-gray-600">{{ item.documentType?.name || '—' }}</td>
+                <td class="px-4 py-3 text-gray-600 max-w-[220px] truncate" [title]="item.fileName">{{ item.fileName }}</td>
+                <td class="px-4 py-3"><app-document-upload-status-badge [status]="item.status" /></td>
+                <td class="px-4 py-3 text-gray-500 whitespace-nowrap">{{ item.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+      </app-table-scroll>
+
+      @if (totalPages() > 1) {
+        <div class="sticky bottom-0 z-10 flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+          <p class="text-sm text-gray-600">{{ totalItems() }} registros — Página {{ currentPage() }} de {{ totalPages() }}</p>
+          <nav class="inline-flex items-center gap-1" aria-label="Paginación">
+            <button type="button" (click)="previousPage()" [disabled]="currentPage() === 1"
+              class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+              Anterior
+            </button>
+            @for (page of pageNumbers; track page) {
+              <button type="button" (click)="goToPage(page)"
+                [class]="page === currentPage() ? 'px-3 py-1.5 text-sm font-semibold text-white bg-blue-700 border border-blue-700 rounded-lg' : 'px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'">
+                {{ page }}
+              </button>
+            }
+            <button type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()"
+              class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+              Siguiente
+            </button>
+          </nav>
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<app-document-upload-modal [isVisible]="showUploadModal()" (uploaded)="onUploaded()" (itemsCreated)="onItemsCreated()" (cancelled)="showUploadModal.set(false)" />

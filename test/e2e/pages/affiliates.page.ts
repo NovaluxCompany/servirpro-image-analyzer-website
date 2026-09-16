@@ -136,6 +136,11 @@ export class AffiliatesPage {
   async fillAffiliationData(overrides?: {
     planText?: string;
     agrupadoraText?: string;
+    /** "DEPENDIENTE" (default) | "INDEPENDIENTE". Se selecciona ANTES que el Plan: el
+     * desplegable de Plan filtra sus opciones por este tipo (ver planOptions en
+     * affiliate-form-modal.ts), así que si se elige después el Plan ya buscado podría
+     * no coincidir con el filtro. */
+    affiliateType?: 'DEPENDIENTE' | 'INDEPENDIENTE';
     /** "" (sin seleccionar) | "META" | "WEB" | "REINGRESO" | "REFERIDO" | "SIN_ESPECIFICAR" */
     referralType?: '' | 'META' | 'WEB' | 'REINGRESO' | 'REFERIDO' | 'SIN_ESPECIFICAR';
     /** Fecha de origen (YYYY-MM-DD). Obligatoria y solo visible cuando referralType es META o WEB. */
@@ -144,6 +149,11 @@ export class AffiliatesPage {
     documentFiles?: string[];
   }): Promise<void> {
     const form = this.page.locator('form');
+
+    // El "Tipo de afiliado" se fija ANTES de elegir el Plan porque el select de Plan
+    // filtra sus opciones según este valor (DEPENDIENTE e INDEPENDIENTE pueden tener
+    // planes con el mismo nombre, ej. "EPS", con precios distintos).
+    await form.locator('select[formcontrolname="affiliateType"]').selectOption(overrides?.affiliateType ?? 'DEPENDIENTE');
 
     // Match EXACTO para no caer en "EPS+AFP" al buscar "EPS". El <li> del
     // catálogo interpola {{ opt.label }} en su propia línea del template
@@ -159,14 +169,20 @@ export class AffiliatesPage {
         })
       : await pickFirstSearchableSelectOption(this.page, form, 'Plan');
 
-    if (overrides?.agrupadoraText) {
-      await pickFirstSearchableSelectOption(this.page, form, 'Agrupadora', {
-        matchText: new RegExp(`^\\s*${escapeRegExp(overrides.agrupadoraText)}\\s*$`, 'i'),
-        searchText: overrides.agrupadoraText,
-        timeoutMs: 45_000,
-      });
-    } else {
-      await pickFirstSearchableSelectOption(this.page, form, 'Agrupadora');
+    // Agrupadora (y Empresa) quedan deshabilitados y sin validar para
+    // INDEPENDIENTE (ver validateAffiliateType() en affiliate-form-modal.ts):
+    // los afiliados independientes no pertenecen a ninguna empresa/agrupadora.
+    const isIndependiente = (overrides?.affiliateType ?? 'DEPENDIENTE') === 'INDEPENDIENTE';
+    if (!isIndependiente) {
+      if (overrides?.agrupadoraText) {
+        await pickFirstSearchableSelectOption(this.page, form, 'Agrupadora', {
+          matchText: new RegExp(`^\\s*${escapeRegExp(overrides.agrupadoraText)}\\s*$`, 'i'),
+          searchText: overrides.agrupadoraText,
+          timeoutMs: 45_000,
+        });
+      } else {
+        await pickFirstSearchableSelectOption(this.page, form, 'Agrupadora');
+      }
     }
     await pickFirstSearchableSelectOption(this.page, form, 'Asesor');
 
@@ -175,12 +191,6 @@ export class AffiliatesPage {
     // quede con datos completos, igual que un afiliado real.
     await pickFirstSearchableSelectOption(this.page, form, 'Sucursal', { timeoutMs: 45_000 });
     await form.locator('input[formcontrolname="discount"]').fill('0');
-
-    // Campo obligatorio (select nativo formControlName="affiliateType"): aunque
-    // visualmente ya muestra "Dependiente" como primera opción, el FormControl
-    // arranca sin value hasta que se interactúa, así que sin este select
-    // explícito el formulario queda inválido y el botón de submit no habilita.
-    await form.locator('select[formcontrolname="affiliateType"]').selectOption('DEPENDIENTE');
 
     if (/ARL/i.test(planText)) {
       await form.locator('input[formcontrolname="profession"]').fill('Ingeniero de pruebas');
@@ -433,6 +443,27 @@ export class AffiliatesPage {
 
   async expectRowDisabled(name: string): Promise<void> {
     await expect(this.rowByName(name).getByText('Deshabilitado')).toBeVisible();
+  }
+
+  /**
+   * Reactiva un afiliado desactivado ("Activar" en el menú de acciones + "Sí,
+   * habilitar" en el modal, sin motivo — solo se pide al desactivar). Único
+   * camino real de UI para que el backend ponga `isNew = true`
+   * (AffiliatesService.toggle, ver affiliates.service.ts) sin tocar la BD a
+   * mano: activar = "nuevo ciclo de pago", igual que un reingreso real.
+   */
+  async reactivateRow(name: string): Promise<void> {
+    await this.openRowAction(name, 'Activar');
+    const modal = this.page.locator('.fixed.inset-0.z-50', { hasText: 'Activar Afiliado' });
+    await expect(modal.getByRole('heading', { name: 'Activar Afiliado' })).toBeVisible();
+
+    const [response] = await Promise.all([
+      this.page.waitForResponse(
+        (res) => /\/affiliates\/\d+\/toggle/.test(res.url()) && res.request().method() === 'PATCH'
+      ),
+      modal.getByRole('button', { name: /Sí, habilitar/ }).click(),
+    ]);
+    expect(response.ok()).toBe(true);
   }
 
   /** Abre el modal de desactivar para una fila, sin confirmar (para probar el propio modal: validaciones, estado inicial, etc.). */

@@ -95,6 +95,7 @@ export class DeactivateAffiliatesService {
           document: filters.document || undefined,
           reference: filters.reference || undefined,
           advisor: filters.advisor || undefined,
+          fidelizador: filters.fidelizador || undefined,
           company: filters.company || undefined,
           grouper: filters.grouper || undefined,
           reason: filters.reason || undefined,
@@ -161,6 +162,7 @@ export class DeactivateAffiliatesService {
     if (filters.document) params = params.set('document', filters.document);
     if (filters.reference) params = params.set('reference', filters.reference);
     if (filters.advisor) params = params.set('adviser', filters.advisor);
+    if (filters.fidelizador) params = params.set('fidelizador', filters.fidelizador);
     if (filters.company) params = params.set('company', filters.company);
     if (filters.grouper) params = params.set('grouper', filters.grouper);
 
@@ -258,6 +260,7 @@ export class DeactivateAffiliatesService {
       totalTransactions: includePaymentFields ? totalTransactions : undefined,
       entryDate: row.entry_date ?? row.entryDate ?? null,
       advisor: row.advisor ?? '',
+      fidelizador: row.fidelizador ?? '',
       company: row.company ?? '',
       grouper: row.grouper ?? '',
       expectedAmount: expectedAmount || undefined,

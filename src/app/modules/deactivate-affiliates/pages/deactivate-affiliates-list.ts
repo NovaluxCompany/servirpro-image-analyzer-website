@@ -93,6 +93,7 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly filterDocument = signal('');
   protected readonly filterReference = signal('');
   protected readonly filterAdviser = signal('');
+  protected readonly filterFidelizador = signal('');
   protected readonly filterCompany = signal('');
   protected readonly filterGrouper = signal('');
 
@@ -124,10 +125,11 @@ export class DeactivateAffiliatesList implements OnInit {
     const document = this.filterDocument().toLowerCase().trim();
     const reference = this.filterReference().toLowerCase().trim();
     const adviser = this.filterAdviser().toLowerCase().trim();
+    const fidelizador = this.filterFidelizador().toLowerCase().trim();
     const company = this.filterCompany().toLowerCase().trim();
     const grouper = this.filterGrouper().toLowerCase().trim();
 
-    if (!name && !document && !reference && !adviser && !company && !grouper) {
+    if (!name && !document && !reference && !adviser && !fidelizador && !company && !grouper) {
       return all;
     }
 
@@ -136,6 +138,7 @@ export class DeactivateAffiliatesList implements OnInit {
       if (document && !a.document?.toLowerCase().includes(document)) return false;
       if (reference && a.reference?.toLowerCase() !== reference) return false;
       if (adviser && a.advisor?.toLowerCase() !== adviser) return false;
+      if (fidelizador && a.fidelizador?.toLowerCase() !== fidelizador) return false;
       if (company && a.company?.toLowerCase() !== company) return false;
       if (grouper && a.grouper?.toLowerCase() !== grouper) return false;
       return true;
@@ -193,7 +196,7 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly selectedCount = computed(() => this.selectedIds().length);
 
   protected readonly hasActiveFilters = computed(() =>
-    !!(this.filterName() || this.filterDocument() || this.filterReference() || this.filterAdviser() || this.filterCompany() || this.filterGrouper())
+    !!(this.filterName() || this.filterDocument() || this.filterReference() || this.filterAdviser() || this.filterFidelizador() || this.filterCompany() || this.filterGrouper())
   );
 
   // ── Opciones para filtros desplegables (derivadas de los datos cargados) ──
@@ -204,15 +207,31 @@ export class DeactivateAffiliatesList implements OnInit {
 
   // Nombres del catálogo de asesores HABILITADOS (GET /advisors/dropdown).
   protected readonly activeAdvisorNames = signal<Set<string>>(new Set());
+  // Nombres del catálogo de fidelizadores HABILITADOS (GET /fidelizadores/dropdown).
+  protected readonly activeFidelizadorNames = signal<Set<string>>(new Set());
+
+  protected readonly fidelizadorOptions = computed((): SelectOption[] => {
+    const active = this.activeFidelizadorNames();
+    const unique = [...new Set(this.allAffiliates().map(a => a.fidelizador).filter(Boolean))]
+      .filter(name => active.size === 0 || active.has(name))
+      .sort();
+    return unique.map(v => ({ value: v, label: v }));
+  });
 
   // Intersección: solo asesores que (a) tienen al menos un afiliado en la
-  // lista cargada Y (b) están habilitados. Derivarlo solo de los datos
-  // mostraría asesores viejos/deshabilitados que quedaron pegados a algún
-  // afiliado sin reasignar; derivarlo solo del catálogo mostraría asesores
-  // habilitados con cero resultados en este tab (filtro "muerto").
+  // lista cargada (ya filtrada por la fidelización elegida, si hay una — así
+  // "Asesor" depende de "Fidelización" igual que en el modal de crear/editar
+  // afiliado) Y (b) están habilitados. Derivarlo solo de los datos mostraría
+  // asesores viejos/deshabilitados que quedaron pegados a algún afiliado sin
+  // reasignar; derivarlo solo del catálogo mostraría asesores habilitados
+  // con cero resultados en este tab (filtro "muerto").
   protected readonly adviserOptions = computed((): SelectOption[] => {
     const active = this.activeAdvisorNames();
-    const unique = [...new Set(this.allAffiliates().map(a => a.advisor).filter(Boolean))]
+    const fidelizador = this.filterFidelizador().toLowerCase().trim();
+    const rows = fidelizador
+      ? this.allAffiliates().filter(a => a.fidelizador?.toLowerCase() === fidelizador)
+      : this.allAffiliates();
+    const unique = [...new Set(rows.map(a => a.advisor).filter(Boolean))]
       .filter(name => active.size === 0 || active.has(name))
       .sort();
     return unique.map(v => ({ value: v, label: v }));
@@ -247,6 +266,10 @@ export class DeactivateAffiliatesList implements OnInit {
       this.activeAdvisorNames.set(new Set(advisors.map((a) => a.name)));
     });
 
+    this._affiliateMembersService.getFidelizadores().subscribe((fidelizadores) => {
+      this.activeFidelizadorNames.set(new Set(fidelizadores.map((f) => f.name)));
+    });
+
     this._affiliateMembersService.getDeactivationReasons().subscribe((reasons) => {
       this.reasonTypeOptions = reasons.map((r) => ({ value: r.id, label: r.label }));
     });
@@ -278,6 +301,15 @@ export class DeactivateAffiliatesList implements OnInit {
     this.currentPage.set(1);
   }
 
+  // "Asesor" depende de "Fidelización": al cambiar el fidelizador se limpia
+  // la selección de asesor si ya no aplica, igual que en el modal de
+  // crear/editar afiliado.
+  protected setFilterFidelizador(value: string): void {
+    this.filterFidelizador.set(value);
+    this.filterAdviser.set('');
+    this.currentPage.set(1);
+  }
+
   protected setFilterCompany(value: string): void {
     this.filterCompany.set(value);
     this.currentPage.set(1);
@@ -293,6 +325,7 @@ export class DeactivateAffiliatesList implements OnInit {
     this.filterDocument.set('');
     this.filterReference.set('');
     this.filterAdviser.set('');
+    this.filterFidelizador.set('');
     this.filterCompany.set('');
     this.filterGrouper.set('');
     this.currentPage.set(1);
@@ -482,6 +515,7 @@ export class DeactivateAffiliatesList implements OnInit {
         document: this.filterDocument() || undefined,
         reference: this.filterReference() || undefined,
         advisor: this.filterAdviser() || undefined,
+        fidelizador: this.filterFidelizador() || undefined,
         company: this.filterCompany() || undefined,
         grouper: this.filterGrouper() || undefined,
         reason: this.deactivationReason || undefined,

@@ -1,10 +1,10 @@
 <div class="searchable-select-host relative">
 
-  @if (allowFreeText) {
+  @if (allowFreeText()) {
     <!-- ── Combobox mode: text input + optional suggestions ── -->
     <div #triggerRef
       class="flex items-center w-full border rounded-lg bg-white h-[38px]"
-      [class]="(isInvalid ? 'border-red-400' : 'border-gray-300') + (isDisabled() ? ' opacity-50' : '')">
+      [class]="(isInvalid() ? 'border-red-400' : 'border-gray-300') + (isDisabled() ? ' opacity-50' : '')">
       <input
         #comboRef
         type="text"
@@ -12,7 +12,7 @@
         (input)="onComboInput($event)"
         (focus)="onComboFocus()"
         (blur)="onComboBlur()"
-        [placeholder]="placeholder"
+        [placeholder]="placeholder()"
         [disabled]="isDisabled()"
         class="flex-1 px-3 text-sm outline-none bg-transparent text-gray-900 placeholder-gray-400 min-w-0 rounded-l-lg h-full">
       <div class="flex items-center pr-2 gap-0.5 shrink-0">
@@ -24,7 +24,7 @@
             </svg>
           </button>
         }
-        @if (options.length > 0) {
+        @if (options().length > 0) {
           <button type="button" (click)="toggleComboDropdown()" [disabled]="isDisabled()"
             class="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 disabled:opacity-40"
             title="Ver opciones existentes">
@@ -47,10 +47,10 @@
       tabindex="0"
       role="combobox"
       [class]="'flex items-center justify-between w-full px-3 h-[38px] text-sm border rounded-lg cursor-pointer bg-white select-none ' +
-        (isInvalid ? 'border-red-400' : 'border-gray-300') +
+        (isInvalid() ? 'border-red-400' : 'border-gray-300') +
         (isDisabled() ? ' opacity-50 cursor-not-allowed' : ' hover:border-blue-400')">
       <span [class]="selectedLabel() ? 'text-gray-900' : 'text-gray-400'">
-        {{ selectedLabel() || placeholder }}
+        {{ selectedLabel() || placeholder() }}
       </span>
       <div class="flex items-center gap-1">
         @if (selectedValue()) {
@@ -77,13 +77,14 @@
       [style.width.px]="dropdownWidth()"
       [style.transform]="dropdownOpenUpward() ? 'translateY(-100%)' : 'none'">
 
-      @if (!allowFreeText) {
+      @if (!allowFreeText()) {
         <!-- Search box only in select mode -->
         <div class="p-2 border-b border-gray-100">
           <input
             #inputRef
             type="text"
-            [(ngModel)]="searchText"
+            [ngModel]="searchText()"
+            (ngModelChange)="onSearchTextChange($event)"
             placeholder="Buscar..."
             (click)="$event.stopPropagation()"
             autofocus
@@ -93,11 +94,11 @@
 
       <!-- Options list -->
       <ul class="max-h-48 overflow-y-auto">
-        @if (allowFreeText) {
-          @if (comboFilteredOptions.length === 0) {
+        @if (allowFreeText()) {
+          @if (comboFilteredOptions().length === 0) {
             <li class="px-3 py-2 text-sm text-gray-400 text-center">Sin resultados</li>
           }
-          @for (opt of comboFilteredOptions; track opt.value) {
+          @for (opt of comboFilteredOptions(); track opt.value) {
             <li (mousedown)="$event.preventDefault()" (click)="selectComboOption(opt)"
               [class]="'px-3 py-2 text-sm cursor-pointer transition-colors ' +
                 (opt.value === selectedValue() ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50')">
@@ -105,10 +106,15 @@
             </li>
           }
         } @else {
-          @if (filteredOptions.length === 0) {
-            <li class="px-3 py-2 text-sm text-gray-400 text-center">Sin resultados</li>
+          @if (filteredOptions().length === 0) {
+            <!-- En modo servidor "sin resultados" solo aplica si de verdad se
+                 buscó: antes del mínimo de caracteres, o mientras la consulta
+                 va en camino, decirlo sería mentira. -->
+            <li class="px-3 py-2 text-sm text-gray-400 text-center">
+              {{ serverSearchHint() ?? 'Sin resultados' }}
+            </li>
           }
-          @for (opt of filteredOptions; track opt.value) {
+          @for (opt of filteredOptions(); track opt.value) {
             <li (click)="selectOption(opt)"
               [class]="'px-3 py-2 text-sm cursor-pointer transition-colors ' +
                 (opt.value === selectedValue() ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50')">
