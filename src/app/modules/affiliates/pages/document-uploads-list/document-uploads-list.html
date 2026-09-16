@@ -15,6 +15,14 @@
         <p class="mt-1 text-sm text-gray-500">Cargue masivo de certificados y envío automático a WhatsApp</p>
       </div>
       <div class="flex items-center gap-2">
+        <button type="button" (click)="refresh()" [disabled]="isLoading()"
+          class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:outline-none focus:ring-gray-200 disabled:opacity-60 transition-all duration-200">
+          <svg class="w-4 h-4" [class.animate-spin]="isLoading()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Actualizar
+        </button>
         <button type="button" (click)="showUploadModal.set(true)"
           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-300 shadow-md hover:shadow-lg transition-all duration-200">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,7 +93,17 @@
     </div>
 
     <!-- Tabla -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200">
+      <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+        <p class="text-sm text-gray-500">
+          @if (!isLoading()) {
+            Total: <span class="font-semibold text-gray-800">{{ totalItems() }}</span> registros
+            &nbsp;&mdash;&nbsp; Página {{ currentPage() }} de {{ totalPages() || 1 }}
+          }
+        </p>
+        <app-page-size-control [pageSize]="pageSize()" (pageSizeChange)="onPageSizeChange($event)" />
+      </div>
+      <app-table-scroll>
       <table class="min-w-full text-sm text-left">
         <thead class="text-xs text-gray-500 uppercase bg-gray-50">
           <tr>
@@ -135,26 +153,31 @@
           }
         </tbody>
       </table>
+      </app-table-scroll>
 
       @if (totalPages() > 1) {
-        <div class="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50">
-          <p class="text-sm text-gray-600">
-            {{ totalItems() }} registros — Página {{ currentPage() }} de {{ totalPages() }}
-          </p>
-          <div class="inline-flex items-center gap-1">
+        <div class="sticky bottom-0 z-10 flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+          <p class="text-sm text-gray-600">{{ totalItems() }} registros — Página {{ currentPage() }} de {{ totalPages() }}</p>
+          <nav class="inline-flex items-center gap-1" aria-label="Paginación">
             <button type="button" (click)="previousPage()" [disabled]="currentPage() === 1"
               class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
               Anterior
             </button>
+            @for (page of pageNumbers; track page) {
+              <button type="button" (click)="goToPage(page)"
+                [class]="page === currentPage() ? 'px-3 py-1.5 text-sm font-semibold text-white bg-blue-700 border border-blue-700 rounded-lg' : 'px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'">
+                {{ page }}
+              </button>
+            }
             <button type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()"
               class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
               Siguiente
             </button>
-          </div>
+          </nav>
         </div>
       }
     </div>
   </div>
 </div>
 
-<app-document-upload-modal [isVisible]="showUploadModal()" (uploaded)="onUploaded()" (cancelled)="showUploadModal.set(false)" />
+<app-document-upload-modal [isVisible]="showUploadModal()" (uploaded)="onUploaded()" (itemsCreated)="onItemsCreated()" (cancelled)="showUploadModal.set(false)" />

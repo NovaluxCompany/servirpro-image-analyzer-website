@@ -22,6 +22,7 @@ export class DocumentUploadModalComponent {
 
   isVisible = input<boolean>(false);
   uploaded = output<void>();
+  itemsCreated = output<void>();
   cancelled = output<void>();
 
   documentTypes = signal<DocumentType[]>([]);
@@ -76,12 +77,24 @@ export class DocumentUploadModalComponent {
     this._service.upload(this.selectedTypeId, files).subscribe({
       next: (response) => {
         this.isSubmitting.set(false);
+
+        // Aunque el lote sea parcial, lo que sí se creó ya quedó en el
+        // backend: se avisa para refrescar la tabla de fondo sin cerrar el
+        // modal, así el archivo exitoso no "desaparece" de la vista.
+        if (response.created.length > 0) {
+          this.itemsCreated.emit();
+        }
+
         if (response.errors.length === 0) {
           this._toast.showSuccess('Archivos cargados correctamente, esperando respuesta del flujo de envío a WhatsApp.');
           this.uploaded.emit();
         } else {
           this.applyErrors(response.errors);
-          this._toast.showError('Algunos archivos no pasaron la validación. Revisa el detalle en cada uno.');
+          const message =
+            response.created.length > 0
+              ? `${response.created.length} archivo(s) se cargaron correctamente y ya van en camino. Los ${response.errors.length} marcados en rojo no se enviaron: revisa el motivo en cada uno.`
+              : 'Ningún archivo pasó la validación. Revisa el detalle en cada uno.';
+          this._toast.showError(message);
         }
       },
       error: (err) => {
