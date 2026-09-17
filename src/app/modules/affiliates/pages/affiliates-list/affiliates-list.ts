@@ -14,6 +14,7 @@ import { IncapacityFormModalComponent } from '../../../incapacities/components/i
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
 import { INCAPACITIES_MENU_PATH } from '../../../incapacities/incapacities.routes';
+import { DOCUMENT_UPLOADS_MENU_PATH } from '../../affiliates.routes';
 import { ConfigGeneralService } from '../../../../core/service/config-general.service';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
@@ -327,6 +328,11 @@ export class AffiliatesListComponent implements OnInit {
   /** El botón solo se muestra si el rol puede radicar. */
   canCreateIncapacities(): boolean {
     return this._permission.can('create', INCAPACITIES_MENU_PATH);
+  }
+
+  /** El botón de Cargue de Documentos solo se muestra si el rol tiene acceso a ese menú. */
+  canViewDocumentUploads(): boolean {
+    return this._permission.can('view', DOCUMENT_UPLOADS_MENU_PATH);
   }
 
   onIncapacityModalClosed(): void {

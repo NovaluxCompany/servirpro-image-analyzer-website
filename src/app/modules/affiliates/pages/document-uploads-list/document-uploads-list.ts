@@ -2,13 +2,15 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Subject, debounceTime } from 'rxjs';
+import { Subject, debounceTime, retry, timer } from 'rxjs';
 import { DocumentUploadsService } from '../../services/document-uploads.service';
 import { DocumentType, DocumentUploadItem, DocumentUploadStatus } from '../../interfaces/document-upload.interface';
 import { DocumentUploadStatusBadgeComponent } from '../../components/document-upload-status-badge/document-upload-status-badge';
 import { DocumentUploadModalComponent } from '../../components/document-upload-modal/document-upload-modal';
 import { ToastService } from '../../../../core/service/toast.service';
 import { ConfigGeneralService } from '../../../../core/service/config-general.service';
+import { PermissionService } from '../../../../core/service/permission.service';
+import { DOCUMENT_UPLOADS_MENU_PATH } from '../../affiliates.routes';
 import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
 import { TableScrollComponent } from '../../../../shared/components/table-scroll/table-scroll';
 
@@ -25,6 +27,7 @@ export class DocumentUploadsListComponent implements OnInit, OnDestroy {
   private _toast = inject(ToastService);
   private _router = inject(Router);
   private _configGeneralService = inject(ConfigGeneralService);
+  private _permission = inject(PermissionService);
 
   items = signal<DocumentUploadItem[]>([]);
   documentTypes = signal<DocumentType[]>([]);
@@ -56,7 +59,14 @@ export class DocumentUploadsListComponent implements OnInit, OnDestroy {
       this.currentPage.set(1);
       this.loadItems();
     });
-    this._service.getTypes().subscribe((types) => this.documentTypes.set(types));
+    this._service.getTypes()
+      // Reintenta 2 veces (1s, 2s) antes de rendirse: un hiccup de red no
+      // debería dejar el filtro vacío para toda la sesión.
+      .pipe(retry({ count: 2, delay: (_, attempt) => timer(attempt * 1000) }))
+      .subscribe({
+        next: (types) => this.documentTypes.set(types),
+        error: () => this._toast.showError('No se pudieron cargar los tipos de documento para el filtro.'),
+      });
     this._configGeneralService.getValue(REGISTROS_POR_PAGINA_KEY).subscribe({
       next: (value) => {
         const parsed = parseInt(value, 10);
@@ -148,6 +158,13 @@ export class DocumentUploadsListComponent implements OnInit, OnDestroy {
 
   goBack(): void {
     this._router.navigate(['/afiliados']);
+  }
+
+  openUploadModal(): void {
+    if (!this._permission.check('create', DOCUMENT_UPLOADS_MENU_PATH, 'Tu rol no tiene permiso para cargar documentos.')) {
+      return;
+    }
+    this.showUploadModal.set(true);
   }
 
   onUploaded(): void {
