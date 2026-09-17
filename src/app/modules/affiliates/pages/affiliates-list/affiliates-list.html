@@ -26,6 +26,7 @@
           }
         </button>
 
+        @if (canViewDocumentUploads()) {
         <button type="button" (click)="goToDocumentUploads()"
           class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-300 shadow-md hover:shadow-lg transition-all duration-200">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,6 +35,7 @@
           </svg>
           Cargue de Documentos
         </button>
+        }
 
         <button type="button" (click)="openCreate()"
           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 shadow-md hover:shadow-lg transition-all duration-200">
@@ -506,6 +508,8 @@
               <td class="px-4 py-3 whitespace-nowrap">
   @if (planHasEps(affiliate) && affiliate.epsName && affiliate.epsName !== 'N/A') {
     <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
+      <span class="w-2 h-2 rounded-full" [class.bg-green-500]="affiliate.certEps" [class.bg-red-400]="!affiliate.certEps"
+        [title]="affiliate.certEps ? 'Certificado EPS enviado por WhatsApp' : 'Certificado EPS no enviado por WhatsApp'"></span>
       {{ affiliate.epsName }}
     </span>
   } @else {
@@ -522,6 +526,8 @@
               <td class="px-4 py-3 whitespace-nowrap">
                 @if (planHasArl(affiliate)) {
                   <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
+                    <span class="w-2 h-2 rounded-full" [class.bg-green-500]="affiliate.certArl" [class.bg-red-400]="!affiliate.certArl"
+                      [title]="affiliate.certArl ? 'Certificado ARL enviado por WhatsApp' : 'Certificado ARL no enviado por WhatsApp'"></span>
                     ARL {{ affiliate.arl }}
                   </span>
                 } @else {
@@ -533,6 +539,8 @@
               <td class="px-4 py-3 whitespace-nowrap">
                 @if (planHasCcf(affiliate) && affiliate.compensationBoxName && affiliate.compensationBoxName !== '-' && affiliate.compensationBoxName !== 'N/A') {
                   <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
+                    <span class="w-2 h-2 rounded-full" [class.bg-green-500]="affiliate.certCcf" [class.bg-red-400]="!affiliate.certCcf"
+                      [title]="affiliate.certCcf ? 'Certificado CCF enviado por WhatsApp' : 'Certificado CCF no enviado por WhatsApp'"></span>
                     {{ affiliate.compensationBoxName }}
                   </span>
                 } @else {
@@ -544,6 +552,8 @@
               <td class="px-4 py-3 whitespace-nowrap">
                 @if (planHasPension(affiliate) && affiliate.pensionName && affiliate.pensionName !== '-' && affiliate.pensionName !== 'N/A') {
                   <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
+                    <span class="w-2 h-2 rounded-full" [class.bg-green-500]="affiliate.certPension" [class.bg-red-400]="!affiliate.certPension"
+                      [title]="affiliate.certPension ? 'Certificado Pensión enviado por WhatsApp' : 'Certificado Pensión no enviado por WhatsApp'"></span>
                     {{ affiliate.pensionName }}
                   </span>
                 } @else {

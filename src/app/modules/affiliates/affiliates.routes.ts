@@ -22,3 +22,9 @@ export const affiliatesRoutes: Routes = [
     canActivate: [LoginGuardian, roleGuard]
   },
 ];
+
+/**
+ * Espeja DOCUMENT_UPLOADS_MENU_PATH del backend
+ * (document-uploads.controller.ts), usada por @RequirePermission ahí.
+ */
+export const DOCUMENT_UPLOADS_MENU_PATH = '/afiliados/cargue-documentos';
