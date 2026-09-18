@@ -16,6 +16,11 @@ export interface AffiliateFilters {
   advisor?: string;
   fidelizador?: string;
   affiliateType?: 'INDEPENDIENTE' | 'DEPENDIENTE';
+  // Empresa y EPS viajan por id (no por nombre como asesor o fidelizador):
+  // sus desplegables ya salen de /companies/dropdown y /eps-providers/dropdown,
+  // que devuelven id + nombre.
+  companyId?: number;
+  epsId?: number;
   isActive?: boolean;
   grupo?: string;
   entryDateFrom?: string;
@@ -45,6 +50,8 @@ export class AffiliateMembersService {
     if (filters.advisor) params = params.set('advisor', filters.advisor);
     if (filters.fidelizador) params = params.set('fidelizador', filters.fidelizador);
     if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
+    if (filters.companyId) params = params.set('companyId', String(filters.companyId));
+    if (filters.epsId) params = params.set('epsId', String(filters.epsId));
     if (filters.isActive !== undefined) params = params.set('isActive', String(filters.isActive));
     if (filters.grupo) params = params.set('grupo', filters.grupo);
     if (filters.entryDateFrom) params = params.set('entryDateFrom', filters.entryDateFrom);
@@ -171,6 +178,8 @@ export class AffiliateMembersService {
     if (filters.advisor) params = params.set('advisor', filters.advisor);
     if (filters.fidelizador) params = params.set('fidelizador', filters.fidelizador);
     if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
+    if (filters.companyId) params = params.set('companyId', String(filters.companyId));
+    if (filters.epsId) params = params.set('epsId', String(filters.epsId));
     if (filters.isActive !== undefined) {
       params = params.set('isActive', String(filters.isActive));
     }

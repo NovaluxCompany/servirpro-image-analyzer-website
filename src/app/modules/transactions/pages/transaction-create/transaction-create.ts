@@ -6,6 +6,7 @@ import { TransactionsService } from '../../services/transactions.service';
 import { AffiliatesFormComponent } from '../../components/affiliates-form/affiliates-form';
 import { ImageUploaderComponent } from '../../components/image-uploader/image-uploader';
 import { Affiliate } from '../../interfaces/affiliate.interface';
+import { PaymentDestinationOption, PaymentMethodOption } from '../../interfaces/payment-method.interface';
 import { PermissionService } from '../../../../core/service/permission.service';
 import { ToastService } from '../../../../core/service/toast.service';
 
@@ -28,16 +29,57 @@ export class TransactionCreateComponent {
   errorMessage = signal<string | null>(null);
   uploadedImages = signal<File[]>([]);
 
+  // Formas de pago con sus destinos. Vienen del catálogo en BD, no de una lista
+  // fija acá: agregar un destino es insertar una fila, no tocar este archivo.
+  paymentMethods = signal<PaymentMethodOption[]>([]);
+  paymentDestinations = signal<PaymentDestinationOption[]>([]);
+
   ngOnInit(): void {
     // Defensa adicional: si llegó aquí sin permiso (guard fallido), redirige sin toast duplicado
     if (!this._permission.can('create', '/transacciones')) {
       this._router.navigate(['/transacciones']);
+      return;
+    }
+    this.loadPaymentMethods();
+  }
+
+  private loadPaymentMethods(): void {
+    this._transactionsService.getPaymentMethods().subscribe({
+      next: (methods) => this.paymentMethods.set(methods),
+      error: (error) => this._toast.showError(error?.message ?? 'No se pudieron cargar las formas de pago.'),
+    });
+  }
+
+  /**
+   * El destino depende de la forma de pago: al cambiarla se recarga la lista y
+   * se limpia lo que hubiera elegido, porque un destino de transferencia no
+   * necesariamente se ofrece para efectivo (el backend rechaza el par inválido
+   * de todos modos, pero dejarlo visible invitaría al error).
+   */
+  onPaymentMethodChange(): void {
+    const methodId = Number(this.form.get('paymentMethodId')?.value);
+    const method = this.paymentMethods().find((m) => m.id === methodId);
+    const destinations = method?.destinations ?? [];
+    this.paymentDestinations.set(destinations);
+
+    const control = this.form.get('paymentDestinationId');
+    control?.setValue('');
+    // Habilitar/deshabilitar por control y no con [disabled] en la plantilla:
+    // en formularios reactivos Angular advierte sobre esa segunda forma.
+    if (destinations.length > 0) {
+      control?.enable();
+    } else {
+      control?.disable();
     }
   }
 
   form = this._fb.group({
     totalValue: [{ value: 0, disabled: true }, [Validators.required, Validators.min(1)]],
     amountPaid: [{ value: 0, disabled: true }, [Validators.required, Validators.min(1)]],
+    paymentMethodId: ['', [Validators.required]],
+    // Arranca deshabilitado: sin forma de pago elegida no hay destinos que
+    // ofrecer. Se habilita en onPaymentMethodChange().
+    paymentDestinationId: [{ value: '', disabled: true }, [Validators.required]],
     observation: ['', [Validators.maxLength(2000)]]
   });
 
@@ -102,11 +144,14 @@ export class TransactionCreateComponent {
 
     // Construir FormData
     const formData = new FormData();
-    const { totalValue, amountPaid, observation } = this.form.getRawValue();
+    const { totalValue, amountPaid, observation, paymentMethodId, paymentDestinationId } =
+      this.form.getRawValue();
 
     formData.append('reference', reference);
     formData.append('totalValue', totalValue!.toString());
     formData.append('amountPaid', amountPaid!.toString());
+    formData.append('paymentMethodId', String(paymentMethodId));
+    formData.append('paymentDestinationId', String(paymentDestinationId));
 
     // Agregar observación si existe
     if (observation && observation.trim()) {

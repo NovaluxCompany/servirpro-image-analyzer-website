@@ -56,6 +56,46 @@
           </div>
         </div>
 
+        <!-- Forma de pago y destino del dinero -->
+        <div class="grid grid-cols-1 gap-4 mt-4 md:grid-cols-2">
+          <div>
+            <label for="paymentMethodId" class="block mb-2 text-sm font-medium text-gray-900">
+              Forma de Pago *
+            </label>
+            <select id="paymentMethodId" formControlName="paymentMethodId"
+              (change)="onPaymentMethodChange()"
+              [class.border-red-500]="isFieldInvalid('paymentMethodId')"
+              class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500">
+              <option value="">Selecciona una forma de pago...</option>
+              @for (method of paymentMethods(); track method.id) {
+                <option [value]="method.id">{{ method.name }}</option>
+              }
+            </select>
+            @if (isFieldInvalid('paymentMethodId')) {
+            <p class="mt-1 text-xs text-red-600">{{ getFieldError('paymentMethodId') }}</p>
+            }
+          </div>
+
+          <div>
+            <label for="paymentDestinationId" class="block mb-2 text-sm font-medium text-gray-900">
+              ¿A dónde llega el dinero? *
+            </label>
+            <select id="paymentDestinationId" formControlName="paymentDestinationId"
+              [class.border-red-500]="isFieldInvalid('paymentDestinationId')"
+              class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed">
+              <option value="">
+                {{ paymentDestinations().length === 0 ? 'Elige primero la forma de pago' : 'Selecciona un destino...' }}
+              </option>
+              @for (destination of paymentDestinations(); track destination.id) {
+                <option [value]="destination.id">{{ destination.name }}</option>
+              }
+            </select>
+            @if (isFieldInvalid('paymentDestinationId')) {
+            <p class="mt-1 text-xs text-red-600">{{ getFieldError('paymentDestinationId') }}</p>
+            }
+          </div>
+        </div>
+
         <!-- Observación -->
         <div class="mt-4">
           <label for="observation" class="block mb-2 text-sm font-medium text-gray-900">

@@ -6,6 +6,7 @@ import { TokenService } from '../../../core/service/token.service';
 import { Transaction } from '../interfaces/transaction.interface';
 import { TransactionFilters } from '../interfaces/transaction-filters.interface';
 import { PaginatedResponse } from '../interfaces/paginated-response.interface';
+import { PaymentMethodOption } from '../interfaces/payment-method.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -88,6 +89,15 @@ export class TransactionsService {
   setTransactionActive(id: string, isActive: boolean): Observable<{ id: number; isActive: boolean }> {
     return this._http
       .patch<{ id: number; isActive: boolean }>(`${this.baseUrl}/${id}/active`, { isActive }, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError));
+  }
+
+  /** Formas de pago con sus destinos anidados, para el formulario de creación. */
+  getPaymentMethods(): Observable<PaymentMethodOption[]> {
+    return this._http
+      .get<PaymentMethodOption[]>(`${environment.urlBD}/payment-methods/dropdown`, {
+        headers: this.getHeaders(),
+      })
       .pipe(catchError(this.handleError));
   }
 

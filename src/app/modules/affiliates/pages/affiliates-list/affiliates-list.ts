@@ -54,6 +54,8 @@ export class AffiliatesListComponent implements OnInit {
   filterAdvisor = '';
   filterFidelizador = '';
   filterAffiliateType = '';
+  filterCompanyId = '';
+  filterEpsId = '';
   filterIsActive = '';
   filterGrupo = '';
   filterEntryDateFrom = '';
@@ -61,6 +63,10 @@ export class AffiliatesListComponent implements OnInit {
   filterPaymentStatus = '';
   advisorOptions = signal<SelectOption[]>([]);
   fidelizadorOptions = signal<SelectOption[]>([]);
+  // Empresa y EPS se eligen del catálogo y viajan por id, así que el `value` de
+  // cada opción es el id (no el nombre, como en Asesor o Fidelización).
+  companyOptions = signal<SelectOption[]>([]);
+  epsOptions = signal<SelectOption[]>([]);
   // id numérico de cada fidelizador por nombre (el filtro viaja al backend
   // por nombre, igual que Asesor, pero la cascada necesita el id para pedir
   // GET /advisors/dropdown?fidelizadorId=).
@@ -161,6 +167,8 @@ export class AffiliatesListComponent implements OnInit {
       advisor: this.filterAdvisor || undefined,
       fidelizador: this.filterFidelizador || undefined,
       affiliateType: (this.filterAffiliateType === 'INDEPENDIENTE' || this.filterAffiliateType === 'DEPENDIENTE') ? this.filterAffiliateType : undefined,
+      companyId: this.filterCompanyId ? Number(this.filterCompanyId) : undefined,
+      epsId: this.filterEpsId ? Number(this.filterEpsId) : undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,
@@ -199,6 +207,12 @@ export class AffiliatesListComponent implements OnInit {
     });
     this._service.getReferences().subscribe((list) => {
       this.referenceOptions.set(list.map((r) => ({ value: r, label: r })));
+    });
+    this._service.getCompanies().subscribe((list) => {
+      this.companyOptions.set(list.map((c) => ({ value: String(c.id), label: c.name })));
+    });
+    this._service.getEpsList().subscribe((list) => {
+      this.epsOptions.set(list.map((e) => ({ value: String(e.id), label: e.name })));
     });
     this._service.getDepartments().subscribe((list: Department[]) => {
       this.departmentNameByCode = new Map(list.map((d) => [d.code, d.name]));
@@ -240,6 +254,8 @@ export class AffiliatesListComponent implements OnInit {
     this.filterAdvisor = '';
     this.filterFidelizador = '';
     this.filterAffiliateType = '';
+    this.filterCompanyId = '';
+    this.filterEpsId = '';
     this.filterIsActive = '';
     this.filterGrupo = '';
     this.filterEntryDateFrom = '';
@@ -253,7 +269,7 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterFidelizador || this.filterAffiliateType || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterFidelizador || this.filterAffiliateType || this.filterCompanyId || this.filterEpsId || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -430,6 +446,8 @@ export class AffiliatesListComponent implements OnInit {
       advisor: this.filterAdvisor || undefined,
       fidelizador: this.filterFidelizador || undefined,
       affiliateType: (this.filterAffiliateType === 'INDEPENDIENTE' || this.filterAffiliateType === 'DEPENDIENTE') ? this.filterAffiliateType : undefined,
+      companyId: this.filterCompanyId ? Number(this.filterCompanyId) : undefined,
+      epsId: this.filterEpsId ? Number(this.filterEpsId) : undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,

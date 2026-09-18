@@ -1,5 +1,6 @@
 import { Affiliate } from './affiliate.interface';
 import { Receipt } from './receipt.interface';
+import { PaymentDestinationOption, PaymentMethodOption } from './payment-method.interface';
 
 export interface Transaction {
   _id: string;
@@ -16,6 +17,9 @@ export interface Transaction {
   images: string[];
   receipts: Receipt[];
   observation?: string;
+  // null en las transacciones creadas antes de que existiera el campo.
+  paymentMethod?: Omit<PaymentMethodOption, 'destinations'> | null;
+  paymentDestination?: PaymentDestinationOption | null;
   isActive?: boolean;
   createdByUser?: { id: number; name: string; roles: string[] } | null;
   createdAt: string;
