@@ -12,6 +12,9 @@ export interface Affiliate {
   discount?: number | null;
   eps: string;
   reference: string;
+  // Afiliado nuevo (`affiliations.is_new`): es el único que puede pagar
+  // mientras el bloqueo de transacciones esté encendido.
+  isNew?: boolean;
   deposit?: string;
   charge?: string;
   profession?: string;

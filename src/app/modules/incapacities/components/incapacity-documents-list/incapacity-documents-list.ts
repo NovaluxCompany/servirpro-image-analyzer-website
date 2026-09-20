@@ -43,7 +43,6 @@ export class IncapacityDocumentsListComponent {
     HISTORIA_CLINICA: 'Historia clínica',
     AUTORIZACION_PAGO_TERCERO: 'Autorización de pago a terceros',
     RIPS: 'RIPS',
-    AUTORIZACION_BANCARIA: 'Autorización bancaria',
     RUAF: 'RUAF',
     CERTIFICADO_NACIDO_VIVO: 'Certificado de nacido vivo',
     REGISTRO_CIVIL: 'Registro civil',

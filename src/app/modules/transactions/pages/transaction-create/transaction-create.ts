@@ -29,6 +29,15 @@ export class TransactionCreateComponent {
   errorMessage = signal<string | null>(null);
   uploadedImages = signal<File[]>([]);
 
+  /**
+   * Bloqueo global de transacciones. Con el bloqueo encendido se puede entrar
+   * a esta pantalla, pero solo para registrar el pago de ingreso de afiliados
+   * nuevos: ese cobro no puede esperar al cierre de mes sin dejar al afiliado
+   * sin cobertura. Quién es nuevo lo decide `affiliations.is_new` en el
+   * backend; acá se usa para no dejar armar un pago que se va a rechazar.
+   */
+  transactionsLocked = signal(false);
+
   // Formas de pago con sus destinos. Vienen del catálogo en BD, no de una lista
   // fija acá: agregar un destino es insertar una fila, no tocar este archivo.
   paymentMethods = signal<PaymentMethodOption[]>([]);
@@ -41,6 +50,17 @@ export class TransactionCreateComponent {
       return;
     }
     this.loadPaymentMethods();
+    this.loadLockStatus();
+  }
+
+  private loadLockStatus(): void {
+    this._transactionsService.getLockStatus().subscribe({
+      next: (res) => this.transactionsLocked.set(res.locked),
+      // Si la consulta falla se asume desbloqueado: el backend valida igual al
+      // enviar, y dar por bloqueado lo que quizá no lo está frenaría pagos
+      // legítimos por un error de red.
+      error: () => this.transactionsLocked.set(false),
+    });
   }
 
   private loadPaymentMethods(): void {
@@ -98,15 +118,48 @@ export class TransactionCreateComponent {
     this.form.get('amountPaid')?.setValue(totalValue);
   }
 
+  /**
+   * Con el bloqueo encendido y nadie seleccionado no hay pago posible: los que
+   * no son nuevos no se dejan marcar, así que la selección vacía significa que
+   * en esta búsqueda no hay a quién cobrarle. El botón queda inhabilitado en
+   * vez de dejar mandar algo que el backend va a rechazar.
+   *
+   * Sin bloqueo el botón sigue habilitado con la selección vacía, como
+   * siempre: al tocarlo aparece el aviso de "debes seleccionar al menos un
+   * afiliado", que es lo que orienta a quien recién está llenando el
+   * formulario.
+   */
+  lockedWithoutSelection(): boolean {
+    return this.transactionsLocked() && !this.affiliatesForm?.isValid();
+  }
+
   /** Bloquea el botón de crear transacción mientras algún afiliado
-   *  seleccionado ya tenga una transacción registrada este mes — respaldo
-   *  por si el usuario no ve el aviso inline en la fila. */
+   *  seleccionado ya tenga una transacción registrada este mes, o no pueda
+   *  pagarse por el bloqueo global — respaldo por si el usuario no ve el
+   *  aviso inline en la fila. */
   isSubmitBlocked(): boolean {
-    return this.isLoading() || !!this.affiliatesForm?.hasDuplicates();
+    return (
+      this.isLoading() ||
+      !!this.affiliatesForm?.hasDuplicates() ||
+      !!this.affiliatesForm?.hasLockedSelection() ||
+      this.lockedWithoutSelection()
+    );
   }
 
   onSubmit(): void {
     this.errorMessage.set(null);
+
+    // Se revisa antes que lo demás: con el bloqueo encendido, el pago de
+    // alguien que no es nuevo no se va a poder registrar por más completo que
+    // esté el resto del formulario.
+    if (this.affiliatesForm.hasLockedSelection()) {
+      this.errorMessage.set(
+        'Transacciones bloqueadas: solo se pueden registrar pagos de afiliados nuevos. ' +
+          `Quita de la selección a ${this.affiliatesForm.lockedSelectionNames().join(', ')}.`,
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     if (this.affiliatesForm.hasDuplicates()) {
       this.errorMessage.set(

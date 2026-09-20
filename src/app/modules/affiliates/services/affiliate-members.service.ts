@@ -220,11 +220,28 @@ export class AffiliateMembersService {
   // ── Enviar correo vía n8n ──────────────────────────────────────────
   // emails=undefined (Dependiente/Gestión): el backend usa el correo registrado
   // del afiliado por defecto. emails=[...] (Independiente): se envía solo a esos.
-  sendEmail(affiliationId: number, emails: string[] | undefined, observation?: string): Observable<{ success: boolean; message: string }> {
+  // `salary` solo viaja en el flujo Independiente, que es el único donde el
+  // modal ofrece cambiarlo; el backend rechaza el campo para los demás.
+  sendEmail(
+    affiliationId: number,
+    emails: string[] | undefined,
+    observation?: string,
+    salary?: number,
+  ): Observable<{ success: boolean; message: string }> {
     return this._http
       .post<{ success: boolean; message: string }>(
         `${environment.urlBD}/affiliates/${affiliationId}/send-email`,
-        { emails, observation },
+        { emails, observation, ...(salary !== undefined ? { salary } : {}) },
+        { headers: this.getHeaders() }
+      )
+      .pipe(catchError(this.handleError));
+  }
+
+  /** Salario que llevaría el correo si se enviara ahora, para precargar el campo. */
+  getEmailSalary(affiliationId: number): Observable<{ salary: number }> {
+    return this._http
+      .get<{ salary: number }>(
+        `${environment.urlBD}/affiliates/${affiliationId}/email-salary`,
         { headers: this.getHeaders() }
       )
       .pipe(catchError(this.handleError));
