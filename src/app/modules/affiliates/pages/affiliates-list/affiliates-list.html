@@ -141,6 +141,23 @@
           </select>
         </div>
 
+        <!-- Empresa: ocupa dos columnas — los nombres de empresa son largos y
+             en una sola columna el select los cortaba casi siempre. -->
+        <div class="sm:col-span-2">
+          <label class="block mb-1 text-xs font-medium text-gray-600">Empresa</label>
+          <app-searchable-select [options]="companyOptions()" [ngModel]="filterCompanyId"
+            (ngModelChange)="filterCompanyId = $event; onDropdownFilterChange()" placeholder="Todas las empresas...">
+          </app-searchable-select>
+        </div>
+
+        <!-- EPS -->
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">EPS</label>
+          <app-searchable-select [options]="epsOptions()" [ngModel]="filterEpsId"
+            (ngModelChange)="filterEpsId = $event; onDropdownFilterChange()" placeholder="Todas las EPS...">
+          </app-searchable-select>
+        </div>
+
         <div>
           <label class="block mb-1 text-xs font-medium text-gray-600">Grupo</label>
           <select [(ngModel)]="filterGrupo" (ngModelChange)="onDropdownFilterChange()"

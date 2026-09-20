@@ -86,6 +86,20 @@
                 <p class="text-sm text-gray-500">Última actualización</p>
                 <p class="font-medium text-gray-900">{{ formatDate(transaction()!.updatedAt) }}</p>
               </div>
+
+              <!-- Solo se muestra si quedó registrado: las transacciones
+                   anteriores a este campo no tienen con qué rellenarlo. -->
+              @if (transaction()!.paymentMethod) {
+                <div>
+                  <p class="text-sm text-gray-500">Forma de pago</p>
+                  <p class="font-medium text-gray-900">{{ transaction()!.paymentMethod!.name }}</p>
+                </div>
+
+                <div>
+                  <p class="text-sm text-gray-500">Destino del dinero</p>
+                  <p class="font-medium text-gray-900">{{ transaction()!.paymentDestination?.name ?? '-' }}</p>
+                </div>
+              }
             </div>
 
             <!-- Observación -->

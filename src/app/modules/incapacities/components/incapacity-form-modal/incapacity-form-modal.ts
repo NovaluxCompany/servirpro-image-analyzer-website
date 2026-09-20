@@ -11,7 +11,6 @@ import {
 } from '../../interfaces/incapacity.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 import { ToastService } from '../../../../core/service/toast.service';
-import { TokenService } from '../../../../core/service/token.service';
 import { IncapacityHistoryComponent } from '../incapacity-history/incapacity-history';
 
 /** Mismo tope que valida el backend (MAX_INCAPACITY_DAYS en el DTO). */
@@ -36,13 +35,20 @@ interface DocumentSlot {
   hint?: string;
 }
 
-/** Slots fijos: no dependen del origen elegido. */
+/**
+ * Slots fijos: no dependen del origen elegido.
+ *
+ * La autorización bancaria ya NO se pide al radicar — se quitó también de
+ * la matriz por origen del backend (ver
+ * 20-migration-quitar-autorizacion-bancaria.sql). El tipo de documento
+ * sigue existiendo: las incapacidades viejas tienen ese soporte cargado y
+ * se sigue viendo en la lista de soportes.
+ */
 const BASE_SLOTS: Omit<DocumentSlot, 'enabled'>[] = [
   { type: 'INCAPACIDAD', label: 'Incapacidad', required: true },
   { type: 'HISTORIA_CLINICA', label: 'Historia clínica', required: true,
     hint: 'Dato sensible: solo lo abre quien tenga el permiso, y cada consulta queda registrada.' },
   { type: 'CERT_BANCARIO', label: 'Certificado bancario (no mayor a 30 días)', required: true },
-  { type: 'AUTORIZACION_BANCARIA', label: 'Autorización bancaria', required: true },
   { type: 'AUTORIZACION_PAGO_TERCERO', label: 'Autorización a terceros', required: false,
     hint: 'Solo si la cuenta bancaria no es del afiliado.' },
 ];
@@ -78,7 +84,6 @@ export class IncapacityFormModalComponent {
   private _fb = inject(FormBuilder);
   private _service = inject(IncapacitiesService);
   private _toast = inject(ToastService);
-  private _tokenService = inject(TokenService);
 
   isVisible = input<boolean>(false);
   affiliationId = input<number | null>(null);
@@ -149,14 +154,7 @@ export class IncapacityFormModalComponent {
       originCode ? (this.documentRequirements()[originCode] ?? []).map((r) => r.documentType) : [],
     );
 
-    // El rol "Incapacidad" gestiona el trámite sin acceso a cuentas bancarias
-    // del afiliado, así que para ese rol este soporte no puede ser obligatorio.
-    const isIncapacidadRole = this._tokenService.hasRole('Incapacidad');
-    const base: DocumentSlot[] = BASE_SLOTS.map((slot) => ({
-      ...slot,
-      enabled: true,
-      required: slot.type === 'AUTORIZACION_BANCARIA' && isIncapacidadRole ? false : slot.required,
-    }));
+    const base: DocumentSlot[] = BASE_SLOTS.map((slot) => ({ ...slot, enabled: true }));
     const gated: DocumentSlot[] = (Object.keys(ORIGIN_GATED_SLOTS) as IncapacityDocumentType[]).map((type) => ({
       type,
       label: ORIGIN_GATED_SLOTS[type]!,

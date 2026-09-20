@@ -6,6 +6,7 @@ import { TransactionsService } from '../../services/transactions.service';
 import { AffiliatesFormComponent } from '../../components/affiliates-form/affiliates-form';
 import { ImageUploaderComponent } from '../../components/image-uploader/image-uploader';
 import { Affiliate } from '../../interfaces/affiliate.interface';
+import { PaymentDestinationOption, PaymentMethodOption } from '../../interfaces/payment-method.interface';
 import { PermissionService } from '../../../../core/service/permission.service';
 import { ToastService } from '../../../../core/service/toast.service';
 
@@ -28,16 +29,77 @@ export class TransactionCreateComponent {
   errorMessage = signal<string | null>(null);
   uploadedImages = signal<File[]>([]);
 
+  /**
+   * Bloqueo global de transacciones. Con el bloqueo encendido se puede entrar
+   * a esta pantalla, pero solo para registrar el pago de ingreso de afiliados
+   * nuevos: ese cobro no puede esperar al cierre de mes sin dejar al afiliado
+   * sin cobertura. Quién es nuevo lo decide `affiliations.is_new` en el
+   * backend; acá se usa para no dejar armar un pago que se va a rechazar.
+   */
+  transactionsLocked = signal(false);
+
+  // Formas de pago con sus destinos. Vienen del catálogo en BD, no de una lista
+  // fija acá: agregar un destino es insertar una fila, no tocar este archivo.
+  paymentMethods = signal<PaymentMethodOption[]>([]);
+  paymentDestinations = signal<PaymentDestinationOption[]>([]);
+
   ngOnInit(): void {
     // Defensa adicional: si llegó aquí sin permiso (guard fallido), redirige sin toast duplicado
     if (!this._permission.can('create', '/transacciones')) {
       this._router.navigate(['/transacciones']);
+      return;
+    }
+    this.loadPaymentMethods();
+    this.loadLockStatus();
+  }
+
+  private loadLockStatus(): void {
+    this._transactionsService.getLockStatus().subscribe({
+      next: (res) => this.transactionsLocked.set(res.locked),
+      // Si la consulta falla se asume desbloqueado: el backend valida igual al
+      // enviar, y dar por bloqueado lo que quizá no lo está frenaría pagos
+      // legítimos por un error de red.
+      error: () => this.transactionsLocked.set(false),
+    });
+  }
+
+  private loadPaymentMethods(): void {
+    this._transactionsService.getPaymentMethods().subscribe({
+      next: (methods) => this.paymentMethods.set(methods),
+      error: (error) => this._toast.showError(error?.message ?? 'No se pudieron cargar las formas de pago.'),
+    });
+  }
+
+  /**
+   * El destino depende de la forma de pago: al cambiarla se recarga la lista y
+   * se limpia lo que hubiera elegido, porque un destino de transferencia no
+   * necesariamente se ofrece para efectivo (el backend rechaza el par inválido
+   * de todos modos, pero dejarlo visible invitaría al error).
+   */
+  onPaymentMethodChange(): void {
+    const methodId = Number(this.form.get('paymentMethodId')?.value);
+    const method = this.paymentMethods().find((m) => m.id === methodId);
+    const destinations = method?.destinations ?? [];
+    this.paymentDestinations.set(destinations);
+
+    const control = this.form.get('paymentDestinationId');
+    control?.setValue('');
+    // Habilitar/deshabilitar por control y no con [disabled] en la plantilla:
+    // en formularios reactivos Angular advierte sobre esa segunda forma.
+    if (destinations.length > 0) {
+      control?.enable();
+    } else {
+      control?.disable();
     }
   }
 
   form = this._fb.group({
     totalValue: [{ value: 0, disabled: true }, [Validators.required, Validators.min(1)]],
     amountPaid: [{ value: 0, disabled: true }, [Validators.required, Validators.min(1)]],
+    paymentMethodId: ['', [Validators.required]],
+    // Arranca deshabilitado: sin forma de pago elegida no hay destinos que
+    // ofrecer. Se habilita en onPaymentMethodChange().
+    paymentDestinationId: [{ value: '', disabled: true }, [Validators.required]],
     observation: ['', [Validators.maxLength(2000)]]
   });
 
@@ -56,15 +118,48 @@ export class TransactionCreateComponent {
     this.form.get('amountPaid')?.setValue(totalValue);
   }
 
+  /**
+   * Con el bloqueo encendido y nadie seleccionado no hay pago posible: los que
+   * no son nuevos no se dejan marcar, así que la selección vacía significa que
+   * en esta búsqueda no hay a quién cobrarle. El botón queda inhabilitado en
+   * vez de dejar mandar algo que el backend va a rechazar.
+   *
+   * Sin bloqueo el botón sigue habilitado con la selección vacía, como
+   * siempre: al tocarlo aparece el aviso de "debes seleccionar al menos un
+   * afiliado", que es lo que orienta a quien recién está llenando el
+   * formulario.
+   */
+  lockedWithoutSelection(): boolean {
+    return this.transactionsLocked() && !this.affiliatesForm?.isValid();
+  }
+
   /** Bloquea el botón de crear transacción mientras algún afiliado
-   *  seleccionado ya tenga una transacción registrada este mes — respaldo
-   *  por si el usuario no ve el aviso inline en la fila. */
+   *  seleccionado ya tenga una transacción registrada este mes, o no pueda
+   *  pagarse por el bloqueo global — respaldo por si el usuario no ve el
+   *  aviso inline en la fila. */
   isSubmitBlocked(): boolean {
-    return this.isLoading() || !!this.affiliatesForm?.hasDuplicates();
+    return (
+      this.isLoading() ||
+      !!this.affiliatesForm?.hasDuplicates() ||
+      !!this.affiliatesForm?.hasLockedSelection() ||
+      this.lockedWithoutSelection()
+    );
   }
 
   onSubmit(): void {
     this.errorMessage.set(null);
+
+    // Se revisa antes que lo demás: con el bloqueo encendido, el pago de
+    // alguien que no es nuevo no se va a poder registrar por más completo que
+    // esté el resto del formulario.
+    if (this.affiliatesForm.hasLockedSelection()) {
+      this.errorMessage.set(
+        'Transacciones bloqueadas: solo se pueden registrar pagos de afiliados nuevos. ' +
+          `Quita de la selección a ${this.affiliatesForm.lockedSelectionNames().join(', ')}.`,
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     if (this.affiliatesForm.hasDuplicates()) {
       this.errorMessage.set(
@@ -102,11 +197,14 @@ export class TransactionCreateComponent {
 
     // Construir FormData
     const formData = new FormData();
-    const { totalValue, amountPaid, observation } = this.form.getRawValue();
+    const { totalValue, amountPaid, observation, paymentMethodId, paymentDestinationId } =
+      this.form.getRawValue();
 
     formData.append('reference', reference);
     formData.append('totalValue', totalValue!.toString());
     formData.append('amountPaid', amountPaid!.toString());
+    formData.append('paymentMethodId', String(paymentMethodId));
+    formData.append('paymentDestinationId', String(paymentDestinationId));
 
     // Agregar observación si existe
     if (observation && observation.trim()) {

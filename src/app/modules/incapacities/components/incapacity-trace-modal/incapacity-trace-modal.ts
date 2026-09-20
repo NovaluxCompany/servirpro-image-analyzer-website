@@ -97,6 +97,11 @@ export class IncapacityTraceModalComponent {
   /** Solo tiene sentido hablar de correo cuando la gestión es Gestión. */
   showsEmailChip = computed(() => this.incapacity()?.routedTo === 'GESTION');
 
+  /**
+   * Etiquetas del estado interno (Servirpro). La bitácora guarda el `code`
+   * como texto plano —es una foto histórica, no una FK al catálogo—, así
+   * que acá toca traducirlo a mano.
+   */
   private readonly statusLabels: Record<string, string> = {
     PENDIENTE: 'Pendiente',
     EN_PROCESO: 'En proceso',
@@ -107,6 +112,18 @@ export class IncapacityTraceModalComponent {
     // El código interno sigue siendo ENVIADO_A_CYA; lo que ve el usuario
     // es la gestión que sigue: el registro en PILA.
     ENVIADO_A_CYA: 'Enviado para PILA',
+  };
+
+  /**
+   * Del lado del tercero los mismos códigos se llaman distinto (ver
+   * 19-migration-estados-tercero-radicado-pagada.sql): EN_PROCESO es que el
+   * trámite quedó radicado ante el tercero y APROBADO es que el tercero ya
+   * pagó. No se puede usar un solo mapa para los dos lados porque APROBADO
+   * significa cosas distintas en cada uno.
+   */
+  private readonly thirdPartyStatusLabels: Record<string, string> = {
+    EN_PROCESO: 'Radicado',
+    APROBADO: 'Pagada',
   };
 
   private readonly actionLabels: Record<string, string> = {
@@ -158,8 +175,17 @@ export class IncapacityTraceModalComponent {
     return this.actionLabels[action] ?? action;
   }
 
-  valueLabel(value: string | null): string {
+  /**
+   * `scope` decide de qué lado se lee el código: los valores de una entrada
+   * TERCERO son estados del tercero, los demás son del estado interno. Los
+   * que no son estados (el destino en un ENRUTAMIENTO, por ejemplo) no
+   * están en ningún mapa y salen tal cual.
+   */
+  valueLabel(value: string | null, scope?: string): string {
     if (!value) return '—';
+    if (scope === 'TERCERO' && this.thirdPartyStatusLabels[value]) {
+      return this.thirdPartyStatusLabels[value];
+    }
     return this.statusLabels[value] ?? value;
   }
 

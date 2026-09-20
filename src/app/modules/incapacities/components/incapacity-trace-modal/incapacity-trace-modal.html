@@ -91,9 +91,9 @@
 
                   @if (entry.oldValue || entry.newValue) {
                     <p class="mt-1 text-xs text-gray-600">
-                      <span class="text-gray-400">{{ valueLabel(entry.oldValue) }}</span>
+                      <span class="text-gray-400">{{ valueLabel(entry.oldValue, entry.scope) }}</span>
                       <span class="mx-1 text-gray-300">&rarr;</span>
-                      <span class="font-semibold text-gray-900">{{ valueLabel(entry.newValue) }}</span>
+                      <span class="font-semibold text-gray-900">{{ valueLabel(entry.newValue, entry.scope) }}</span>
                     </p>
                   }
 
