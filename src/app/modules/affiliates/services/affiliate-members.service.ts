@@ -6,6 +6,7 @@ import { TokenService } from '../../../core/service/token.service';
 import { AffiliateMember,CreateAffiliateMemberDto,UpdateAffiliateMemberDto,} from '../interfaces/affiliate-member.interface';
 import { Plan, Company, Grouper, Advisor, Fidelizador, EpsItem, Pension, CompensationBox, Branch, Department, CityOption, } from '../interfaces/catalog.interface';
 import { PaginatedAffiliatesResponse } from '../interfaces/paginated-affiliates.interface';
+import { DisaffiliationHistoryRow } from '../../deactivate-affiliates/interfaces/disaffiliation.interface';
 
 export interface AffiliateFilters {
   page?: number;
@@ -349,6 +350,39 @@ export class AffiliateMembersService {
   getDeactivationReasons(): Observable<{ id: number; code: string; label: string }[]> {
     return this._http
       .get<{ id: number; code: string; label: string }[]>(`${environment.urlBD}/deactivation-reasons/dropdown`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(() => of([])));
+  }
+
+  // ── Desafiliación (paso 1: registrar la solicitud, "enviado a validar") ──
+  getDisaffiliationReasons(): Observable<{ id: number; code: string; label: string }[]> {
+    return this._http
+      .get<{ id: number; code: string; label: string }[]>(`${environment.urlBD}/disaffiliations/reasons/dropdown`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(() => of([])));
+  }
+
+  createDisaffiliationRequest(
+    affiliationId: number,
+    companyId: number | undefined,
+    reasonId: number,
+    observation?: string,
+  ): Observable<any> {
+    return this._http
+      .post(
+        `${environment.urlBD}/disaffiliations`,
+        { affiliationId, companyId, reasonId, observation },
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError(this.handleError));
+  }
+
+  // ── Desafiliación (historial completo para el tab de la ficha del afiliado) ──
+  getDisaffiliationHistory(affiliationId: number): Observable<DisaffiliationHistoryRow[]> {
+    return this._http
+      .get<DisaffiliationHistoryRow[]>(`${environment.urlBD}/disaffiliations/history/${affiliationId}`, {
         headers: this.getHeaders(),
       })
       .pipe(catchError(() => of([])));
