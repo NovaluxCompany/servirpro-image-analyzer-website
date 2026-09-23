@@ -434,6 +434,29 @@ export class AffiliateFormModalComponent implements OnInit {
     );
   }
 
+  // Cada plan existe duplicado por tipo: hay un "ARL2" DEPENDIENTE y otro
+  // INDEPENDIENTE, con ids distintos. Si el usuario elige el plan y despues
+  // cambia el tipo, el control sigue guardando el id del tipo anterior (el
+  // getter planOptions lo conserva a proposito para no vaciar el select) y el
+  // backend rechaza el guardado con "El plan X es para afiliados DEPENDIENTE,
+  // pero el afiliado es INDEPENDIENTE". Por eso al cambiar el tipo se remapea
+  // el plan a su homonimo del nuevo tipo y, si no existe, se limpia para que
+  // el usuario lo vuelva a elegir.
+  private remapPlanToAffiliateType(affiliateType: string | null | undefined): void {
+    const planControl = this.form.get('planId');
+    const selectedId = planControl?.value;
+    if (!planControl || !selectedId) return;
+
+    const selected = this.plans().find((p) => String(p.id) === String(selectedId));
+    if (!selected || selected.affiliateType === affiliateType) return;
+
+    const normalize = (name: string) => name.trim().toUpperCase();
+    const equivalent = this.plans().find(
+      (p) => p.affiliateType === affiliateType && normalize(p.name) === normalize(selected.name),
+    );
+    planControl.setValue(equivalent ? String(equivalent.id) : '');
+  }
+
   private validateAffiliateType(): void {
     const companyControl = this.form.get('companyId');
     const grouperControl = this.form.get('grouperId');
@@ -508,7 +531,8 @@ export class AffiliateFormModalComponent implements OnInit {
       this.loadAdvisorsForFidelizador(fidelizadorId).subscribe();
     });
 
-    this.form.get('affiliateType')?.valueChanges.subscribe(() => {
+    this.form.get('affiliateType')?.valueChanges.subscribe((type) => {
+      this.remapPlanToAffiliateType(type);
       this.validateAffiliateType();
     });
 
