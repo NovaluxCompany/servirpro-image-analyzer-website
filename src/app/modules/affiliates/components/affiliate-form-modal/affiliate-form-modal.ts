@@ -7,6 +7,7 @@ import { PermissionService } from '../../../../core/service/permission.service';
 import { AffiliateMember, CreateAffiliateMemberDto } from '../../interfaces/affiliate-member.interface';
 import { Plan, Company, Grouper, Advisor, Fidelizador, EpsItem, Pension, CompensationBox, Branch, Department, CityOption } from '../../interfaces/catalog.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
+import { extractWhatsappNumber } from '../../utils/whatsapp-number.util';
 import { forkJoin, of, switchMap } from 'rxjs';
 
 @Component({
@@ -74,6 +75,12 @@ export class AffiliateFormModalComponent implements OnInit {
 
   section1Open = true
   section2Open = false
+
+  // true = el número de WhatsApp lo escribió (o ya lo tenía guardado) una
+  // persona, así que cambiar la referencia no lo pisa. Mientras sea false el
+  // campo se recalcula en cada tecla de la referencia — si no, un número a
+  // medio digitar quedaría congelado.
+  private whatsappNumberEditedByUser = false;
 
   readonly documentTypeOptions: SelectOption[] = [
     { value: 'CC', label: 'CC' },
@@ -167,6 +174,11 @@ export class AffiliateFormModalComponent implements OnInit {
     departmentCode: ['', Validators.required],
     cityCode: ['', Validators.required],
     reference: ['', Validators.required],
+    // Se auto-llena con el celular que traiga la referencia (ver
+    // ngOnInit) y se puede corregir a mano. No es obligatorio: sin él el
+    // afiliado simplemente no recibe certificados por WhatsApp (el cargue
+    // lo deja en ERROR con el motivo).
+    whatsappNumber: ['', [Validators.maxLength(20), Validators.pattern(/^[0-9+()\s.-]*$/)]],
     profession: ['', Validators.maxLength(255)],
     //Fecha whatsapp
     companyEntryDate: [{ value: '', disabled: false }, Validators.required],
@@ -219,6 +231,7 @@ export class AffiliateFormModalComponent implements OnInit {
           this.formReady.set(true);
           this.citiesLoading.set(false);
           this.form.reset();
+          this.whatsappNumberEditedByUser = false;
           this.form.patchValue({
             documentType: 'CC',
             isActive: true,
@@ -503,6 +516,19 @@ export class AffiliateFormModalComponent implements OnInit {
       this.validateOriginDate(value);
     });
     this.validateOriginDate(this.form.get('originId')?.value);
+
+    // La referencia es texto libre ("MARIA GOMEZ 300 123 4567"); de ahí sale
+    // el número al que se le mandan los certificados. Solo se auto-llena
+    // mientras nadie haya tocado el campo a mano (whatsappNumberEditedByUser).
+    this.form.get('reference')?.valueChanges.subscribe((reference: string | null) => {
+      if (this.whatsappNumberEditedByUser) return;
+      this.form.get('whatsappNumber')?.setValue(extractWhatsappNumber(reference) ?? '', { emitEvent: false });
+    });
+  }
+
+  /** El campo se editó a mano: de acá en adelante la referencia ya no lo pisa. */
+  onWhatsappNumberInput(): void {
+    this.whatsappNumberEditedByUser = true;
   }
 
   private loadCitiesForDepartment(departmentCode: string): void {
@@ -699,6 +725,9 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   private patchForm(a: AffiliateMember): void {
+    // Un número ya guardado cuenta como puesto a mano: editar la referencia
+    // no lo reemplaza (decisión 2026-09-22, "solo si está vacío").
+    this.whatsappNumberEditedByUser = !!a.whatsappNumber;
     this.selectedFiles = [];
     this.existingDocumentId = a.documents?.[0]?.id ?? null;
     this.keepExistingDocument = true;
@@ -721,6 +750,7 @@ export class AffiliateFormModalComponent implements OnInit {
       departmentCode: a.departmentCode ?? '',
       cityCode: a.cityCode ?? '',
       reference: a.reference ?? '',
+      whatsappNumber: a.whatsappNumber ?? '',
       profession: a.profession ?? '',
 
       companyId: a.companyId ? String(a.companyId) : '',
@@ -972,6 +1002,9 @@ export class AffiliateFormModalComponent implements OnInit {
       // que es la única columna real de ubicación (FK hacia cities).
       cityCode: raw.cityCode || undefined,
       reference: raw.reference!,
+      // null (no undefined) cuando queda vacío: así el backend sí limpia el
+      // número guardado si lo borraron a propósito en la edición.
+      whatsappNumber: raw.whatsappNumber?.trim() || null,
       profession: raw.profession || undefined,
       gender: raw.gender || undefined,
       whatsappEntryDate: this.todayDate(),
