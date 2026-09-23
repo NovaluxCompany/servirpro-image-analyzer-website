@@ -26,6 +26,7 @@ export interface PendingDisaffiliationRow {
   observation: string | null;
   requestedAt: string;
   requestedByName: string | null;
+  fidelizadorName: string | null;
 }
 
 export interface PendingDisaffiliationsResponse {
@@ -38,12 +39,13 @@ export interface PendingDisaffiliationsResponse {
 
 export interface DisaffiliationHistoryRow {
   requestId: number;
-  status: 'PENDING' | 'CONFIRMED';
+  status: 'PENDING' | 'CONFIRMED' | 'REJECTED';
   company: string;
   reasonLabel: string;
   observation: string | null;
   requestedAt: string;
   requestedByName: string | null;
+  fidelizadorName: string | null;
   confirmedAt: string | null;
   confirmedByName: string | null;
 }

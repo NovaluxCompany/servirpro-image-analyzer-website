@@ -15,6 +15,7 @@
           <th class="px-3 py-2 font-semibold whitespace-nowrap">Estado</th>
           <th class="px-3 py-2 font-semibold whitespace-nowrap">Motivo</th>
           <th class="px-3 py-2 font-semibold whitespace-nowrap">Observación</th>
+          <th class="px-3 py-2 font-semibold whitespace-nowrap">Fidelizador</th>
           <th class="px-3 py-2 font-semibold whitespace-nowrap">Solicitado por</th>
           <th class="px-3 py-2 font-semibold whitespace-nowrap">Fecha solicitud</th>
           <th class="px-3 py-2 font-semibold whitespace-nowrap">Confirmado por</th>
@@ -31,6 +32,7 @@
             </td>
             <td class="px-3 py-2 whitespace-nowrap">{{ request.reasonLabel }}</td>
             <td class="px-3 py-2">{{ request.observation ?? '—' }}</td>
+            <td class="px-3 py-2 whitespace-nowrap">{{ request.fidelizadorName ?? '—' }}</td>
             <td class="px-3 py-2 whitespace-nowrap">{{ request.requestedByName ?? '—' }}</td>
             <td class="px-3 py-2 whitespace-nowrap">{{ formatDate(request.requestedAt) }}</td>
             <td class="px-3 py-2 whitespace-nowrap">{{ request.confirmedByName ?? '—' }}</td>

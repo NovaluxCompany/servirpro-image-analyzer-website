@@ -212,6 +212,16 @@ export class DeactivateAffiliatesService {
       .pipe(catchError((error) => this.handleError(error, 'Error al desafiliar los afiliados seleccionados')));
   }
 
+  rejectDisaffiliation(requestId: number): Observable<{ requestId: number; status: string }> {
+    return this._http
+      .patch<{ requestId: number; status: string }>(
+        `${this.disaffiliationsBaseUrl}/${requestId}/reject`,
+        {},
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError((error) => this.handleError(error, 'Error al rechazar la solicitud de desafiliación')));
+  }
+
   confirmAllDisaffiliations(filters: DisaffiliationFilters = {}): Observable<ConfirmDisaffiliationsResponse> {
     return this._http
       .post<ConfirmDisaffiliationsResponse>(

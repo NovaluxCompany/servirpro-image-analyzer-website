@@ -90,6 +90,11 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly isSubmittingDisaffiliation = signal(false);
   protected readonly isDownloadingDisaffiliationExcel = signal(false);
 
+  // ── "No desafiliar" (rechazar una solicitud puntual) ────────────────
+  protected readonly showRejectDisaffiliationModal = signal(false);
+  protected readonly rejectingDisaffiliation = signal<PendingDisaffiliationRow | null>(null);
+  protected readonly isRejectingDisaffiliation = signal(false);
+
   // El botón del tab solo se muestra si hay al menos una solicitud
   // pendiente. Si el rol tiene otros tabs (Sin pago / Pagos incompletos),
   // esto simplemente lo oculta y el usuario sigue en los flujos a los que
@@ -549,6 +554,41 @@ export class DeactivateAffiliatesList implements OnInit {
         this.showDisaffiliationConfirmModal.set(false);
         this.isDisaffiliatingAll.set(false);
         this._toastService.showError(error.message || 'No fue posible desafiliar los afiliados.');
+      },
+    });
+  }
+
+  protected openRejectDisaffiliationModal(row: PendingDisaffiliationRow): void {
+    if (!this._permission.check('delete', '/desactivar-afiliados/desafiliar', 'Tu rol no tiene permiso para gestionar solicitudes de desafiliación.')) {
+      return;
+    }
+    this.rejectingDisaffiliation.set(row);
+    this.showRejectDisaffiliationModal.set(true);
+  }
+
+  protected cancelRejectDisaffiliation(): void {
+    this.showRejectDisaffiliationModal.set(false);
+    this.rejectingDisaffiliation.set(null);
+  }
+
+  protected confirmRejectDisaffiliation(): void {
+    const row = this.rejectingDisaffiliation();
+    if (!row || this.isRejectingDisaffiliation()) return;
+
+    this.isRejectingDisaffiliation.set(true);
+    this._deactivateAffiliatesService.rejectDisaffiliation(row.requestId).subscribe({
+      next: () => {
+        this.isRejectingDisaffiliation.set(false);
+        this.showRejectDisaffiliationModal.set(false);
+        this.rejectingDisaffiliation.set(null);
+        this._toastService.showSuccess('La solicitud de desafiliación quedó como no desafiliada.');
+        this.loadPendingDisaffiliations();
+      },
+      error: (error: Error) => {
+        this.isRejectingDisaffiliation.set(false);
+        this.showRejectDisaffiliationModal.set(false);
+        this.rejectingDisaffiliation.set(null);
+        this._toastService.showError(error.message || 'No fue posible procesar la solicitud.');
       },
     });
   }
@@ -1052,10 +1092,13 @@ export class DeactivateAffiliatesList implements OnInit {
     }).format(amount);
   }
 
-  // ── Descargar Excel (solo tab sin pago) ──────────────────────────
+  // ── Descargar Excel (tabs "Sin pago" y "Pagos incompletos") ──────────
   downloadExcel(): void {
-    if (this.activeTab() !== 'unpaid') return;
-    if (!this._permission.check('export', '/desactivar-afiliados/sin-pago', 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
+    const tab = this.activeTab();
+    if (tab !== 'unpaid' && tab !== 'underpaid') return;
+
+    const path = tab === 'unpaid' ? '/desactivar-afiliados/sin-pago' : '/desactivar-afiliados/pagos-incompletos';
+    if (!this._permission.check('export', path, 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
     if (this.totalItems() === 0) {
       this._toastService.showInfo('No hay resultados para descargar con los filtros actuales.');
       return;
@@ -1074,7 +1117,7 @@ export class DeactivateAffiliatesList implements OnInit {
       grouper: this.filterGrouper() || undefined,
     };
 
-    this._deactivateAffiliatesService.exportToExcel('unpaid', exportFilters).subscribe({
+    this._deactivateAffiliatesService.exportToExcel(tab, exportFilters).subscribe({
       next: (blob) => {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');

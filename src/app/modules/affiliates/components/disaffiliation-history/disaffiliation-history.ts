@@ -49,6 +49,8 @@ export class DisaffiliationHistoryComponent {
         return 'bg-red-100 text-red-700';
       case 'PENDING':
         return 'bg-amber-100 text-amber-700';
+      case 'REJECTED':
+        return 'bg-slate-100 text-slate-600';
       default:
         return 'bg-gray-100 text-gray-600';
     }
@@ -60,6 +62,8 @@ export class DisaffiliationHistoryComponent {
         return 'Desafiliado';
       case 'PENDING':
         return 'Pendiente de validar';
+      case 'REJECTED':
+        return 'No desafiliado';
       default:
         return status;
     }

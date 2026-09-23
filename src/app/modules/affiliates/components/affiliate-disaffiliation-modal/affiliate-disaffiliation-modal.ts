@@ -30,7 +30,7 @@ export class AffiliateDisaffiliationModalComponent implements OnInit {
   companyId: string | null = null;
   companies: Company[] = [];
 
-  // Viene de disaffiliation_reasons (Pago no realizado / Petición afiliado / Otros):
+  // Viene de disaffiliation_reasons (Retiro x 1 días / Retiro x 30 días):
   // agregar un motivo nuevo es un INSERT en esa tabla, no un deploy de este archivo.
   reasonOptions: { value: number; label: string }[] = [];
 
