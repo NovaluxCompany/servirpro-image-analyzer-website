@@ -158,6 +158,23 @@
               }
             </div>
 
+            <!-- WhatsApp al que se envían los certificados. Se auto-llena con el
+                 número que traiga la referencia mientras esté vacío; una vez
+                 escrito a mano, cambiar la referencia ya no lo reemplaza. -->
+            <div>
+              <label class="block mb-1.5 text-xs font-semibold text-gray-700">WhatsApp certificados</label>
+              <input type="text" formControlName="whatsappNumber" maxlength="20" placeholder="Ej: 573001234567"
+                (input)="onWhatsappNumberInput()"
+                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                [class.border-red-400]="isFieldInvalid('whatsappNumber')"
+                [class.border-gray-300]="!isFieldInvalid('whatsappNumber')">
+              @if (isFieldInvalid('whatsappNumber')) {
+              <p class="mt-1 text-xs text-red-500">Solo numeros (maximo 20 digitos)</p>
+              } @else {
+              <p class="mt-1 text-xs text-gray-500">Se toma de la referencia. Aqui llegan los certificados.</p>
+              }
+            </div>
+
             <!-- Fecha nacimiento -->
             <div>
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">Fecha de nacimiento</label>

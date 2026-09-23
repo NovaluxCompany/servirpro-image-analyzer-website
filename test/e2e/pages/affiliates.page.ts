@@ -1,6 +1,10 @@
 import { Page, Locator, expect } from '@playwright/test';
 import path from 'path';
-import { pickFirstSearchableSelectOption, pickFirstComboboxOption } from '../utils/searchable-select';
+import {
+  pickFirstSearchableSelectOption,
+  pickFirstComboboxOption,
+  fillSearchableCombobox,
+} from '../utils/searchable-select';
 
 const AFFILIATE_DOCUMENT_FIXTURE = path.resolve(__dirname, '../fixtures/subregiones.pdf');
 const AFFILIATE_DOCUMENT_FIXTURE_2 = path.resolve(__dirname, '../fixtures/generated/dummy-affiliate-document.pdf');
@@ -51,6 +55,13 @@ export interface NewAffiliateData {
   birthDate?: string;
   /** Texto del género (catálogo "Género"): "Hombre" o "Mujer" (así aparecen las opciones en el select, no "Masculino"/"Femenino"). Por defecto usa el primero disponible. */
   genderText?: string;
+  /**
+   * Referencia exacta a escribir (el campo es combobox de texto libre). Por
+   * defecto se elige la primera del catálogo. Se usa cuando la prueba
+   * necesita una referencia con un celular concreto, porque de ahí sale el
+   * "WhatsApp certificados".
+   */
+  reference?: string;
 }
 
 export class AffiliatesPage {
@@ -89,7 +100,11 @@ export class AffiliatesPage {
     await form.locator('input[formcontrolname="firstName"]').fill(data.firstName);
     await form.locator('input[formcontrolname="lastName"]').fill(data.lastName);
 
-    await pickFirstComboboxOption(this.page, form, 'Referencia');
+    if (data.reference) {
+      await fillSearchableCombobox(form, 'Referencia', data.reference);
+    } else {
+      await pickFirstComboboxOption(this.page, form, 'Referencia');
+    }
 
     if (data.birthDate) {
       await form.locator('input[formcontrolname="birthDate"]').fill(data.birthDate);
@@ -184,7 +199,14 @@ export class AffiliatesPage {
         await pickFirstSearchableSelectOption(this.page, form, 'Agrupadora');
       }
     }
-    await pickFirstSearchableSelectOption(this.page, form, 'Asesor');
+    // "Asesor" arranca vacío hasta que se elige "Fidelización": el modal solo
+    // ofrece los asesores ligados a ese fidelizador (ver
+    // loadAdvisorsForFidelizador en affiliate-form-modal.ts). Sin este paso el
+    // desplegable de Asesor nunca muestra opciones y el llenado falla con
+    // "El campo Asesor no mostró opciones". Ambos catálogos vienen del
+    // backend, así que usan el mismo margen de 45s que Plan/Sucursal.
+    await pickFirstSearchableSelectOption(this.page, form, 'Fidelización', { timeoutMs: 45_000 });
+    await pickFirstSearchableSelectOption(this.page, form, 'Asesor', { timeoutMs: 45_000 });
 
     // Sucursal y Descuento son opcionales en el formulario, pero se llenan
     // explícito (en vez de dejarlos vacíos) para que el afiliado de prueba
@@ -311,6 +333,20 @@ export class AffiliatesPage {
   async getReferralTypeLabel(): Promise<string> {
     const select = this.page.locator('form').locator('select[formcontrolname="originId"]');
     return select.locator('option:checked').innerText();
+  }
+
+  // ── WhatsApp certificados ─────────────────────────────────────────
+  // Campo abierto que se auto-llena con el celular que traiga la Referencia
+  // mientras nadie lo haya escrito a mano. Es el destino de los certificados
+  // que se cargan por cédula (ver DocumentUploadsService en la API).
+
+  get whatsappNumberInput(): Locator {
+    return this.page.locator('form').locator('input[formcontrolname="whatsappNumber"]');
+  }
+
+  /** Escribe la Referencia como texto libre (combobox allowFreeText). */
+  async fillReference(value: string): Promise<void> {
+    await fillSearchableCombobox(this.page.locator('form'), 'Referencia', value);
   }
 
   /** Valor actual del input "Fecha de origen" (solo visible/presente cuando el origen es Meta o Web). */
