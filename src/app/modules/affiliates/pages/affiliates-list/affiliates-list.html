@@ -340,14 +340,16 @@
                     [style.max-height.px]="dropdownPos().maxHeight">
 
                     <!-- Ver información -->
-                    <button type="button" (click)="openInfo(affiliate); closeDropdown()"
-                      class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 transition-colors">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      Ver información
-                    </button>
+                    @if (canViewInfo()) {
+                      <button type="button" (click)="openInfo(affiliate); closeDropdown()"
+                        class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        Ver información
+                      </button>
+                    }
 
                     <!-- Editar -->
                     <button type="button" (click)="openEdit(affiliate); closeDropdown()"
@@ -378,6 +380,18 @@
                       </svg>
                       Desactivar
                     </button>
+
+                    <!-- Desafiliar afiliado (registra la solicitud; queda enviada a validar) -->
+                    @if (canDisaffiliate()) {
+                      <button type="button" (click)="openDisaffiliationModal(affiliate); closeDropdown()"
+                        class="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-red-700 hover:bg-red-50 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        Desafiliar afiliado
+                      </button>
+                    }
                     }
 
                     <!-- Enviar correo -->
@@ -675,6 +689,9 @@
 
 <app-affiliate-status-modal [isVisible]="showStatusModal()" [affiliate]="selectedAffiliate()"
   (confirmed)="onStatusConfirmed()" (cancelled)="onStatusCancelled()" />
+
+<app-affiliate-disaffiliation-modal [isVisible]="showDisaffiliationModal()" [affiliate]="selectedAffiliate()"
+  (confirmed)="onDisaffiliationConfirmed()" (cancelled)="onDisaffiliationCancelled()" />
 
 <app-affiliate-send-email-modal [isVisible]="showSendEmailModal()" [affiliate]="selectedAffiliate()"
   (sent)="onEmailSent()" (cancelled)="onEmailModalCancelled()" />

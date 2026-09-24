@@ -18,8 +18,9 @@ import {
 } from '../interfaces/deactivate-affiliates.interface';
 import { DeactivateAffiliatesService } from '../services/deactivate-affiliates.service';
 import { AffiliateMembersService } from '../../affiliates/services/affiliate-members.service';
+import { PendingDisaffiliationRow } from '../interfaces/disaffiliation.interface';
 
-type InactivationTab = 'unpaid' | 'underpaid';
+type InactivationTab = 'unpaid' | 'underpaid' | 'disaffiliation';
 
 @Component({
   selector: 'app-deactivate-affiliates-list',
@@ -55,12 +56,147 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly context = signal<DeactivationContext | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly isPermissionError = signal(false);
+  // Antes solo elegía entre 'unpaid'/'underpaid': un rol que solo tuviera
+  // acceso a "Desafiliar" (sin Sin pago ni Pagos incompletos) igual
+  // arrancaba parado en un tab sin permiso, con la tabla vacía y sin
+  // explicación. Ahora recorre los tres en el mismo orden en que aparecen
+  // en la barra de tabs y cae en el primero al que el rol sí tiene acceso.
   protected readonly activeTab = signal<InactivationTab>(
-    this._permission.hasMenuEntry('/desactivar-afiliados/sin-pago') ? 'unpaid' : 'underpaid'
+    this._permission.hasMenuEntry('/desactivar-afiliados/sin-pago')
+      ? 'unpaid'
+      : this._permission.hasMenuEntry('/desactivar-afiliados/pagos-incompletos')
+        ? 'underpaid'
+        : this._permission.hasMenuEntry('/desactivar-afiliados/desafiliar')
+          ? 'disaffiliation'
+          : 'unpaid'
   );
 
   protected readonly unpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
   protected readonly underpaidAffiliates = signal<InactivationAffiliateRow[]>([]);
+
+  // ── Tab "Desafiliar" (paso 2: confirmar solicitudes pendientes) ─────
+  protected readonly pendingDisaffiliations = signal<PendingDisaffiliationRow[]>([]);
+  // Evita el parpadeo de "no hay registros" antes de que responda el backend.
+  protected readonly hasLoadedDisaffiliations = signal(false);
+  protected readonly disaffiliationSelectedIds = signal<number[]>([]);
+  protected readonly filterDisaffName = signal('');
+  protected readonly filterDisaffDocument = signal('');
+  protected readonly filterDisaffCompany = signal('');
+  protected readonly filterDisaffPlan = signal('');
+  protected readonly filterDisaffType = signal('');
+  protected readonly filterDisaffReason = signal('');
+  protected readonly showDisaffiliationConfirmModal = signal(false);
+  protected readonly isDisaffiliatingAll = signal(false);
+  protected readonly isSubmittingDisaffiliation = signal(false);
+  protected readonly isDownloadingDisaffiliationExcel = signal(false);
+
+  // ── "No desafiliar" (rechazar una solicitud puntual) ────────────────
+  protected readonly showRejectDisaffiliationModal = signal(false);
+  protected readonly rejectingDisaffiliation = signal<PendingDisaffiliationRow | null>(null);
+  protected readonly isRejectingDisaffiliation = signal(false);
+
+  // El botón del tab solo se muestra si hay al menos una solicitud
+  // pendiente. Si el rol tiene otros tabs (Sin pago / Pagos incompletos),
+  // esto simplemente lo oculta y el usuario sigue en los flujos a los que
+  // sí tiene acceso.
+  protected readonly showDisaffiliationTab = computed(
+    () => this.canViewDisaffiliation() && this.pendingDisaffiliations().length > 0,
+  );
+
+  // Si se llega a estar parado en "Desafiliar" sin ningún registro pendiente
+  // (por ejemplo, es el único permiso del rol y por eso arranca ahí, o se
+  // confirmó la última solicitud estando en el tab), no tiene sentido pintar
+  // filtros ni botones de acción: se reemplaza todo por un único mensaje.
+  protected readonly disaffiliationTableEmpty = computed(
+    () => this.hasLoadedDisaffiliations() && this.pendingDisaffiliations().length === 0,
+  );
+
+  protected readonly filteredDisaffiliations = computed(() => {
+    const all = this.pendingDisaffiliations();
+    const name = this.filterDisaffName().toLowerCase().trim();
+    const document = this.filterDisaffDocument().toLowerCase().trim();
+    const company = this.filterDisaffCompany().toLowerCase().trim();
+    const plan = this.filterDisaffPlan().toLowerCase().trim();
+    const type = this.filterDisaffType();
+    const reason = this.filterDisaffReason().toLowerCase().trim();
+
+    if (!name && !document && !company && !plan && !type && !reason) return all;
+
+    return all.filter((row) => {
+      if (name && !row.fullName?.toLowerCase().includes(name)) return false;
+      if (document && !row.documentNumber?.toLowerCase().includes(document)) return false;
+      if (company && row.company?.toLowerCase() !== company) return false;
+      if (plan && row.plan?.toLowerCase() !== plan) return false;
+      if (type && row.affiliateType !== type) return false;
+      if (reason && row.reasonLabel?.toLowerCase() !== reason) return false;
+      return true;
+    });
+  });
+
+  protected readonly hasDisaffFilters = computed(
+    () => !!(this.filterDisaffName() || this.filterDisaffDocument() || this.filterDisaffCompany()
+      || this.filterDisaffPlan() || this.filterDisaffType() || this.filterDisaffReason()),
+  );
+
+  private readonly uniqueDisaffOptions = (pick: (row: PendingDisaffiliationRow) => string | undefined): SelectOption[] =>
+    [...new Set(this.pendingDisaffiliations().map(pick).filter(Boolean) as string[])]
+      .sort()
+      .map((v) => ({ value: v, label: v }));
+
+  protected readonly disaffPlanOptions = computed(() => this.uniqueDisaffOptions((r) => r.plan));
+  protected readonly disaffCompanyOptions = computed(() => this.uniqueDisaffOptions((r) => r.company));
+  protected readonly disaffReasonOptions = computed(() => this.uniqueDisaffOptions((r) => r.reasonLabel));
+  protected readonly disaffTypeOptions: SelectOption[] = [
+    { value: 'INDEPENDIENTE', label: 'INDEPENDIENTE' },
+    { value: 'DEPENDIENTE', label: 'DEPENDIENTE' },
+  ];
+
+  private disaffServerFilters() {
+    return {
+      name: this.filterDisaffName() || undefined,
+      document: this.filterDisaffDocument() || undefined,
+      company: this.filterDisaffCompany() || undefined,
+      plan: this.filterDisaffPlan() || undefined,
+      affiliateType: this.filterDisaffType() || undefined,
+      reason: this.filterDisaffReason() || undefined,
+    };
+  }
+
+  protected readonly disaffiliationTotalItems = computed(() => this.filteredDisaffiliations().length);
+  protected readonly disaffiliationTotalPages = computed(() =>
+    Math.ceil((this.disaffiliationTotalItems() || 1) / (this.pageSize() || 1)),
+  );
+
+  protected readonly currentDisaffiliations = computed(() => {
+    const all = this.filteredDisaffiliations();
+    const start = (this.currentPage() - 1) * this.pageSize();
+    const end = start + this.pageSize();
+    return all.slice(start, end);
+  });
+
+  protected readonly selectedDisaffiliationCount = computed(() => this.disaffiliationSelectedIds().length);
+
+  protected readonly allDisaffiliationVisibleSelected = computed(() => {
+    const visible = this.currentDisaffiliations();
+    return visible.length > 0 && visible.every((row) => this.disaffiliationSelectedIds().includes(row.requestId));
+  });
+
+  protected readonly someDisaffiliationVisibleSelected = computed(() => {
+    const visible = this.currentDisaffiliations();
+    const selectedCount = visible.filter((row) => this.disaffiliationSelectedIds().includes(row.requestId)).length;
+    return selectedCount > 0 && selectedCount < visible.length;
+  });
+
+  protected readonly disaffiliationModalMessage = computed(() => {
+    if (this.isDisaffiliatingAll()) {
+      return `Se van a desafiliar <strong>${this.disaffiliationTotalItems()}</strong> afiliado(s)${this.hasDisaffFilters() ? ' según los filtros activos' : ''}. ¿Desea continuar?`;
+    }
+    if (this.selectedDisaffiliationCount() === 1) {
+      const row = this.pendingDisaffiliations().find((r) => this.disaffiliationSelectedIds().includes(r.requestId));
+      return `¿Desea desafiliar al afiliado con número de identificación <strong>${row?.documentNumber ?? ''}</strong>?`;
+    }
+    return `Se van a desafiliar <strong>${this.selectedDisaffiliationCount()}</strong> afiliado(s) seleccionado(s). ¿Desea continuar?`;
+  });
 
   protected readonly expandedAffiliateId = signal<number | null>(null);
   protected readonly isLoadingTransactions = signal(false);
@@ -78,6 +214,18 @@ export class DeactivateAffiliatesList implements OnInit {
   // Verifica si el usuario puede acceder al tab "Pagos Incompletos"
   protected readonly canViewUnderpaid = computed(() =>
     this._permission.hasMenuEntry('/desactivar-afiliados/pagos-incompletos')
+  );
+
+  // Verifica si el usuario puede acceder al tab "Desafiliar"
+  protected readonly canViewDisaffiliation = computed(() =>
+    this._permission.hasMenuEntry('/desactivar-afiliados/desafiliar')
+  );
+
+  // Si el rol no tiene acceso a ninguno de los tres tabs, no tiene sentido
+  // pintar tabs vacíos ni disparar cargas que van a devolver 403: se corta
+  // acá con un mensaje claro y no se deja "entrar" al módulo.
+  protected readonly hasAnyDeactivationAccess = computed(
+    () => this.canViewUnpaid() || this.canViewUnderpaid() || this.canViewDisaffiliation(),
   );
 
   // Verifica si el usuario puede desactivar afiliados en el tab actual
@@ -273,6 +421,209 @@ export class DeactivateAffiliatesList implements OnInit {
     this._affiliateMembersService.getDeactivationReasons().subscribe((reasons) => {
       this.reasonTypeOptions = reasons.map((r) => ({ value: r.id, label: r.label }));
     });
+
+    if (this.canViewDisaffiliation()) {
+      // El caso "Desafiliar es el único permiso y está vacío" ya lo resuelve
+      // disaffiliation-sole-access.guard.ts ANTES de llegar acá (si hubiera
+      // que sacar al usuario, ni siquiera se monta este componente), así que
+      // esta carga no necesita repetir esa validación.
+      this.loadPendingDisaffiliations();
+    }
+  }
+
+  // ── Tab "Desafiliar": carga/selección/confirmación ──────────────────
+  protected loadPendingDisaffiliations(): void {
+    this._deactivateAffiliatesService.getPendingDisaffiliations().subscribe({
+      next: (response) => {
+        this.pendingDisaffiliations.set(response.data);
+        this.disaffiliationSelectedIds.set([]);
+        this.hasLoadedDisaffiliations.set(true);
+      },
+      error: () => {
+        // Silencioso: la tabla queda vacía y cae en su propio estado "sin registros".
+        this.hasLoadedDisaffiliations.set(true);
+      },
+    });
+  }
+
+  protected setFilterDisaffName(value: string): void {
+    this.filterDisaffName.set(value);
+    this.currentPage.set(1);
+  }
+
+  protected setFilterDisaffDocument(value: string): void {
+    this.filterDisaffDocument.set(value);
+    this.currentPage.set(1);
+  }
+
+  protected setFilterDisaffCompany(value: string): void {
+    this.filterDisaffCompany.set(value);
+    this.currentPage.set(1);
+  }
+
+  protected setFilterDisaffPlan(value: string): void {
+    this.filterDisaffPlan.set(value ?? '');
+    this.currentPage.set(1);
+  }
+
+  protected setFilterDisaffType(value: string): void {
+    this.filterDisaffType.set(value ?? '');
+    this.currentPage.set(1);
+  }
+
+  protected setFilterDisaffReason(value: string): void {
+    this.filterDisaffReason.set(value ?? '');
+    this.currentPage.set(1);
+  }
+
+  protected clearDisaffFilters(): void {
+    this.filterDisaffName.set('');
+    this.filterDisaffDocument.set('');
+    this.filterDisaffCompany.set('');
+    this.filterDisaffPlan.set('');
+    this.filterDisaffType.set('');
+    this.filterDisaffReason.set('');
+    this.currentPage.set(1);
+  }
+
+  protected toggleDisaffRow(id: number, checked: boolean): void {
+    const next = new Set(this.disaffiliationSelectedIds());
+    checked ? next.add(id) : next.delete(id);
+    this.disaffiliationSelectedIds.set(Array.from(next));
+  }
+
+  protected toggleDisaffVisibleRows(checked: boolean): void {
+    const next = new Set(this.disaffiliationSelectedIds());
+    this.currentDisaffiliations().forEach((row) => {
+      checked ? next.add(row.requestId) : next.delete(row.requestId);
+    });
+    this.disaffiliationSelectedIds.set(Array.from(next));
+  }
+
+  protected isDisaffSelected(id: number): boolean {
+    return this.disaffiliationSelectedIds().includes(id);
+  }
+
+  protected openDisaffiliationConfirmModal(): void {
+    if (this.selectedDisaffiliationCount() === 0) return;
+    if (!this._permission.check('delete', '/desactivar-afiliados/desafiliar', 'Tu rol no tiene permiso para desafiliar afiliados.')) {
+      return;
+    }
+    this.isDisaffiliatingAll.set(false);
+    this.showDisaffiliationConfirmModal.set(true);
+  }
+
+  protected disaffiliateAll(): void {
+    if (!this._permission.check('delete', '/desactivar-afiliados/desafiliar', 'Tu rol no tiene permiso para desafiliar afiliados.')) {
+      return;
+    }
+    if (this.filteredDisaffiliations().length === 0) {
+      this._toastService.showInfo('No hay solicitudes de desafiliación pendientes para desafiliar.');
+      return;
+    }
+    this.isDisaffiliatingAll.set(true);
+    this.showDisaffiliationConfirmModal.set(true);
+  }
+
+  protected cancelDisaffiliationConfirm(): void {
+    this.showDisaffiliationConfirmModal.set(false);
+    this.isDisaffiliatingAll.set(false);
+  }
+
+  protected confirmDisaffiliation(): void {
+    if (this.isSubmittingDisaffiliation()) return;
+    this.isSubmittingDisaffiliation.set(true);
+
+    const request = this.isDisaffiliatingAll()
+      ? this._deactivateAffiliatesService.confirmAllDisaffiliations(this.disaffServerFilters())
+      : this._deactivateAffiliatesService.confirmDisaffiliations([...this.disaffiliationSelectedIds()]);
+
+    request.subscribe({
+      next: (response) => {
+        this.isSubmittingDisaffiliation.set(false);
+        this.showDisaffiliationConfirmModal.set(false);
+        this.isDisaffiliatingAll.set(false);
+        this._toastService.showSuccess(response.message || 'Afiliados desafiliados exitosamente.');
+        if (response.failed?.length) {
+          this._toastService.showError(`${response.failed.length} solicitud(es) no pudieron procesarse.`);
+        }
+        this.loadPendingDisaffiliations();
+      },
+      error: (error: Error) => {
+        this.isSubmittingDisaffiliation.set(false);
+        this.showDisaffiliationConfirmModal.set(false);
+        this.isDisaffiliatingAll.set(false);
+        this._toastService.showError(error.message || 'No fue posible desafiliar los afiliados.');
+      },
+    });
+  }
+
+  protected openRejectDisaffiliationModal(row: PendingDisaffiliationRow): void {
+    if (!this._permission.check('delete', '/desactivar-afiliados/desafiliar', 'Tu rol no tiene permiso para gestionar solicitudes de desafiliación.')) {
+      return;
+    }
+    this.rejectingDisaffiliation.set(row);
+    this.showRejectDisaffiliationModal.set(true);
+  }
+
+  protected cancelRejectDisaffiliation(): void {
+    this.showRejectDisaffiliationModal.set(false);
+    this.rejectingDisaffiliation.set(null);
+  }
+
+  protected confirmRejectDisaffiliation(): void {
+    const row = this.rejectingDisaffiliation();
+    if (!row || this.isRejectingDisaffiliation()) return;
+
+    this.isRejectingDisaffiliation.set(true);
+    this._deactivateAffiliatesService.rejectDisaffiliation(row.requestId).subscribe({
+      next: () => {
+        this.isRejectingDisaffiliation.set(false);
+        this.showRejectDisaffiliationModal.set(false);
+        this.rejectingDisaffiliation.set(null);
+        this._toastService.showSuccess('La solicitud de desafiliación quedó como no desafiliada.');
+        this.loadPendingDisaffiliations();
+      },
+      error: (error: Error) => {
+        this.isRejectingDisaffiliation.set(false);
+        this.showRejectDisaffiliationModal.set(false);
+        this.rejectingDisaffiliation.set(null);
+        this._toastService.showError(error.message || 'No fue posible procesar la solicitud.');
+      },
+    });
+  }
+
+  protected downloadDisaffiliationExcel(): void {
+    if (!this._permission.check('export', '/desactivar-afiliados/desafiliar', 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
+    if (this.disaffiliationTotalItems() === 0) {
+      this._toastService.showInfo('No hay resultados para descargar con los filtros actuales.');
+      return;
+    }
+
+    this.isDownloadingDisaffiliationExcel.set(true);
+    this._toast.showInfo('Descarga en proceso...');
+
+    this._deactivateAffiliatesService
+      .exportDisaffiliationsToExcel(this.disaffServerFilters())
+      .subscribe({
+        next: (blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          const timestamp = new Date().toISOString().split('T')[0];
+          link.download = `desafiliar_afiliados_${timestamp}.xlsx`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          this.isDownloadingDisaffiliationExcel.set(false);
+          this._toast.showSuccess('Excel descargado exitosamente');
+        },
+        error: (error) => {
+          this.isDownloadingDisaffiliationExcel.set(false);
+          this._toast.showError(error?.message ?? 'Error al descargar el Excel. Intenta de nuevo.');
+        },
+      });
   }
 
   protected onPageSizeChange(newSize: number): void {
@@ -338,13 +689,30 @@ export class DeactivateAffiliatesList implements OnInit {
     this.isPermissionError.set(false);
     this.selectedIds.set([]);
 
+    // Ni "Sin pago" ni "Pagos incompletos" ni "Desafiliar": no hay nada que
+    // pedirle al backend (ni siquiera el contexto, que también exige
+    // permiso sobre el menú padre) — se corta acá con el mensaje de
+    // permisos en vez de una llamada que va a devolver 403 igual.
+    if (!this.hasAnyDeactivationAccess()) {
+      this.isPermissionError.set(true);
+      this.isLoading.set(false);
+      return;
+    }
+
+    // Antes "unpaid" se pedía siempre, sin importar el permiso: un rol sin
+    // acceso a "Sin pago" recibía un 403 ahí, y como forkJoin falla entero
+    // ante cualquier error, eso tumbaba TODA la carga (incluido el tab al
+    // que el rol sí tenía acceso) y dejaba la vista vacía sin explicación.
+    const unpaidRequest = this.canViewUnpaid()
+      ? this._deactivateAffiliatesService.getUnpaidAffiliates()
+      : of([]);
     const underpaidRequest = this.canViewUnderpaid()
       ? this._deactivateAffiliatesService.getUnderpaidAffiliates()
       : of([]);
 
     forkJoin({
       context: this._deactivateAffiliatesService.getContext(),
-      unpaid: this._deactivateAffiliatesService.getUnpaidAffiliates(),
+      unpaid: unpaidRequest,
       underpaid: underpaidRequest,
     }).subscribe({
       next: (response) => {
@@ -370,7 +738,9 @@ export class DeactivateAffiliatesList implements OnInit {
 
     const path = tab === 'unpaid'
       ? '/desactivar-afiliados/sin-pago'
-      : '/desactivar-afiliados/pagos-incompletos';
+      : tab === 'underpaid'
+        ? '/desactivar-afiliados/pagos-incompletos'
+        : '/desactivar-afiliados/desafiliar';
 
     if (!this._permission.hasMenuEntry(path)) {
       this._toastService.showError('No tienes permiso para acceder a este módulo.');
@@ -380,7 +750,9 @@ export class DeactivateAffiliatesList implements OnInit {
     this.activeTab.set(tab);
     this.currentPage.set(1);
     this.selectedIds.set([]);
+    this.disaffiliationSelectedIds.set([]);
     this.clearFilters();
+    this.clearDisaffFilters();
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -663,6 +1035,10 @@ export class DeactivateAffiliatesList implements OnInit {
     return item.affiliateId;
   }
 
+  protected trackByRequestId(_: number, item: PendingDisaffiliationRow): number {
+    return item.requestId;
+  }
+
   protected trackByTransactionId(_: number, item: AffiliateTransactionRow): string {
     return item.transactionId;
   }
@@ -716,10 +1092,13 @@ export class DeactivateAffiliatesList implements OnInit {
     }).format(amount);
   }
 
-  // ── Descargar Excel (solo tab sin pago) ──────────────────────────
+  // ── Descargar Excel (tabs "Sin pago" y "Pagos incompletos") ──────────
   downloadExcel(): void {
-    if (this.activeTab() !== 'unpaid') return;
-    if (!this._permission.check('export', '/desactivar-afiliados/sin-pago', 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
+    const tab = this.activeTab();
+    if (tab !== 'unpaid' && tab !== 'underpaid') return;
+
+    const path = tab === 'unpaid' ? '/desactivar-afiliados/sin-pago' : '/desactivar-afiliados/pagos-incompletos';
+    if (!this._permission.check('export', path, 'Tu rol no tiene permiso para descargar reportes en Excel.')) return;
     if (this.totalItems() === 0) {
       this._toastService.showInfo('No hay resultados para descargar con los filtros actuales.');
       return;
@@ -738,7 +1117,7 @@ export class DeactivateAffiliatesList implements OnInit {
       grouper: this.filterGrouper() || undefined,
     };
 
-    this._deactivateAffiliatesService.exportToExcel(this.activeTab(), exportFilters).subscribe({
+    this._deactivateAffiliatesService.exportToExcel(tab, exportFilters).subscribe({
       next: (blob) => {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');

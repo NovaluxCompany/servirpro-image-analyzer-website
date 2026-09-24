@@ -6,6 +6,7 @@ import { AffiliateMembersService, AffiliateFilters } from '../../services/affili
 import { AffiliateMember, AffiliateDocument } from '../../interfaces/affiliate-member.interface';
 import { AffiliateFormModalComponent } from '../../components/affiliate-form-modal/affiliate-form-modal';
 import { AffiliateStatusModalComponent } from '../../components/affiliate-status-modal/affiliate-status-modal';
+import { AffiliateDisaffiliationModalComponent } from '../../components/affiliate-disaffiliation-modal/affiliate-disaffiliation-modal';
 import { AffiliateSendEmailModalComponent } from '../../components/affiliate-send-email-modal/affiliate-send-email-modal';
 import { AffiliateInfoModalComponent } from '../../components/affiliate-info-modal/affiliate-info-modal';
 import { AffiliateDocumentsModalComponent } from '../../components/affiliate-documents-modal/affiliate-documents-modal';
@@ -25,7 +26,7 @@ import { debounceTime, Subject } from 'rxjs';
 @Component({
   selector: 'app-affiliates-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, IncapacityFormModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
+  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateDisaffiliationModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, IncapacityFormModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './affiliates-list.html',
 })
 export class AffiliatesListComponent implements OnInit {
@@ -79,6 +80,7 @@ export class AffiliatesListComponent implements OnInit {
   // ── Modales ───────────────────────────────────────────────────────
   showFormModal = signal(false);
   showStatusModal = signal(false);
+  showDisaffiliationModal = signal(false);
   showSendEmailModal = signal(false);
   showSendEmailObservationModal = signal(false);
   showInfoModal = signal(false);
@@ -308,8 +310,14 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   openInfo(affiliate: AffiliateMember): void {
+    if (!this._permission.check('view', undefined, 'Tu rol no tiene permiso para ver la información de los afiliados.')) return;
     this.selectedAffiliate.set(affiliate);
     this.showInfoModal.set(true);
+  }
+
+  /** El botón "Ver información" solo se muestra si el rol puede ver este menú. */
+  canViewInfo(): boolean {
+    return this._permission.can('view', undefined);
   }
 
   onInfoClosed(): void {
@@ -394,6 +402,27 @@ export class AffiliatesListComponent implements OnInit {
 
   onStatusCancelled(): void {
     this.showStatusModal.set(false);
+    this.selectedAffiliate.set(null);
+  }
+
+  openDisaffiliationModal(affiliate: AffiliateMember): void {
+    if (!this._permission.check('disaffiliate', undefined, 'Tu rol no tiene permiso para desafiliar afiliados.')) return;
+    this.selectedAffiliate.set(affiliate);
+    this.showDisaffiliationModal.set(true);
+  }
+
+  /** El botón "Desafiliar afiliado" solo se muestra si el rol tiene el permiso dedicado. */
+  canDisaffiliate(): boolean {
+    return this._permission.can('disaffiliate', undefined);
+  }
+
+  onDisaffiliationConfirmed(): void {
+    this.showDisaffiliationModal.set(false);
+    this.selectedAffiliate.set(null);
+  }
+
+  onDisaffiliationCancelled(): void {
+    this.showDisaffiliationModal.set(false);
     this.selectedAffiliate.set(null);
   }
 

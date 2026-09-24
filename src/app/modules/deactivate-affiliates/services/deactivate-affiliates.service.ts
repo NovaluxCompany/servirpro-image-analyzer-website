@@ -13,6 +13,11 @@ import {
   InactivationAffiliateRow,
 } from '../interfaces/deactivate-affiliates.interface';
 import { RawActiveDeactivationResponse, RawAffiliateTransactionRow, RawDeactivateAffiliateRow, RawInactivationAffiliateRow } from '../interfaces/raw-affiliate-row.interface';
+import {
+  ConfirmDisaffiliationsResponse,
+  DisaffiliationFilters,
+  PendingDisaffiliationsResponse,
+} from '../interfaces/disaffiliation.interface';
 
 
 @Injectable({
@@ -168,6 +173,83 @@ export class DeactivateAffiliatesService {
 
     return this._http
       .get(`${this.baseUrl}/inactivation/export/excel`, {
+        headers: this.getHeaders(),
+        params,
+        responseType: 'blob',
+      })
+      .pipe(catchError((error) => this.handleError(error, 'Error al exportar Excel')));
+  }
+
+  // ── Desafiliación (paso 2: ver/confirmar solicitudes pendientes) ─────
+  private readonly disaffiliationsBaseUrl = environment.urlBD + '/disaffiliations';
+
+  getPendingDisaffiliations(filters: DisaffiliationFilters = {}): Observable<PendingDisaffiliationsResponse> {
+    // Igual que unpaid/underpaid: se trae todo (limit alto) y se pagina/filtra
+    // en el cliente, para reusar el mismo patrón de tabla que los otros tabs.
+    let params = new HttpParams().set('page', '1').set('limit', '10000');
+    if (filters.name) params = params.set('name', filters.name);
+    if (filters.document) params = params.set('document', filters.document);
+    if (filters.company) params = params.set('company', filters.company);
+    if (filters.plan) params = params.set('plan', filters.plan);
+    if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
+    if (filters.reason) params = params.set('reason', filters.reason);
+
+    return this._http
+      .get<PendingDisaffiliationsResponse>(`${this.disaffiliationsBaseUrl}/pending`, {
+        headers: this.getHeaders(),
+        params,
+      })
+      .pipe(catchError((error) => this.handleError(error, 'Error al cargar las solicitudes de desafiliación')));
+  }
+
+  confirmDisaffiliations(requestIds: number[]): Observable<ConfirmDisaffiliationsResponse> {
+    return this._http
+      .post<ConfirmDisaffiliationsResponse>(
+        `${this.disaffiliationsBaseUrl}/confirm`,
+        { requestIds },
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError((error) => this.handleError(error, 'Error al desafiliar los afiliados seleccionados')));
+  }
+
+  rejectDisaffiliation(requestId: number): Observable<{ requestId: number; status: string }> {
+    return this._http
+      .patch<{ requestId: number; status: string }>(
+        `${this.disaffiliationsBaseUrl}/${requestId}/reject`,
+        {},
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError((error) => this.handleError(error, 'Error al rechazar la solicitud de desafiliación')));
+  }
+
+  confirmAllDisaffiliations(filters: DisaffiliationFilters = {}): Observable<ConfirmDisaffiliationsResponse> {
+    return this._http
+      .post<ConfirmDisaffiliationsResponse>(
+        `${this.disaffiliationsBaseUrl}/confirm-all`,
+        {
+          name: filters.name || undefined,
+          document: filters.document || undefined,
+          company: filters.company || undefined,
+          plan: filters.plan || undefined,
+          affiliateType: filters.affiliateType || undefined,
+          reason: filters.reason || undefined,
+        },
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError((error) => this.handleError(error, 'Error al desafiliar todos los afiliados')));
+  }
+
+  exportDisaffiliationsToExcel(filters: DisaffiliationFilters = {}): Observable<Blob> {
+    let params = new HttpParams();
+    if (filters.name) params = params.set('name', filters.name);
+    if (filters.document) params = params.set('document', filters.document);
+    if (filters.company) params = params.set('company', filters.company);
+    if (filters.plan) params = params.set('plan', filters.plan);
+    if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
+    if (filters.reason) params = params.set('reason', filters.reason);
+
+    return this._http
+      .get(`${this.disaffiliationsBaseUrl}/export/excel`, {
         headers: this.getHeaders(),
         params,
         responseType: 'blob',
