@@ -33,6 +33,7 @@ export interface BillingPeriod {
   totalSent: number | null;
   reserve: number | null;
   sentObservation: string | null;
+  siigoErrorMessage?: string | null;
   createdAt: string;
   updatedAt: string;
   hasSiigoMatch?: boolean;
