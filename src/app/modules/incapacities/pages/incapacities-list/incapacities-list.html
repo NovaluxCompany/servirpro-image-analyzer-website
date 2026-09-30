@@ -159,6 +159,7 @@
             <tr>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Acciones</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Soportes</th>
+              <th class="px-4 py-3 font-semibold whitespace-nowrap">Fecha creación</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Tipo</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
               <th class="px-4 py-3 font-semibold whitespace-nowrap">Afiliado</th>
@@ -276,6 +277,7 @@
                 <td class="px-4 py-3">
                   <app-incapacity-documents-list [incapacityId]="incapacity.id" [documents]="incapacity.documents ?? []" />
                 </td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ formatDateTime(incapacity.createdAt) }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">
                   <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
                     [class]="incapacity.type === 'PRORROGA' ? 'bg-purple-100 text-purple-700' : 'bg-sky-100 text-sky-700'">
@@ -347,7 +349,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="19" class="px-4 py-16 text-center">
+                <td colspan="20" class="px-4 py-16 text-center">
                   @if (isLoading()) {
                     <span class="inline-flex items-center gap-2 text-gray-500">
                       <svg class="w-4 h-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24" aria-hidden="true">
