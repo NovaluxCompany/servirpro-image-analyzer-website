@@ -32,19 +32,6 @@ export class ToastService {
   }
 
   private addToast(message: string, type: Toast['type'], durationMs: number): void {
-  showSuccess(message: string, durationMs = 5000): void {
-    this.addToast(message, 'success', durationMs);
-  }
-
-  showError(message: string, durationMs = 5000): void {
-    this.addToast(message, 'error', durationMs);
-  }
-
-  showInfo(message: string, durationMs = 5000): void {
-    this.addToast(message, 'info', durationMs);
-  }
-
-  private addToast(message: string, type: 'success' | 'error' | 'info', durationMs: number): void {
     const id = this.nextId++;
     const toast: Toast = { id, message, type };
 
