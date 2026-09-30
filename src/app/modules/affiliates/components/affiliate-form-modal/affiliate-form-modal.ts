@@ -7,6 +7,7 @@ import { PermissionService } from '../../../../core/service/permission.service';
 import { AffiliateMember, CreateAffiliateMemberDto } from '../../interfaces/affiliate-member.interface';
 import { Plan, Company, Grouper, Advisor, Fidelizador, EpsItem, Pension, CompensationBox, Branch, Department, CityOption } from '../../interfaces/catalog.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
+import { extractWhatsappNumber } from '../../utils/whatsapp-number.util';
 import { forkJoin, of, switchMap } from 'rxjs';
 
 @Component({
@@ -25,6 +26,12 @@ export class AffiliateFormModalComponent implements OnInit {
   // Solo los roles con el permiso 'edit_entry_date' sobre /afiliados —Administrador
   // por defecto— pueden corregirla a mano; el backend lo vuelve a validar.
   readonly canEditEntryDate = this._permission.can('edit_entry_date', '/afiliados');
+
+  // El plan solo se puede cambiar con el afiliado desactivado, salvo para los
+  // roles con 'edit_plan_active' —Administrador por defecto—. Obligar a
+  // desactivar y reactivar solo para corregir un plan mal digitado mueve la
+  // fecha de ingreso y ensucia la auditoría. El backend lo vuelve a validar.
+  readonly canEditPlanWhileActive = this._permission.can('edit_plan_active', '/afiliados');
 
   isVisible = input<boolean>(false);
   mode = input<'create' | 'edit'>('create');
@@ -68,6 +75,12 @@ export class AffiliateFormModalComponent implements OnInit {
 
   section1Open = true
   section2Open = false
+
+  // true = el número de WhatsApp lo escribió (o ya lo tenía guardado) una
+  // persona, así que cambiar la referencia no lo pisa. Mientras sea false el
+  // campo se recalcula en cada tecla de la referencia — si no, un número a
+  // medio digitar quedaría congelado.
+  private whatsappNumberEditedByUser = false;
 
   readonly documentTypeOptions: SelectOption[] = [
     { value: 'CC', label: 'CC' },
@@ -161,6 +174,11 @@ export class AffiliateFormModalComponent implements OnInit {
     departmentCode: ['', Validators.required],
     cityCode: ['', Validators.required],
     reference: ['', Validators.required],
+    // Se auto-llena con el celular que traiga la referencia (ver
+    // ngOnInit) y se puede corregir a mano. No es obligatorio: sin él el
+    // afiliado simplemente no recibe certificados por WhatsApp (el cargue
+    // lo deja en ERROR con el motivo).
+    whatsappNumber: ['', [Validators.maxLength(20), Validators.pattern(/^[0-9+()\s.-]*$/)]],
     profession: ['', Validators.maxLength(255)],
     //Fecha whatsapp
     companyEntryDate: [{ value: '', disabled: false }, Validators.required],
@@ -213,6 +231,7 @@ export class AffiliateFormModalComponent implements OnInit {
           this.formReady.set(true);
           this.citiesLoading.set(false);
           this.form.reset();
+          this.whatsappNumberEditedByUser = false;
           this.form.patchValue({
             documentType: 'CC',
             isActive: true,
@@ -415,6 +434,29 @@ export class AffiliateFormModalComponent implements OnInit {
     );
   }
 
+  // Cada plan existe duplicado por tipo: hay un "ARL2" DEPENDIENTE y otro
+  // INDEPENDIENTE, con ids distintos. Si el usuario elige el plan y despues
+  // cambia el tipo, el control sigue guardando el id del tipo anterior (el
+  // getter planOptions lo conserva a proposito para no vaciar el select) y el
+  // backend rechaza el guardado con "El plan X es para afiliados DEPENDIENTE,
+  // pero el afiliado es INDEPENDIENTE". Por eso al cambiar el tipo se remapea
+  // el plan a su homonimo del nuevo tipo y, si no existe, se limpia para que
+  // el usuario lo vuelva a elegir.
+  private remapPlanToAffiliateType(affiliateType: string | null | undefined): void {
+    const planControl = this.form.get('planId');
+    const selectedId = planControl?.value;
+    if (!planControl || !selectedId) return;
+
+    const selected = this.plans().find((p) => String(p.id) === String(selectedId));
+    if (!selected || selected.affiliateType === affiliateType) return;
+
+    const normalize = (name: string) => name.trim().toUpperCase();
+    const equivalent = this.plans().find(
+      (p) => p.affiliateType === affiliateType && normalize(p.name) === normalize(selected.name),
+    );
+    planControl.setValue(equivalent ? String(equivalent.id) : '');
+  }
+
   private validateAffiliateType(): void {
     const companyControl = this.form.get('companyId');
     const grouperControl = this.form.get('grouperId');
@@ -489,7 +531,8 @@ export class AffiliateFormModalComponent implements OnInit {
       this.loadAdvisorsForFidelizador(fidelizadorId).subscribe();
     });
 
-    this.form.get('affiliateType')?.valueChanges.subscribe(() => {
+    this.form.get('affiliateType')?.valueChanges.subscribe((type) => {
+      this.remapPlanToAffiliateType(type);
       this.validateAffiliateType();
     });
 
@@ -497,6 +540,19 @@ export class AffiliateFormModalComponent implements OnInit {
       this.validateOriginDate(value);
     });
     this.validateOriginDate(this.form.get('originId')?.value);
+
+    // La referencia es texto libre ("MARIA GOMEZ 300 123 4567"); de ahí sale
+    // el número al que se le mandan los certificados. Solo se auto-llena
+    // mientras nadie haya tocado el campo a mano (whatsappNumberEditedByUser).
+    this.form.get('reference')?.valueChanges.subscribe((reference: string | null) => {
+      if (this.whatsappNumberEditedByUser) return;
+      this.form.get('whatsappNumber')?.setValue(extractWhatsappNumber(reference) ?? '', { emitEvent: false });
+    });
+  }
+
+  /** El campo se editó a mano: de acá en adelante la referencia ya no lo pisa. */
+  onWhatsappNumberInput(): void {
+    this.whatsappNumberEditedByUser = true;
   }
 
   private loadCitiesForDepartment(departmentCode: string): void {
@@ -658,14 +714,19 @@ export class AffiliateFormModalComponent implements OnInit {
         if (a.planId) {
           this.updatePlanLogic(String(a.planId));
         }
-        // El plan solo puede cambiarse mientras el afiliado está desactivado.
         this.affiliateIsActive = !!a.isActive;
-        if (a.isActive) {
+        // El plan solo puede cambiarse con el afiliado desactivado, salvo con
+        // el permiso 'edit_plan_active'.
+        if (a.isActive && !this.canEditPlanWhileActive) {
           this.form.get('planId')?.disable({ emitEvent: false });
-          // El origen del afiliado (y su fecha) solo pueden corregirse mientras está desactivado.
-          this.form.get('originId')?.disable({ emitEvent: false });
         } else {
           this.form.get('planId')?.enable({ emitEvent: false });
+        }
+        // El origen del afiliado (y su fecha) siguen la regla original: solo
+        // se corrigen con el afiliado desactivado.
+        if (a.isActive) {
+          this.form.get('originId')?.disable({ emitEvent: false });
+        } else {
           this.form.get('originId')?.enable({ emitEvent: false });
         }
         // Se llama después de fijar affiliateIsActive para que originDate quede
@@ -688,6 +749,9 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   private patchForm(a: AffiliateMember): void {
+    // Un número ya guardado cuenta como puesto a mano: editar la referencia
+    // no lo reemplaza (decisión 2026-09-22, "solo si está vacío").
+    this.whatsappNumberEditedByUser = !!a.whatsappNumber;
     this.selectedFiles = [];
     this.existingDocumentId = a.documents?.[0]?.id ?? null;
     this.keepExistingDocument = true;
@@ -710,6 +774,7 @@ export class AffiliateFormModalComponent implements OnInit {
       departmentCode: a.departmentCode ?? '',
       cityCode: a.cityCode ?? '',
       reference: a.reference ?? '',
+      whatsappNumber: a.whatsappNumber ?? '',
       profession: a.profession ?? '',
 
       companyId: a.companyId ? String(a.companyId) : '',
@@ -961,6 +1026,9 @@ export class AffiliateFormModalComponent implements OnInit {
       // que es la única columna real de ubicación (FK hacia cities).
       cityCode: raw.cityCode || undefined,
       reference: raw.reference!,
+      // null (no undefined) cuando queda vacío: así el backend sí limpia el
+      // número guardado si lo borraron a propósito en la edición.
+      whatsappNumber: raw.whatsappNumber?.trim() || null,
       profession: raw.profession || undefined,
       gender: raw.gender || undefined,
       whatsappEntryDate: this.todayDate(),

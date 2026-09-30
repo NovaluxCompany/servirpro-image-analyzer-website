@@ -24,7 +24,6 @@ export type IncapacityDocumentType =
   | 'HISTORIA_CLINICA'
   | 'AUTORIZACION_PAGO_TERCERO'
   | 'RIPS'
-  | 'AUTORIZACION_BANCARIA'
   | 'RUAF'
   | 'CERTIFICADO_NACIDO_VIVO'
   | 'REGISTRO_CIVIL'

@@ -38,8 +38,7 @@
         <button
           type="button"
           (click)="onCreateTransaction()"
-          [disabled]="transactionsLocked()"
-          [title]="transactionsLocked() ? 'Bloqueado temporalmente por el administrador' : ''"
+          [title]="transactionsLocked() ? 'Bloqueado: solo se pueden registrar pagos de afiliados nuevos' : ''"
           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,7 +51,8 @@
 
     @if (transactionsLocked()) {
       <div class="p-4 mb-6 text-sm text-amber-900 bg-amber-100 border border-amber-200 rounded-lg" role="alert">
-        <span class="font-medium">Transacciones bloqueadas:</span> el administrador bloqueó temporalmente la creación de nuevos pagos.
+        <span class="font-medium">Transacciones bloqueadas:</span> el administrador bloqueó temporalmente la creación de pagos.
+        Solo se pueden registrar pagos de afiliados nuevos; las mensualidades quedan rechazadas hasta que se desbloquee.
       </div>
     }
 

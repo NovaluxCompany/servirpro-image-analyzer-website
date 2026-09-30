@@ -134,12 +134,32 @@ export class TransactionTableComponent {
     return transaction.affiliates.length;
   }
 
-  // El asesor es del afiliado (snapshot guardado en cada TransactionAffiliate),
-  // no la cuenta que subió la transacción. Una transacción puede traer varios
-  // afiliados con distinto asesor, así que se listan los nombres únicos.
+  // Asesor y fidelizador son los del AFILIADO y VIGENTES, no los del día del
+  // pago ni la cuenta que subió la transacción: el backend los resuelve contra
+  // `affiliations` (TransactionsService.resolveCurrentAdvisors) y solo cae al
+  // snapshot si el cliente ya no tiene afiliación.
   getAdvisors(transaction: Transaction): string {
+    return this.uniqueNames(transaction, 'advisor');
+  }
+
+  getFidelizadores(transaction: Transaction): string {
+    return this.uniqueNames(transaction, 'fidelizador');
+  }
+
+  /**
+   * Nombres distintos de los afiliados de la transacción, sin repetir.
+   *
+   * Una transacción puede pagar varios afiliados y cada uno tener su propio
+   * asesor o fidelizador; repetir el mismo nombre tantas veces como afiliados
+   * haya no aporta nada en una celda de tabla.
+   */
+  private uniqueNames(transaction: Transaction, field: 'advisor' | 'fidelizador'): string {
     const names = Array.from(
-      new Set((transaction.affiliates || []).map((a) => a.advisor).filter((name): name is string => !!name)),
+      new Set(
+        (transaction.affiliates || [])
+          .map((a) => a[field])
+          .filter((name): name is string => !!name),
+      ),
     );
     return names.length > 0 ? names.join(', ') : '-';
   }

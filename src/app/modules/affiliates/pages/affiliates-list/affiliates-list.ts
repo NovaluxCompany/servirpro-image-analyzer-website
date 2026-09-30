@@ -6,6 +6,7 @@ import { AffiliateMembersService, AffiliateFilters } from '../../services/affili
 import { AffiliateMember, AffiliateDocument } from '../../interfaces/affiliate-member.interface';
 import { AffiliateFormModalComponent } from '../../components/affiliate-form-modal/affiliate-form-modal';
 import { AffiliateStatusModalComponent } from '../../components/affiliate-status-modal/affiliate-status-modal';
+import { AffiliateDisaffiliationModalComponent } from '../../components/affiliate-disaffiliation-modal/affiliate-disaffiliation-modal';
 import { AffiliateSendEmailModalComponent } from '../../components/affiliate-send-email-modal/affiliate-send-email-modal';
 import { AffiliateInfoModalComponent } from '../../components/affiliate-info-modal/affiliate-info-modal';
 import { AffiliateDocumentsModalComponent } from '../../components/affiliate-documents-modal/affiliate-documents-modal';
@@ -14,6 +15,7 @@ import { IncapacityFormModalComponent } from '../../../incapacities/components/i
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
 import { INCAPACITIES_MENU_PATH } from '../../../incapacities/incapacities.routes';
+import { DOCUMENT_UPLOADS_MENU_PATH } from '../../affiliates.routes';
 import { ConfigGeneralService } from '../../../../core/service/config-general.service';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
@@ -24,7 +26,7 @@ import { debounceTime, Subject } from 'rxjs';
 @Component({
   selector: 'app-affiliates-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, IncapacityFormModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
+  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateDisaffiliationModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, IncapacityFormModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './affiliates-list.html',
 })
 export class AffiliatesListComponent implements OnInit {
@@ -53,6 +55,8 @@ export class AffiliatesListComponent implements OnInit {
   filterAdvisor = '';
   filterFidelizador = '';
   filterAffiliateType = '';
+  filterCompanyId = '';
+  filterEpsId = '';
   filterIsActive = '';
   filterGrupo = '';
   filterEntryDateFrom = '';
@@ -60,6 +64,10 @@ export class AffiliatesListComponent implements OnInit {
   filterPaymentStatus = '';
   advisorOptions = signal<SelectOption[]>([]);
   fidelizadorOptions = signal<SelectOption[]>([]);
+  // Empresa y EPS se eligen del catálogo y viajan por id, así que el `value` de
+  // cada opción es el id (no el nombre, como en Asesor o Fidelización).
+  companyOptions = signal<SelectOption[]>([]);
+  epsOptions = signal<SelectOption[]>([]);
   // id numérico de cada fidelizador por nombre (el filtro viaja al backend
   // por nombre, igual que Asesor, pero la cascada necesita el id para pedir
   // GET /advisors/dropdown?fidelizadorId=).
@@ -72,6 +80,7 @@ export class AffiliatesListComponent implements OnInit {
   // ── Modales ───────────────────────────────────────────────────────
   showFormModal = signal(false);
   showStatusModal = signal(false);
+  showDisaffiliationModal = signal(false);
   showSendEmailModal = signal(false);
   showSendEmailObservationModal = signal(false);
   showInfoModal = signal(false);
@@ -160,6 +169,8 @@ export class AffiliatesListComponent implements OnInit {
       advisor: this.filterAdvisor || undefined,
       fidelizador: this.filterFidelizador || undefined,
       affiliateType: (this.filterAffiliateType === 'INDEPENDIENTE' || this.filterAffiliateType === 'DEPENDIENTE') ? this.filterAffiliateType : undefined,
+      companyId: this.filterCompanyId ? Number(this.filterCompanyId) : undefined,
+      epsId: this.filterEpsId ? Number(this.filterEpsId) : undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,
@@ -198,6 +209,12 @@ export class AffiliatesListComponent implements OnInit {
     });
     this._service.getReferences().subscribe((list) => {
       this.referenceOptions.set(list.map((r) => ({ value: r, label: r })));
+    });
+    this._service.getCompanies().subscribe((list) => {
+      this.companyOptions.set(list.map((c) => ({ value: String(c.id), label: c.name })));
+    });
+    this._service.getEpsList().subscribe((list) => {
+      this.epsOptions.set(list.map((e) => ({ value: String(e.id), label: e.name })));
     });
     this._service.getDepartments().subscribe((list: Department[]) => {
       this.departmentNameByCode = new Map(list.map((d) => [d.code, d.name]));
@@ -239,6 +256,8 @@ export class AffiliatesListComponent implements OnInit {
     this.filterAdvisor = '';
     this.filterFidelizador = '';
     this.filterAffiliateType = '';
+    this.filterCompanyId = '';
+    this.filterEpsId = '';
     this.filterIsActive = '';
     this.filterGrupo = '';
     this.filterEntryDateFrom = '';
@@ -252,7 +271,7 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterFidelizador || this.filterAffiliateType || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterFidelizador || this.filterAffiliateType || this.filterCompanyId || this.filterEpsId || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -291,8 +310,14 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   openInfo(affiliate: AffiliateMember): void {
+    if (!this._permission.check('view', undefined, 'Tu rol no tiene permiso para ver la información de los afiliados.')) return;
     this.selectedAffiliate.set(affiliate);
     this.showInfoModal.set(true);
+  }
+
+  /** El botón "Ver información" solo se muestra si el rol puede ver este menú. */
+  canViewInfo(): boolean {
+    return this._permission.can('view', undefined);
   }
 
   onInfoClosed(): void {
@@ -327,6 +352,11 @@ export class AffiliatesListComponent implements OnInit {
   /** El botón solo se muestra si el rol puede radicar. */
   canCreateIncapacities(): boolean {
     return this._permission.can('create', INCAPACITIES_MENU_PATH);
+  }
+
+  /** El botón de Cargue de Documentos solo se muestra si el rol tiene acceso a ese menú. */
+  canViewDocumentUploads(): boolean {
+    return this._permission.can('view', DOCUMENT_UPLOADS_MENU_PATH);
   }
 
   onIncapacityModalClosed(): void {
@@ -372,6 +402,27 @@ export class AffiliatesListComponent implements OnInit {
 
   onStatusCancelled(): void {
     this.showStatusModal.set(false);
+    this.selectedAffiliate.set(null);
+  }
+
+  openDisaffiliationModal(affiliate: AffiliateMember): void {
+    if (!this._permission.check('disaffiliate', undefined, 'Tu rol no tiene permiso para desafiliar afiliados.')) return;
+    this.selectedAffiliate.set(affiliate);
+    this.showDisaffiliationModal.set(true);
+  }
+
+  /** El botón "Desafiliar afiliado" solo se muestra si el rol tiene el permiso dedicado. */
+  canDisaffiliate(): boolean {
+    return this._permission.can('disaffiliate', undefined);
+  }
+
+  onDisaffiliationConfirmed(): void {
+    this.showDisaffiliationModal.set(false);
+    this.selectedAffiliate.set(null);
+  }
+
+  onDisaffiliationCancelled(): void {
+    this.showDisaffiliationModal.set(false);
     this.selectedAffiliate.set(null);
   }
 
@@ -424,6 +475,8 @@ export class AffiliatesListComponent implements OnInit {
       advisor: this.filterAdvisor || undefined,
       fidelizador: this.filterFidelizador || undefined,
       affiliateType: (this.filterAffiliateType === 'INDEPENDIENTE' || this.filterAffiliateType === 'DEPENDIENTE') ? this.filterAffiliateType : undefined,
+      companyId: this.filterCompanyId ? Number(this.filterCompanyId) : undefined,
+      epsId: this.filterEpsId ? Number(this.filterEpsId) : undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,

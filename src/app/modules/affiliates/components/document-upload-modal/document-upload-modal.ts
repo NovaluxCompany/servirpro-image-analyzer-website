@@ -90,11 +90,17 @@ export class DocumentUploadModalComponent {
           this.uploaded.emit();
         } else {
           this.applyErrors(response.errors);
-          const message =
-            response.created.length > 0
-              ? `${response.created.length} archivo(s) se cargaron correctamente y ya van en camino. Los ${response.errors.length} marcados en rojo no se enviaron: revisa el motivo en cada uno.`
-              : 'Ningún archivo pasó la validación. Revisa el detalle en cada uno.';
-          this._toast.showError(message);
+          if (response.created.length > 0) {
+            // Éxito parcial: no es un error del usuario, es una advertencia
+            // informativa. Dura más (25s en vez de los 5s por defecto) para
+            // que alcance a leerse en cargues grandes (10-20+ archivos).
+            this._toast.showWarning(
+              `${response.created.length} archivo(s) se cargaron correctamente y ya van en camino. Los ${response.errors.length} marcados en rojo no se enviaron: revisa el motivo en cada uno.`,
+              25000,
+            );
+          } else {
+            this._toast.showError('Ningún archivo pasó la validación. Revisa el detalle en cada uno.');
+          }
         }
       },
       error: (err) => {

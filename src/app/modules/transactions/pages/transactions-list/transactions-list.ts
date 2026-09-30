@@ -94,7 +94,7 @@ export class TransactionsListComponent {
         this.isTogglingLock.set(false);
         this._toastService.showSuccess(
           res.locked
-            ? 'Transacciones bloqueadas: nadie podrá crear nuevos pagos hasta que las desbloquees.'
+            ? 'Transacciones bloqueadas: solo se podrán registrar pagos de afiliados nuevos hasta que las desbloquees.'
             : 'Transacciones desbloqueadas.',
         );
       },
@@ -168,9 +168,11 @@ export class TransactionsListComponent {
 
   onCreateTransaction(): void {
     if (!this._permission.check('create', '/transacciones', 'Tu rol no tiene permiso para crear transacciones.')) return;
+    // Con el bloqueo activo se sigue entrando a crear: los afiliados nuevos sí
+    // pueden registrar su pago de ingreso. Quién no aplica lo decide el backend
+    // contra `affiliations.is_new` al enviar, no esta pantalla.
     if (this.transactionsLocked()) {
-      this._toastService.showError('La creación de transacciones está bloqueada temporalmente por el administrador.');
-      return;
+      this._toastService.showInfo('Transacciones bloqueadas: solo se registrarán pagos de afiliados nuevos.');
     }
     this._router.navigate(['/transacciones/crear']);
   }
