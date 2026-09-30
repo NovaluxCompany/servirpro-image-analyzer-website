@@ -603,4 +603,12 @@ export class IncapacitiesListComponent implements OnInit {
     const [year, month, day] = value.substring(0, 10).split('-');
     return year && month && day ? `${day}/${month}/${year}` : value;
   }
+
+  /** createdAt es un timestamp: se muestra en hora local, no recortando el ISO (que va en UTC). */
+  formatDateTime(value?: string | null): string {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+  }
 }
