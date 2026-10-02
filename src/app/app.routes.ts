@@ -54,6 +54,11 @@ export const routes: Routes = [
                 loadChildren: () => import('./modules/incapacities/incapacities.routes').then(m => m.incapacitiesRoutes)
             },
             {
+                path: 'metricas',
+                canActivate: [roleGuard],
+                loadChildren: () => import('./modules/metrics/metrics.routes').then(m => m.metricsRoutes)
+            },
+            {
                 path: 'usuarios',
                 canActivate: [roleGuard],
                 loadChildren: () => import('./modules/users/users.routes').then(m => m.usersRoutes)

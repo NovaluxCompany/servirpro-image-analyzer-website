@@ -1,0 +1,125 @@
+@if (data().totals.affiliates === 0) {
+<p class="py-10 text-center text-sm text-gray-500">No hay afiliaciones nuevas aprobadas con estos filtros.</p>
+} @else {
+<div class="grid grid-cols-3 gap-3 mb-4">
+  <div class="rounded-lg bg-gray-50 px-3 py-2">
+    <p class="text-xs text-gray-500">Afiliados</p>
+    <p class="text-lg font-semibold text-gray-900">{{ data().totals.affiliates }}</p>
+  </div>
+  <div class="rounded-lg bg-gray-50 px-3 py-2">
+    <p class="text-xs text-gray-500">Ventas afiliaciones</p>
+    <p class="text-lg font-semibold text-gray-900">{{ data().totals.sales | money }}</p>
+  </div>
+  <div class="rounded-lg bg-gray-50 px-3 py-2">
+    <p class="text-xs text-gray-500">Total ganancia</p>
+    <p class="text-lg font-semibold" [class.text-red-700]="data().totals.netProfit < 0" [class.text-gray-900]="data().totals.netProfit >= 0">
+      {{ data().totals.netProfit | money }}
+    </p>
+  </div>
+</div>
+
+<app-chart-canvas [config]="chartConfig()" [height]="detailed() ? '380px' : '240px'"
+  ariaLabel="Ventas, costo y ganancia neta por fidelizador" />
+
+@if (!detailed()) {
+<div class="mt-4 max-h-64 overflow-auto rounded-lg border border-gray-200">
+  <table class="w-full text-xs text-left text-gray-700 tabular-nums">
+    <thead class="sticky top-0 bg-gray-50 uppercase text-gray-600">
+      <tr>
+        <th class="px-3 py-2">Fidelizador</th>
+        <th class="px-3 py-2 text-right">Ventas</th>
+        <th class="px-3 py-2 text-right">Costo afiliaciones</th>
+        <th class="px-3 py-2 text-right">Ganancia neta</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      @for (row of allRows(); track row.fidelizador) {
+      <tr>
+        <td class="px-3 py-1.5 font-medium">{{ row.fidelizador }}</td>
+        <td class="px-3 py-1.5 text-right">{{ row.sales | money }}</td>
+        <td class="px-3 py-1.5 text-right">{{ row.affiliationCost | money }}</td>
+        <td class="px-3 py-1.5 text-right" [class.text-red-700]="row.netProfit < 0">{{ row.netProfit | money }}</td>
+      </tr>
+      }
+    </tbody>
+    <tfoot class="sticky bottom-0 bg-gray-100 font-bold">
+      <tr>
+        <td class="px-3 py-1.5">Total</td>
+        <td class="px-3 py-1.5 text-right">{{ data().totals.sales | money }}</td>
+        <td class="px-3 py-1.5 text-right">{{ data().totals.affiliationCost | money }}</td>
+        <td class="px-3 py-1.5 text-right" [class.text-red-700]="data().totals.netProfit < 0">{{ data().totals.netProfit | money }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+}
+
+@if (detailed()) {
+<h3 class="mt-8 mb-2 text-base font-semibold text-gray-900">
+  Afiliaciones nuevas, referidos y oficinas: ganancia neta
+</h3>
+<div class="overflow-x-auto rounded-lg border border-gray-200">
+  <table class="w-full text-sm text-left text-gray-700 tabular-nums">
+    <thead class="bg-gray-50 text-xs uppercase text-gray-600">
+      <tr>
+        <th class="px-3 py-2">Fidelizador</th>
+        <th class="px-3 py-2 text-right">Afiliados</th>
+        <th class="px-3 py-2 text-right">Ventas afiliaciones</th>
+        <th class="px-3 py-2 text-right">Costo afiliaciones</th>
+        <th class="px-3 py-2 text-right">Gastos publicidad</th>
+        <th class="px-3 py-2 text-right">Costo x cliente</th>
+        <th class="px-3 py-2 text-right">Costo trabajador</th>
+        <th class="px-3 py-2 text-right">Ganancia neta</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      @for (row of data().rows; track row.fidelizador) {
+      <tr [class.bg-red-50]="row.netProfit < 0">
+        <td class="px-3 py-2 font-medium">{{ row.fidelizador }}</td>
+        <td class="px-3 py-2 text-right">{{ row.affiliates }}</td>
+        <td class="px-3 py-2 text-right">{{ row.sales | money }}</td>
+        <td class="px-3 py-2 text-right">{{ row.affiliationCost | money }}</td>
+        <td class="px-3 py-2 text-right">{{ row.advertising | money }}</td>
+        <td class="px-3 py-2 text-right">{{ row.costPerClient | money }}</td>
+        <td class="px-3 py-2 text-right">{{ row.workerCost | money }}</td>
+        <td class="px-3 py-2 text-right" [class.text-red-700]="row.netProfit < 0">{{ row.netProfit | money }}</td>
+      </tr>
+      }
+      @if (data().offices; as offices) {
+      <tr [class.bg-red-50]="offices.netProfit < 0">
+        <td class="px-3 py-2 font-medium">Oficinas</td>
+        <td class="px-3 py-2 text-right">{{ offices.affiliates }}</td>
+        <td class="px-3 py-2 text-right">{{ offices.sales | money }}</td>
+        <td class="px-3 py-2 text-right">{{ offices.affiliationCost | money }}</td>
+        <td class="px-3 py-2 text-right">{{ offices.advertising | money }}</td>
+        <td class="px-3 py-2 text-right">{{ offices.costPerClient | money }}</td>
+        <td class="px-3 py-2 text-right">{{ offices.workerCost | money }}</td>
+        <td class="px-3 py-2 text-right" [class.text-red-700]="offices.netProfit < 0">{{ offices.netProfit | money }}</td>
+      </tr>
+      } @else {
+      <tr class="bg-amber-50 text-amber-900">
+        <td class="px-3 py-2 font-medium">Oficinas</td>
+        <td class="px-3 py-2 italic" colspan="7">No disponible: no existe un origen de oficina en el sistema.</td>
+      </tr>
+      }
+    </tbody>
+    <tfoot class="bg-green-100 font-bold">
+      <tr>
+        <td class="px-3 py-2">Total</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.affiliates }}</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.sales | money }}</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.affiliationCost | money }}</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.advertising | money }}</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.costPerClient | money }}</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.workerCost | money }}</td>
+        <td class="px-3 py-2 text-right" [class.text-red-700]="data().totals.netProfit < 0">{{ data().totals.netProfit | money }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+<p class="mt-1 text-xs text-gray-500">
+  Ganancia neta por fila = ventas − costo afiliación − costo trabajador. Total ganancia = ventas − costo afiliaciones − gastos publicidad − costo trabajador.
+  Las afiliaciones de oficina se excluyen de cada fidelizador y se agrupan en la fila Oficinas. Costo x cliente se muestra en 0.
+</p>
+}
+}
