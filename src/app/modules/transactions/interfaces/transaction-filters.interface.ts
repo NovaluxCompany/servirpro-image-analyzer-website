@@ -6,4 +6,5 @@ export interface TransactionFilters {
   reference?: string;
   uploadedBy?: string;
   status?: string;
+  affiliateType?: 'DEPENDIENTE' | 'INDEPENDIENTE';
 }
