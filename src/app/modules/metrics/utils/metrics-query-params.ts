@@ -8,8 +8,8 @@ import { MetricsFilters, MetricsSpecificFilters } from '../interfaces/metrics.in
  */
 export function filtersToQueryParams(filters: MetricsFilters, specific: MetricsSpecificFilters): Params {
   return {
-    from: filters.from,
-    to: filters.to,
+    from: filters.from || null,
+    to: filters.to || null,
     fid: filters.fidelizadorIds.join(',') || null,
     orig: filters.originIds.join(',') || null,
     sede: filters.branchIds.join(',') || null,
@@ -25,8 +25,9 @@ export function filtersToQueryParams(filters: MetricsFilters, specific: MetricsS
   };
 }
 
+/** El detalle siempre escribe costoAfil; las fechas pueden faltar en la línea de vida (= toda la historia). */
 export function hasFilterQueryParams(params: Params): boolean {
-  return !!params['from'] && !!params['to'];
+  return (!!params['from'] && !!params['to']) || params['costoAfil'] != null;
 }
 
 export function queryParamsToFilters(params: Params, base: MetricsFilters): MetricsFilters {

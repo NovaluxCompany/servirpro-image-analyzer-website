@@ -53,9 +53,10 @@ export interface NewAffiliationsResponse extends MetricsResponseBase {
   }>;
   byFidelizador: Array<{
     fidelizador: string;
-    rows: Array<{ origin: string; affiliates: number; sales: number }>;
+    rows: Array<{ origin: string; affiliates: number; sales: number; affiliationCost: number }>;
     affiliates: number;
     sales: number;
+    affiliationCost: number;
   }>;
   totals: CostBreakdown;
 }
@@ -86,11 +87,12 @@ export interface NewVsReentryResponse extends MetricsResponseBase {
 
 export interface AdvertisingResponse extends MetricsResponseBase {
   advertising: { meta: number; web: number; total: number };
-  offices: {
-    available: boolean;
-    rows: Array<{ branch: string; affiliates: number; profit: number }>;
-    total: { affiliates: number; profit: number };
-  };
+}
+
+export interface OfficeProfitsResponse extends MetricsResponseBase {
+  available: boolean;
+  rows: Array<{ branch: string; affiliates: number; profit: number }>;
+  total: { affiliates: number; profit: number };
 }
 
 export type RetentionLevel = 'GREEN' | 'YELLOW' | 'RED';
@@ -134,19 +136,77 @@ export interface CohortsResponse extends MetricsResponseBase {
   }>;
 }
 
+export type LifelineEventKind =
+  | 'CREATION'
+  | 'REENTRY'
+  | 'CHANGE'
+  | 'DEACTIVATION'
+  | 'DISAFFILIATION_REQUEST'
+  | 'DISAFFILIATION_CONFIRMED'
+  | 'DISAFFILIATION_REJECTED'
+  | 'INCAPACITY'
+  | 'INCAPACITY_EXTENSION';
+
+export interface LifelineEvent {
+  date: string; // ISO
+  kind: LifelineEventKind;
+  title: string;
+  user: string | null;
+  details: Array<{ label: string; value: string }>;
+  changes: Array<{ field: string; label: string; oldValue: string | null; newValue: string | null }>;
+  history: Array<{ date: string; label: string; user: string | null; observation: string | null }>;
+  badges: string[];
+}
+
+export interface LifelineSegment {
+  start: string;
+  end: string | null;
+  startKind: 'CREATION' | 'REENTRY';
+  endReason: string | null;
+  days: number;
+}
+
 export interface LifelineMonthRow {
   month: string;
-  createdAmount: number;
-  reentryAmount: number;
-  monthlyAmount: number;
-  createdCount: number;
-  reentryCount: number;
-  monthlyCount: number;
+  amount: number;
+  payments: number;
+  owed: boolean;
+}
+
+export interface LifelineSummary {
+  isActive: boolean;
+  totalDays: number;
+  currentDays: number | null;
+  totalPaid: number;
+  currentMonthlyValue: number | null;
+  currentDiscount: number | null;
+  monthsOwed: number;
+  monthsPaid: number;
+  compliance: number | null;
+  monthsInArrears: number;
+  currentUnpaidStreak: number;
+  lastPaymentMonth: string | null;
+  reentries: number;
+  incapacities: number;
+  incapacityDays: number;
+  withdrawalRisk: boolean;
 }
 
 export interface LifelineResponse extends MetricsResponseBase {
-  affiliate: { fullName: string; documentNumber: string } | null;
+  requiresDocument: boolean;
+  affiliate: { fullName: string; documentNumber: string; documentType: string | null } | null;
+  summary: LifelineSummary | null;
+  segments: LifelineSegment[];
+  events: LifelineEvent[];
   months: LifelineMonthRow[];
-  topPlans: Array<{ plan: string; sales: number; affiliates: number }>;
-  topProfessions: Array<{ profession: string; affiliates: number }>;
+  range: { from: string | null; to: string | null };
+}
+
+export interface TopPlansResponse extends MetricsResponseBase {
+  plans: Array<{ plan: string; salesCount: number; sales: number; affiliates: number }>;
+  totalSalesCount: number;
+}
+
+export interface TopProfessionsResponse extends MetricsResponseBase {
+  professions: Array<{ profession: string; affiliates: number }>;
 }

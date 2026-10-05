@@ -22,8 +22,15 @@ export class MetricsFilterBarComponent {
   /** Campos a mostrar; en el detalle, solo los que afectan a ese gráfico. */
   fields = input<MetricsFilterField[]>(ALL_FILTER_FIELDS);
   isLoading = input(false);
+  /**
+   * Fechas opcionales (línea de vida): vacías = toda la historia, y
+   * "Deshacer filtros" también limpia Desde y Hasta.
+   */
+  optionalDates = input(false);
 
   applied = output<MetricsFilters>();
+  /** Se emite al deshacer, para que el detalle limpie también sus filtros propios. */
+  resetted = output<void>();
 
   draft = linkedSignal(() => cloneFilters(this.filters()));
 
@@ -77,6 +84,7 @@ export class MetricsFilterBarComponent {
 
   canApply(): boolean {
     const d = this.draft();
+    if (this.optionalDates() && (!d.from || !d.to)) return true;
     return !!d.from && !!d.to && d.from <= d.to;
   }
 
@@ -85,6 +93,8 @@ export class MetricsFilterBarComponent {
   }
 
   reset(): void {
-    this.draft.set(cloneFilters(this.filters()));
+    const restored = cloneFilters(this.filters());
+    this.draft.set(this.optionalDates() ? { ...restored, from: '', to: '' } : restored);
+    this.resetted.emit();
   }
 }

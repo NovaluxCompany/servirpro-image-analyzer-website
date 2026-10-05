@@ -80,7 +80,9 @@ export class MetricDetailComponent implements OnInit {
   private init(options: MetricsFilterOptions): void {
     this.options.set(options);
     const params = this._route.snapshot.queryParams;
-    const base = this._store.snapshot() ?? this._store.defaults(options);
+    const general = this._store.snapshot() ?? this._store.defaults(options);
+    // Línea de vida: arranca sin fechas (= toda la historia del afiliado).
+    const base = this.chart()?.optionalDates ? { ...general, from: '', to: '' } : general;
 
     this.filters.set(hasFilterQueryParams(params) ? queryParamsToFilters(params, base) : base);
     const specific = hasFilterQueryParams(params) ? queryParamsToSpecific(params) : this.defaultSpecific(base, options);
@@ -104,7 +106,15 @@ export class MetricDetailComponent implements OnInit {
     this.specificDraft.update((s) => ({ ...s, [key]: value }));
   }
 
+  /** "Deshacer": los filtros propios vuelven a lo último consultado. */
+  onReset(): void {
+    this.specificDraft.set({ ...this.specificApplied() });
+  }
+
   onApply(filters: MetricsFilters): void {
+    if (this.chart()?.key === 'linea-de-vida' && !this.specificDraft().document?.trim()) {
+      this._toast.showWarning('Escoge un afiliado: escribe su documento para ver la línea de vida.');
+    }
     this.filters.set(filters);
     this.specificApplied.set({ ...this.specificDraft() });
     this._router.navigate([], {

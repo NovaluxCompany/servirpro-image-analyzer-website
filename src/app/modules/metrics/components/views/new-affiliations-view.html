@@ -1,7 +1,7 @@
 @if (data().totals.affiliates === 0) {
 <p class="py-10 text-center text-sm text-gray-500">No hay transacciones nuevas aprobadas con estos filtros.</p>
 } @else {
-<div class="grid grid-cols-3 gap-3 mb-4">
+<div class="grid grid-cols-2 gap-3 mb-4 md:grid-cols-4">
   <div class="rounded-lg bg-gray-50 px-3 py-2">
     <p class="text-xs text-gray-500">Afiliados</p>
     <p class="text-lg font-semibold text-gray-900">{{ data().totals.affiliates }}</p>
@@ -9,6 +9,11 @@
   <div class="rounded-lg bg-gray-50 px-3 py-2">
     <p class="text-xs text-gray-500">Ventas</p>
     <p class="text-lg font-semibold text-gray-900">{{ data().totals.sales | money }}</p>
+  </div>
+  <div class="rounded-lg bg-gray-50 px-3 py-2">
+    <p class="text-xs text-gray-500">Costo afiliaciones</p>
+    <p class="text-lg font-semibold text-gray-900">{{ data().totals.affiliationCost | money }}</p>
+    <p class="text-[11px] text-gray-500">{{ data().totals.affiliates }} × {{ unitCost() | money }}</p>
   </div>
   <div class="rounded-lg bg-gray-50 px-3 py-2">
     <p class="text-xs text-gray-500">Ganancia neta</p>
@@ -28,6 +33,10 @@
     [class]="metric() === 'sales' ? 'rounded-md bg-blue-700 px-3 py-1 text-white' : 'rounded-md px-3 py-1 text-gray-700 hover:bg-gray-100'">
     Ventas
   </button>
+  <button type="button" (click)="metric.set('affiliationCost')"
+    [class]="metric() === 'affiliationCost' ? 'rounded-md bg-blue-700 px-3 py-1 text-white' : 'rounded-md px-3 py-1 text-gray-700 hover:bg-gray-100'">
+    Costo afiliación
+  </button>
 </div>
 }
 
@@ -42,6 +51,7 @@
         <th class="px-3 py-2">Fidelizador</th>
         <th class="px-3 py-2 text-right">Afiliados</th>
         <th class="px-3 py-2 text-right">Ventas</th>
+        <th class="px-3 py-2 text-right">Costo afiliación</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-gray-100">
@@ -50,6 +60,7 @@
         <td class="px-3 py-1.5 font-medium">{{ fid.fidelizador }}</td>
         <td class="px-3 py-1.5 text-right">{{ fid.affiliates }}</td>
         <td class="px-3 py-1.5 text-right">{{ fid.sales | money }}</td>
+        <td class="px-3 py-1.5 text-right">{{ fid.affiliationCost | money }}</td>
       </tr>
       }
     </tbody>
@@ -58,6 +69,7 @@
         <td class="px-3 py-1.5">Total</td>
         <td class="px-3 py-1.5 text-right">{{ data().totals.affiliates }}</td>
         <td class="px-3 py-1.5 text-right">{{ data().totals.sales | money }}</td>
+        <td class="px-3 py-1.5 text-right">{{ data().totals.affiliationCost | money }}</td>
       </tr>
     </tfoot>
   </table>
@@ -132,6 +144,7 @@
         <th class="px-3 py-2">Canal</th>
         <th class="px-3 py-2 text-right">Afiliados</th>
         <th class="px-3 py-2 text-right">Pagos</th>
+        <th class="px-3 py-2 text-right">Costo afiliación</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-gray-100">
@@ -142,12 +155,14 @@
         <td class="px-3 py-2">{{ row.origin }}</td>
         <td class="px-3 py-2 text-right">{{ row.affiliates }}</td>
         <td class="px-3 py-2 text-right">{{ row.sales | money }}</td>
+        <td class="px-3 py-2 text-right">{{ row.affiliationCost | money }}</td>
       </tr>
       }
       <tr class="bg-gray-50 font-semibold">
         <td class="px-3 py-2" colspan="2">Total {{ fid.fidelizador }}</td>
         <td class="px-3 py-2 text-right">{{ fid.affiliates }}</td>
         <td class="px-3 py-2 text-right">{{ fid.sales | money }}</td>
+        <td class="px-3 py-2 text-right">{{ fid.affiliationCost | money }}</td>
       </tr>
       }
     </tbody>
@@ -156,9 +171,11 @@
         <td class="px-3 py-2" colspan="2">Suma total</td>
         <td class="px-3 py-2 text-right">{{ data().totals.affiliates }}</td>
         <td class="px-3 py-2 text-right">{{ data().totals.sales | money }}</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.affiliationCost | money }}</td>
       </tr>
     </tfoot>
   </table>
 </div>
+<p class="mt-1 text-xs text-gray-500">Costo afiliación = afiliados × {{ unitCost() | money }} (costo por afiliación del filtro).</p>
 }
 }

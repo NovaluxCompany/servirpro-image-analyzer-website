@@ -7,6 +7,9 @@ import { AdvertisingViewComponent } from './advertising-view';
 import { RetentionViewComponent } from './retention-view';
 import { CohortsViewComponent } from './cohorts-view';
 import { LifelineViewComponent } from './lifeline-view';
+import { OfficeProfitsViewComponent } from './office-profits-view';
+import { TopPlansViewComponent } from './top-plans-view';
+import { TopProfessionsViewComponent } from './top-professions-view';
 
 /** Pinta la vista que corresponde a cada gráfico (misma en tablero y detalle). */
 @Component({
@@ -20,6 +23,9 @@ import { LifelineViewComponent } from './lifeline-view';
     RetentionViewComponent,
     CohortsViewComponent,
     LifelineViewComponent,
+    OfficeProfitsViewComponent,
+    TopPlansViewComponent,
+    TopProfessionsViewComponent,
   ],
   template: `
     @switch (chartKey()) {
@@ -35,6 +41,9 @@ import { LifelineViewComponent } from './lifeline-view';
       @case ('publicidad') {
         <app-advertising-view [data]="data()" [detailed]="detailed()" />
       }
+      @case ('ganancias-oficinas') {
+        <app-office-profits-view [data]="data()" [detailed]="detailed()" />
+      }
       @case ('retencion') {
         <app-retention-view [data]="data()" [detailed]="detailed()" />
       }
@@ -43,6 +52,12 @@ import { LifelineViewComponent } from './lifeline-view';
       }
       @case ('linea-de-vida') {
         <app-lifeline-view [data]="data()" [detailed]="detailed()" />
+      }
+      @case ('planes') {
+        <app-top-plans-view [data]="data()" [detailed]="detailed()" />
+      }
+      @case ('profesiones') {
+        <app-top-professions-view [data]="data()" [detailed]="detailed()" />
       }
     }
   `,

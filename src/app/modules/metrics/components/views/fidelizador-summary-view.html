@@ -4,18 +4,38 @@
 <div class="grid grid-cols-3 gap-3 mb-4">
   <div class="rounded-lg bg-gray-50 px-3 py-2">
     <p class="text-xs text-gray-500">Afiliados</p>
-    <p class="text-lg font-semibold text-gray-900">{{ data().totals.affiliates }}</p>
+    <p class="text-lg font-semibold text-gray-900">{{ hasSelection() ? selectionTotals().affiliates : data().totals.affiliates }}</p>
   </div>
   <div class="rounded-lg bg-gray-50 px-3 py-2">
     <p class="text-xs text-gray-500">Ventas afiliaciones</p>
-    <p class="text-lg font-semibold text-gray-900">{{ data().totals.sales | money }}</p>
+    <p class="text-lg font-semibold text-gray-900">{{ (hasSelection() ? selectionTotals().sales : data().totals.sales) | money }}</p>
   </div>
   <div class="rounded-lg bg-gray-50 px-3 py-2">
-    <p class="text-xs text-gray-500">Total ganancia</p>
-    <p class="text-lg font-semibold" [class.text-red-700]="data().totals.netProfit < 0" [class.text-gray-900]="data().totals.netProfit >= 0">
-      {{ data().totals.netProfit | money }}
+    <p class="text-xs text-gray-500">{{ hasSelection() ? 'Ganancia neta selección' : 'Total ganancia' }}</p>
+    @let profit = hasSelection() ? selectionTotals().netProfit : data().totals.netProfit;
+    <p class="text-lg font-semibold" [class.text-red-700]="profit < 0" [class.text-gray-900]="profit >= 0">
+      {{ profit | money }}
     </p>
   </div>
+</div>
+
+<!-- Selección rápida: sin tocar el filtro general -->
+<div class="mb-3 flex flex-wrap items-center gap-2 text-xs" (click)="$event.stopPropagation()">
+  @if (hasSelection()) {
+  <span class="text-gray-500">Viendo:</span>
+  @for (name of selected(); track name) {
+  <button type="button" (click)="toggle(name, $event)"
+    class="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 font-medium text-blue-800 hover:bg-blue-200"
+    [attr.aria-label]="'Quitar ' + name">
+    {{ name }} <span aria-hidden="true">×</span>
+  </button>
+  }
+  <button type="button" (click)="clearSelection($event)" class="rounded-full border border-gray-300 px-2.5 py-0.5 text-gray-700 hover:bg-gray-100">
+    Ver todos
+  </button>
+  } @else {
+  <span class="text-gray-500">Haz clic en una fila de la tabla o en una barra para ver solo ese fidelizador.</span>
+  }
 </div>
 
 <app-chart-canvas [config]="chartConfig()" [height]="detailed() ? '380px' : '240px'"
@@ -34,8 +54,14 @@
     </thead>
     <tbody class="divide-y divide-gray-100">
       @for (row of allRows(); track row.fidelizador) {
-      <tr>
-        <td class="px-3 py-1.5 font-medium">{{ row.fidelizador }}</td>
+      <tr (click)="toggle(row.fidelizador, $event)" class="cursor-pointer hover:bg-blue-50"
+        [class.bg-blue-50]="isSelected(row.fidelizador)" [attr.aria-selected]="isSelected(row.fidelizador)">
+        <td class="px-3 py-1.5 font-medium">
+          <span class="inline-flex items-center gap-1.5">
+            <input type="checkbox" [checked]="isSelected(row.fidelizador)" tabindex="-1" class="pointer-events-none h-3.5 w-3.5 rounded border-gray-300 text-blue-600" />
+            {{ row.fidelizador }}
+          </span>
+        </td>
         <td class="px-3 py-1.5 text-right">{{ row.sales | money }}</td>
         <td class="px-3 py-1.5 text-right">{{ row.affiliationCost | money }}</td>
         <td class="px-3 py-1.5 text-right" [class.text-red-700]="row.netProfit < 0">{{ row.netProfit | money }}</td>
@@ -74,8 +100,15 @@
     </thead>
     <tbody class="divide-y divide-gray-100">
       @for (row of data().rows; track row.fidelizador) {
-      <tr [class.bg-red-50]="row.netProfit < 0">
-        <td class="px-3 py-2 font-medium">{{ row.fidelizador }}</td>
+      <tr (click)="toggle(row.fidelizador, $event)" class="cursor-pointer hover:bg-blue-50"
+        [class.bg-blue-50]="isSelected(row.fidelizador)" [class.bg-red-50]="row.netProfit < 0 && !isSelected(row.fidelizador)"
+        [attr.aria-selected]="isSelected(row.fidelizador)">
+        <td class="px-3 py-2 font-medium">
+          <span class="inline-flex items-center gap-1.5">
+            <input type="checkbox" [checked]="isSelected(row.fidelizador)" tabindex="-1" class="pointer-events-none h-4 w-4 rounded border-gray-300 text-blue-600" />
+            {{ row.fidelizador }}
+          </span>
+        </td>
         <td class="px-3 py-2 text-right">{{ row.affiliates }}</td>
         <td class="px-3 py-2 text-right">{{ row.sales | money }}</td>
         <td class="px-3 py-2 text-right">{{ row.affiliationCost | money }}</td>
@@ -86,8 +119,15 @@
       </tr>
       }
       @if (data().offices; as offices) {
-      <tr [class.bg-red-50]="offices.netProfit < 0">
-        <td class="px-3 py-2 font-medium">Oficinas</td>
+      <tr (click)="toggle(offices.fidelizador, $event)" class="cursor-pointer hover:bg-blue-50"
+        [class.bg-blue-50]="isSelected(offices.fidelizador)" [class.bg-red-50]="offices.netProfit < 0 && !isSelected(offices.fidelizador)"
+        [attr.aria-selected]="isSelected(offices.fidelizador)">
+        <td class="px-3 py-2 font-medium">
+          <span class="inline-flex items-center gap-1.5">
+            <input type="checkbox" [checked]="isSelected(offices.fidelizador)" tabindex="-1" class="pointer-events-none h-4 w-4 rounded border-gray-300 text-blue-600" />
+            Oficinas
+          </span>
+        </td>
         <td class="px-3 py-2 text-right">{{ offices.affiliates }}</td>
         <td class="px-3 py-2 text-right">{{ offices.sales | money }}</td>
         <td class="px-3 py-2 text-right">{{ offices.affiliationCost | money }}</td>
@@ -120,6 +160,7 @@
 <p class="mt-1 text-xs text-gray-500">
   Ganancia neta por fila = ventas − costo afiliación − costo trabajador. Total ganancia = ventas − costo afiliaciones − gastos publicidad − costo trabajador.
   Las afiliaciones de oficina se excluyen de cada fidelizador y se agrupan en la fila Oficinas. Costo x cliente se muestra en 0.
+  Haz clic en las filas para ver en el gráfico solo esos fidelizadores.
 </p>
 }
 }

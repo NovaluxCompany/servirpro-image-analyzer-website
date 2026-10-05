@@ -14,7 +14,10 @@ import {
   MetricsSpecificFilters,
   NewAffiliationsResponse,
   NewVsReentryResponse,
+  OfficeProfitsResponse,
   RetentionResponse,
+  TopPlansResponse,
+  TopProfessionsResponse,
 } from '../interfaces/metrics.interface';
 
 /** Endpoint del backend para cada gráfico (clave de URL -> ruta de API). */
@@ -23,9 +26,12 @@ const CHART_ENDPOINTS: Record<MetricChartKey, string> = {
   'resumen-fidelizadores': 'fidelizador-summary',
   'nuevos-vs-reingresos': 'new-vs-reentry',
   publicidad: 'advertising',
+  'ganancias-oficinas': 'office-profits',
   retencion: 'retention',
   cohortes: 'cohorts',
   'linea-de-vida': 'lifeline',
+  planes: 'top-plans',
+  profesiones: 'top-professions',
 };
 
 export interface MetricChartResponses {
@@ -33,9 +39,12 @@ export interface MetricChartResponses {
   'resumen-fidelizadores': FidelizadorSummaryResponse;
   'nuevos-vs-reingresos': NewVsReentryResponse;
   publicidad: AdvertisingResponse;
+  'ganancias-oficinas': OfficeProfitsResponse;
   retencion: RetentionResponse;
   cohortes: CohortsResponse;
   'linea-de-vida': LifelineResponse;
+  planes: TopPlansResponse;
+  profesiones: TopProfessionsResponse;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -78,13 +87,14 @@ export class MetricsService {
   }
 
   private toParams(filters: MetricsFilters, specific: MetricsSpecificFilters): HttpParams {
+    // Fechas vacías solo pasan en la línea de vida (= toda la historia): no se envían.
     let params = new HttpParams()
-      .set('from', filters.from)
-      .set('to', filters.to)
       .set('adMeta', filters.adMeta || 0)
       .set('adWeb', filters.adWeb || 0)
       .set('affiliationCost', filters.affiliationCost || 0)
       .set('workerCost', filters.workerCost || 0);
+    if (filters.from) params = params.set('from', filters.from);
+    if (filters.to) params = params.set('to', filters.to);
 
     if (filters.fidelizadorIds.length) params = params.set('fidelizadorIds', filters.fidelizadorIds.join(','));
     if (filters.originIds.length) params = params.set('originIds', filters.originIds.join(','));

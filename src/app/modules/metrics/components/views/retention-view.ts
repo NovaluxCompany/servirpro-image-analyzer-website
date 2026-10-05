@@ -18,7 +18,7 @@ const LEVEL_CLASSES: Record<RetentionLevel, string> = {
   imports: [ChartCanvasComponent],
   template: `
     @if (data().rows.length === 0) {
-      <p class="py-10 text-center text-sm text-gray-500">No hay pagos ni retiros con estos filtros.</p>
+      <p class="py-10 text-center text-sm text-gray-500">No hay afiliados con estos filtros.</p>
     } @else {
       <div class="grid grid-cols-3 gap-3 mb-4">
         <div class="rounded-lg bg-gray-50 px-3 py-2">
@@ -118,7 +118,9 @@ const LEVEL_CLASSES: Record<RetentionLevel, string> = {
           </table>
         </div>
         <p class="mt-2 text-xs text-gray-500">
-          Usuarios totales = mensualidad + nuevos + retiros · Pagos = mensualidad + nuevos · Retiro = afiliación inactivada en el rango (fecha de inactivación).
+          Usuarios totales = todos los afiliados del fidelizador en el tiempo, activos o no (creados hasta la fecha "Hasta") ·
+          Mensualidad = ya tenían afiliación antes del rango y la mantienen al cierre · Nuevos = afiliados nuevos en el rango ·
+          Pagos = mensualidad + nuevos · Retiro = afiliación inactivada en el rango (fecha de inactivación) · % retiro = retiros ÷ usuarios totales.
           <span class="ml-1">■ Verde &lt; 20 % · ■ Amarillo 20–30 % · ■ Rojo &gt; 30 %</span>
         </p>
       }

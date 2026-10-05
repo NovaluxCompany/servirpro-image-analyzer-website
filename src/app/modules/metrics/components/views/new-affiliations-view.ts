@@ -18,7 +18,13 @@ export class NewAffiliationsViewComponent {
   /** Ids del catálogo de orígenes en su orden: fija el color de cada origen. */
   originCatalogIds = input<number[]>([]);
 
-  metric = signal<'affiliates' | 'sales'>('affiliates');
+  metric = signal<'affiliates' | 'sales' | 'affiliationCost'>('affiliates');
+
+  /** Costo por afiliación aplicado (el del filtro): costo total ÷ afiliados. */
+  unitCost = computed(() => {
+    const totals = this.data().totals;
+    return totals.affiliates > 0 ? totals.affiliationCost / totals.affiliates : 0;
+  });
 
   chartConfig = computed<ChartConfiguration>(() => {
     const data = this.data();
@@ -39,7 +45,7 @@ export class NewAffiliationsViewComponent {
           ...STACKED_BAR_STYLE,
         })),
       },
-      options: baseOptions(metric === 'sales' ? 'money' : 'number', {
+      options: baseOptions(metric === 'affiliates' ? 'number' : 'money', {
         stacked: true,
         compact: !this.detailed(),
         legend: data.byOrigin.length > 1,

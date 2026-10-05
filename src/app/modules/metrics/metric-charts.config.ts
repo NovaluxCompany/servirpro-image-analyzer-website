@@ -5,9 +5,12 @@ export type MetricChartKey =
   | 'resumen-fidelizadores'
   | 'nuevos-vs-reingresos'
   | 'publicidad'
+  | 'ganancias-oficinas'
   | 'retencion'
   | 'cohortes'
-  | 'linea-de-vida';
+  | 'linea-de-vida'
+  | 'planes'
+  | 'profesiones';
 
 export interface MetricChartDefinition {
   key: MetricChartKey;
@@ -16,6 +19,11 @@ export interface MetricChartDefinition {
   description: string;
   /** Campos del filtro general que afectan a este gráfico (los demás se ignoran). */
   filters: MetricsFilterField[];
+  /**
+   * Las fechas pueden quedar vacías (= toda la historia) y "Deshacer" las
+   * limpia. Solo la línea de vida, que es por afiliado.
+   */
+  optionalDates?: boolean;
 }
 
 export const ALL_FILTER_FIELDS: MetricsFilterField[] = [
@@ -68,15 +76,22 @@ export const METRIC_CHARTS: MetricChartDefinition[] = [
   {
     key: 'publicidad',
     number: '4',
-    title: 'Gastos de publicidad y ganancias por oficina',
-    description: 'Publicidad digitada de Meta y Web, y ganancia de las afiliaciones hechas en oficina por sede.',
-    filters: ['dates', 'fidelizadores', 'origins', 'branches', 'advertising'],
+    title: 'Gastos de publicidad',
+    description: 'Publicidad digitada de Meta y Web y su participación en el total.',
+    filters: ['advertising'],
+  },
+  {
+    key: 'ganancias-oficinas',
+    number: '4B',
+    title: 'Ganancias por oficina',
+    description: 'Ganancia de las afiliaciones nuevas hechas en oficina, agrupada por sede.',
+    filters: ['dates', 'fidelizadores', 'origins', 'branches'],
   },
   {
     key: 'retencion',
     number: '6',
     title: 'Retención: % de retiro por fidelizador',
-    description: 'Usuarios totales = mensualidad + nuevos + retiros. Verde < 20 %, amarillo 20–30 %, rojo > 30 %.',
+    description: 'Usuarios totales = todos los afiliados del fidelizador en el tiempo (activos o no). Verde < 20 %, amarillo 20–30 %, rojo > 30 %.',
     filters: ['dates', 'fidelizadores', 'origins', 'branches'],
   },
   {
@@ -89,8 +104,23 @@ export const METRIC_CHARTS: MetricChartDefinition[] = [
   {
     key: 'linea-de-vida',
     number: '8',
-    title: 'Línea de vida, planes y profesiones',
-    description: 'Ingresos por mes (creados, reingresos, mensualidades), plan que más ingreso genera y profesión con más afiliados.',
+    title: 'Línea de vida del afiliado',
+    description: 'Todo lo que le ha pasado a un afiliado: creación, reingresos, cambios, inactivaciones, desafiliación e incapacidades, con su resumen de pagos.',
+    filters: ['dates'],
+    optionalDates: true,
+  },
+  {
+    key: 'planes',
+    number: '8B',
+    title: 'Planes con mayor número de ventas',
+    description: 'Planes ordenados por cantidad de ventas aprobadas en el rango, con su ingreso.',
+    filters: ['dates', 'fidelizadores', 'origins', 'branches'],
+  },
+  {
+    key: 'profesiones',
+    number: '8C',
+    title: 'Profesiones con más afiliados',
+    description: 'Profesiones de los afiliados con transacciones aprobadas en el rango.',
     filters: ['dates', 'fidelizadores', 'origins', 'branches'],
   },
 ];
