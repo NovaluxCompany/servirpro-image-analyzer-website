@@ -1,0 +1,181 @@
+@if (data().totals.affiliates === 0) {
+<p class="py-10 text-center text-sm text-gray-500">No hay transacciones nuevas aprobadas con estos filtros.</p>
+} @else {
+<div class="grid grid-cols-2 gap-3 mb-4 md:grid-cols-4">
+  <div class="rounded-lg bg-gray-50 px-3 py-2">
+    <p class="text-xs text-gray-500">Afiliados</p>
+    <p class="text-lg font-semibold text-gray-900">{{ data().totals.affiliates }}</p>
+  </div>
+  <div class="rounded-lg bg-gray-50 px-3 py-2">
+    <p class="text-xs text-gray-500">Ventas</p>
+    <p class="text-lg font-semibold text-gray-900">{{ data().totals.sales | money }}</p>
+  </div>
+  <div class="rounded-lg bg-gray-50 px-3 py-2">
+    <p class="text-xs text-gray-500">Costo afiliaciones</p>
+    <p class="text-lg font-semibold text-gray-900">{{ data().totals.affiliationCost | money }}</p>
+    <p class="text-[11px] text-gray-500">{{ data().totals.affiliates }} × {{ unitCost() | money }}</p>
+  </div>
+  <div class="rounded-lg bg-gray-50 px-3 py-2">
+    <p class="text-xs text-gray-500">Ganancia neta</p>
+    <p class="text-lg font-semibold" [class.text-red-700]="data().totals.netProfit < 0" [class.text-gray-900]="data().totals.netProfit >= 0">
+      {{ data().totals.netProfit | money }}
+    </p>
+  </div>
+</div>
+
+@if (detailed()) {
+<div class="mb-3 inline-flex rounded-lg border border-gray-200 p-0.5 text-sm">
+  <button type="button" (click)="metric.set('affiliates')"
+    [class]="metric() === 'affiliates' ? 'rounded-md bg-blue-700 px-3 py-1 text-white' : 'rounded-md px-3 py-1 text-gray-700 hover:bg-gray-100'">
+    Afiliados
+  </button>
+  <button type="button" (click)="metric.set('sales')"
+    [class]="metric() === 'sales' ? 'rounded-md bg-blue-700 px-3 py-1 text-white' : 'rounded-md px-3 py-1 text-gray-700 hover:bg-gray-100'">
+    Ventas
+  </button>
+  <button type="button" (click)="metric.set('affiliationCost')"
+    [class]="metric() === 'affiliationCost' ? 'rounded-md bg-blue-700 px-3 py-1 text-white' : 'rounded-md px-3 py-1 text-gray-700 hover:bg-gray-100'">
+    Costo afiliación
+  </button>
+</div>
+}
+
+<app-chart-canvas [config]="chartConfig()" [height]="detailed() ? '380px' : '240px'"
+  ariaLabel="Afiliados nuevos por fidelizador y origen" />
+
+@if (!detailed()) {
+<div class="mt-4 max-h-64 overflow-auto rounded-lg border border-gray-200">
+  <table class="w-full text-xs text-left text-gray-700 tabular-nums">
+    <thead class="sticky top-0 bg-gray-50 uppercase text-gray-600">
+      <tr>
+        <th class="px-3 py-2">Fidelizador</th>
+        <th class="px-3 py-2 text-right">Afiliados</th>
+        <th class="px-3 py-2 text-right">Ventas</th>
+        <th class="px-3 py-2 text-right">Costo afiliación</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      @for (fid of data().byFidelizador; track fid.fidelizador) {
+      <tr>
+        <td class="px-3 py-1.5 font-medium">{{ fid.fidelizador }}</td>
+        <td class="px-3 py-1.5 text-right">{{ fid.affiliates }}</td>
+        <td class="px-3 py-1.5 text-right">{{ fid.sales | money }}</td>
+        <td class="px-3 py-1.5 text-right">{{ fid.affiliationCost | money }}</td>
+      </tr>
+      }
+    </tbody>
+    <tfoot class="sticky bottom-0 bg-gray-100 font-bold">
+      <tr>
+        <td class="px-3 py-1.5">Total</td>
+        <td class="px-3 py-1.5 text-right">{{ data().totals.affiliates }}</td>
+        <td class="px-3 py-1.5 text-right">{{ data().totals.sales | money }}</td>
+        <td class="px-3 py-1.5 text-right">{{ data().totals.affiliationCost | money }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+}
+
+@if (detailed()) {
+<h3 class="mt-8 mb-2 text-base font-semibold text-gray-900">Tabla 1 · Desagrupado por origen</h3>
+<div class="overflow-x-auto rounded-lg border border-gray-200">
+  <table class="w-full text-sm text-left text-gray-700 tabular-nums">
+    <thead class="bg-gray-50 text-xs uppercase text-gray-600">
+      <tr>
+        <th class="px-3 py-2">Origen</th>
+        <th class="px-3 py-2">Fidelizador</th>
+        <th class="px-3 py-2 text-right">Afiliados</th>
+        <th class="px-3 py-2 text-right">Publicidad</th>
+        <th class="px-3 py-2 text-right">Costo afiliación</th>
+        <th class="px-3 py-2 text-right">Ventas</th>
+        <th class="px-3 py-2 text-right">Ganancia neta</th>
+        <th class="px-3 py-2 text-right">Costo x cliente</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      @for (origin of data().byOrigin; track origin.origin) {
+      @for (row of origin.rows; track row.fidelizador; let first = $first) {
+      <tr>
+        <td class="px-3 py-2 font-medium">{{ first ? origin.origin : '' }}</td>
+        <td class="px-3 py-2">{{ row.fidelizador }}</td>
+        <td class="px-3 py-2 text-right">{{ row.affiliates }}</td>
+        <td class="px-3 py-2 text-right text-gray-400">—</td>
+        <td class="px-3 py-2 text-right">{{ row.affiliationCost | money }}</td>
+        <td class="px-3 py-2 text-right">{{ row.sales | money }}</td>
+        <td class="px-3 py-2 text-right text-gray-400">—</td>
+        <td class="px-3 py-2 text-right text-gray-400">—</td>
+      </tr>
+      }
+      <tr class="bg-green-50 font-semibold">
+        <td class="px-3 py-2" colspan="2">Total {{ origin.origin }}</td>
+        <td class="px-3 py-2 text-right">{{ origin.subtotal.affiliates }}</td>
+        <td class="px-3 py-2 text-right">{{ origin.subtotal.advertising | money }}</td>
+        <td class="px-3 py-2 text-right">{{ origin.subtotal.affiliationCost | money }}</td>
+        <td class="px-3 py-2 text-right">{{ origin.subtotal.sales | money }}</td>
+        <td class="px-3 py-2 text-right" [class.text-red-700]="origin.subtotal.netProfit < 0">{{ origin.subtotal.netProfit | money }}</td>
+        <td class="px-3 py-2 text-right">{{ origin.subtotal.costPerClient | money }}</td>
+      </tr>
+      }
+    </tbody>
+    <tfoot class="bg-green-100 font-bold">
+      <tr>
+        <td class="px-3 py-2" colspan="2">Total general</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.affiliates }}</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.advertising | money }}</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.affiliationCost | money }}</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.sales | money }}</td>
+        <td class="px-3 py-2 text-right" [class.text-red-700]="data().totals.netProfit < 0">{{ data().totals.netProfit | money }}</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.costPerClient | money }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+<p class="mt-1 text-xs text-gray-500">
+  La publicidad de Meta se descuenta del origen Meta y la de Web del origen Web. Ganancia neta = ventas − costo afiliación − publicidad.
+  Costo x cliente = publicidad ÷ afiliados.
+</p>
+
+<h3 class="mt-8 mb-2 text-base font-semibold text-gray-900">Tabla 2 · Agrupado por fidelizador</h3>
+<div class="overflow-x-auto rounded-lg border border-gray-200">
+  <table class="w-full text-sm text-left text-gray-700 tabular-nums">
+    <thead class="bg-gray-50 text-xs uppercase text-gray-600">
+      <tr>
+        <th class="px-3 py-2">Fidelizador</th>
+        <th class="px-3 py-2">Canal</th>
+        <th class="px-3 py-2 text-right">Afiliados</th>
+        <th class="px-3 py-2 text-right">Pagos</th>
+        <th class="px-3 py-2 text-right">Costo afiliación</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      @for (fid of data().byFidelizador; track fid.fidelizador) {
+      @for (row of fid.rows; track row.origin; let first = $first) {
+      <tr>
+        <td class="px-3 py-2 font-medium">{{ first ? fid.fidelizador : '' }}</td>
+        <td class="px-3 py-2">{{ row.origin }}</td>
+        <td class="px-3 py-2 text-right">{{ row.affiliates }}</td>
+        <td class="px-3 py-2 text-right">{{ row.sales | money }}</td>
+        <td class="px-3 py-2 text-right">{{ row.affiliationCost | money }}</td>
+      </tr>
+      }
+      <tr class="bg-gray-50 font-semibold">
+        <td class="px-3 py-2" colspan="2">Total {{ fid.fidelizador }}</td>
+        <td class="px-3 py-2 text-right">{{ fid.affiliates }}</td>
+        <td class="px-3 py-2 text-right">{{ fid.sales | money }}</td>
+        <td class="px-3 py-2 text-right">{{ fid.affiliationCost | money }}</td>
+      </tr>
+      }
+    </tbody>
+    <tfoot class="bg-gray-100 font-bold">
+      <tr>
+        <td class="px-3 py-2" colspan="2">Suma total</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.affiliates }}</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.sales | money }}</td>
+        <td class="px-3 py-2 text-right">{{ data().totals.affiliationCost | money }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+<p class="mt-1 text-xs text-gray-500">Costo afiliación = afiliados × {{ unitCost() | money }} (costo por afiliación del filtro).</p>
+}
+}

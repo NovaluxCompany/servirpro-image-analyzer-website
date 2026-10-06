@@ -229,6 +229,29 @@
         </a>
         }
 
+        <!-- Métricas -->
+        @if (canSee('/metricas')) {
+        <a routerLink="/metricas" routerLinkActive="bg-white/20 shadow-lg"
+          [routerLinkActiveOptions]="{exact: false}"
+          class="flex items-center px-3 py-3 text-white rounded-lg hover:bg-white/10 transition-all duration-200 group">
+          <div class="flex items-center gap-3 flex-1">
+            <div
+              class="w-10 h-10 flex items-center justify-center rounded-lg bg-white/10 group-hover:bg-white/20 group-hover:scale-110 transition-all duration-200">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            @if (isSidebarExpanded()) {
+            <span class="font-medium">Métricas</span>
+            }
+          </div>
+          @if (isSidebarExpanded() && isActiveRoute('/metricas')) {
+          <div class="w-1 h-8 bg-white rounded-full"></div>
+          }
+        </a>
+        }
+
         <!-- More menu items can be added here -->
       </nav>
 
