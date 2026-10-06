@@ -13,13 +13,13 @@ import { BAR_STYLE, SERIES_COLORS, baseOptions, seriesColor } from '../../utils/
   template: `
     @if (data().cohorts.length === 0) {
       <p class="py-10 text-center text-sm text-gray-500">
-        No hay afiliados nuevos entre {{ data().cohortFrom | monthLabel }} y {{ data().cohortTo | monthLabel }} con estos filtros.
+        No hay afiliados que hayan entrado entre {{ data().cohortFrom | monthLabel }} y {{ data().cohortTo | monthLabel }} con estos filtros.
       </p>
     } @else {
       <p class="mb-2 text-xs text-gray-500">
-        Cohortes de {{ data().cohortFrom | monthLabel }} a {{ data().cohortTo | monthLabel }} · afiliados que siguen pagando cada mes.
+        Cohortes de {{ data().cohortFrom | monthLabel }} a {{ data().cohortTo | monthLabel }} · afiliados que siguen afiliados al cierre de cada mes.
       </p>
-      <app-chart-canvas [config]="chartConfig()" [height]="detailed() ? '360px' : '240px'" ariaLabel="Afiliados que siguen pagando por cohorte" />
+      <app-chart-canvas [config]="chartConfig()" [height]="detailed() ? '360px' : '240px'" ariaLabel="Afiliados que siguen afiliados por cohorte" />
       @if (hiddenCohorts() > 0) {
         <p class="mt-1 text-xs text-gray-500">El gráfico muestra las primeras 8 cohortes; las {{ hiddenCohorts() }} restantes están en la tabla.</p>
       }
@@ -57,6 +57,7 @@ import { BAR_STYLE, SERIES_COLORS, baseOptions, seriesColor } from '../../utils/
                 <th class="px-3 py-2">Cohorte</th>
                 <th class="px-3 py-2">Mes</th>
                 <th class="px-3 py-2 text-right">Afiliados</th>
+                <th class="px-3 py-2 text-right">Volvieron</th>
                 <th class="px-3 py-2 text-right">% que sigue</th>
                 <th class="px-3 py-2 text-right">Mensualidad</th>
                 <th class="px-3 py-2 text-right">Planilla</th>
@@ -72,6 +73,7 @@ import { BAR_STYLE, SERIES_COLORS, baseOptions, seriesColor } from '../../utils/
                     <td class="px-3 py-2">{{ cohort.cohortMonth | monthLabel }}</td>
                     <td class="px-3 py-2">{{ row.month | monthLabel }}</td>
                     <td class="px-3 py-2 text-right">{{ row.affiliates }}</td>
+                    <td class="px-3 py-2 text-right" [class.text-gray-400]="!row.returned">{{ first ? '—' : row.returned }}</td>
                     <td class="px-3 py-2 text-right">{{ retained(cohort, row) }}</td>
                     <td class="px-3 py-2 text-right">{{ row.monthly | money }}</td>
                     <td class="px-3 py-2 text-right">{{ row.payroll | money }}</td>
@@ -85,6 +87,7 @@ import { BAR_STYLE, SERIES_COLORS, baseOptions, seriesColor } from '../../utils/
                   <td class="px-3 py-2">Total general</td>
                   <td class="px-3 py-2"></td>
                   <td class="px-3 py-2"></td>
+                  <td class="px-3 py-2"></td>
                   <td class="px-3 py-2 text-right">{{ cohort.total.monthly | money }}</td>
                   <td class="px-3 py-2 text-right">{{ cohort.total.payroll | money }}</td>
                   <td class="px-3 py-2 text-right text-gray-400">{{ cohort.total.retirementPayment | money }}</td>
@@ -96,7 +99,9 @@ import { BAR_STYLE, SERIES_COLORS, baseOptions, seriesColor } from '../../utils/
           </table>
         </div>
         <p class="mt-2 text-xs text-gray-500">
-          % que sigue = afiliados del mes ÷ afiliados del primer mes de la cohorte. P. Reti y Recaudo neto no se manejan en el sistema y se muestran en 0.
+          Afiliados: en el primer mes, los que entraron; en los siguientes, los que siguen afiliados al cierre del mes (ya incluye a los que
+          volvieron). Volvieron = estaban retirados al cierre del mes anterior y se afiliaron de nuevo. % que sigue = afiliados del mes ÷
+          afiliados del primer mes de la cohorte. P. Reti y Recaudo neto no se manejan en el sistema y se muestran en 0.
         </p>
       }
     }

@@ -116,7 +116,10 @@ export interface RetentionResponse extends MetricsResponseBase {
 
 export interface CohortMonthRow {
   month: string;
+  /** Primer mes: los que entraron. Siguientes: los que siguen afiliados al cierre del mes. */
   affiliates: number;
+  /** Estaban retirados al cierre del mes anterior y volvieron a afiliarse. */
+  returned: number;
   monthly: number;
   payroll: number;
   retirementPayment: number;
@@ -132,7 +135,7 @@ export interface CohortsResponse extends MetricsResponseBase {
   cohorts: Array<{
     cohortMonth: string;
     rows: CohortMonthRow[];
-    total: Omit<CohortMonthRow, 'month' | 'affiliates'>;
+    total: Omit<CohortMonthRow, 'month' | 'affiliates' | 'returned'>;
   }>;
 }
 

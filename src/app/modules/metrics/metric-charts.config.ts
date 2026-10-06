@@ -98,7 +98,7 @@ export const METRIC_CHARTS: MetricChartDefinition[] = [
     key: 'cohortes',
     number: '7',
     title: 'Cohortes: cuántos afiliados quedan mes a mes',
-    description: 'Afiliados que entraron como nuevos en un mes y cuántos siguen pagando en los meses siguientes (desde junio).',
+    description: 'Afiliados que entraron en un mes y cuántos siguen afiliados al cierre de cada mes siguiente, incluidos los que se retiraron y volvieron (desde junio).',
     filters: ['dates', 'fidelizadores', 'origins', 'branches'],
   },
   {
