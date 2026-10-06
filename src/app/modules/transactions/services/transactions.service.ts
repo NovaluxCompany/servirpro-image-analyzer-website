@@ -35,6 +35,7 @@ export class TransactionsService {
       if (filters.uploadedBy) params = params.set('uploadedBy', filters.uploadedBy);
       if (filters.status) params = params.set('status', filters.status);
       if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
+      if (filters.deactivationReason) params = params.set('deactivationReason', filters.deactivationReason);
     }
 
     return this._http
@@ -60,6 +61,7 @@ export class TransactionsService {
       if (filters.uploadedBy) params = params.set('uploadedBy', filters.uploadedBy);
       if (filters.status) params = params.set('status', filters.status);
       if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
+      if (filters.deactivationReason) params = params.set('deactivationReason', filters.deactivationReason);
     }
 
     return this._http
@@ -127,6 +129,7 @@ export class TransactionsService {
       if (filters.uploadedBy) params = params.set('uploadedBy', filters.uploadedBy);
       if (filters.status) params = params.set('status', filters.status);
       if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
+      if (filters.deactivationReason) params = params.set('deactivationReason', filters.deactivationReason);
     }
 
     return this._http

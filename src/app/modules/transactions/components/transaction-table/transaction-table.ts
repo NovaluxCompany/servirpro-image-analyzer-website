@@ -1,6 +1,6 @@
 import { Component, HostListener, effect, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Transaction } from '../../interfaces/transaction.interface';
+import { DEACTIVATION_REASON_LABELS, Transaction } from '../../interfaces/transaction.interface';
 import { TransactionStatusBadgeComponent } from '../transaction-status-badge/transaction-status-badge';
 import { TableScrollComponent } from '../../../../shared/components/table-scroll/table-scroll';
 
@@ -162,6 +162,11 @@ export class TransactionTableComponent {
       ),
     );
     return names.length > 0 ? names.join(', ') : '-';
+  }
+
+  getDeactivationReasonLabel(transaction: Transaction): string | null {
+    const reason = transaction.deactivationReason;
+    return reason ? DEACTIVATION_REASON_LABELS[reason] ?? reason : null;
   }
 
   getAverageVeracity(transaction: Transaction): number {

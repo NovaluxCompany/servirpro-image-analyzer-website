@@ -15,6 +15,7 @@
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Monto IA</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Coincidencia</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Estado</th>
+        <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">Motivo</th>
         <th scope="col" class="px-4 py-3 font-semibold whitespace-nowrap">% Veracidad</th>
       </tr>
     </thead>
@@ -34,12 +35,13 @@
             <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
             <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded w-8"></div></td>
             <td class="px-4 py-3"><div class="h-5 bg-gray-200 rounded-full w-20"></div></td>
+            <td class="px-4 py-3"><div class="h-5 bg-gray-200 rounded-full w-24"></div></td>
             <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded w-12"></div></td>
           </tr>
         }
       } @else if (transactions().length === 0) {
         <tr>
-          <td colspan="13" class="px-4 py-16 text-center">
+          <td colspan="14" class="px-4 py-16 text-center">
             <div class="flex flex-col items-center gap-3">
               <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                 <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,6 +158,15 @@
             </td>
             <td class="px-4 py-3">
               <app-transaction-status-badge [status]="transaction.status" />
+            </td>
+            <td class="px-4 py-3">
+              @if (getDeactivationReasonLabel(transaction); as reasonLabel) {
+                <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium text-amber-800 bg-amber-100 rounded-full whitespace-nowrap">
+                  {{ reasonLabel }}
+                </span>
+              } @else {
+                <span class="text-gray-400">-</span>
+              }
             </td>
             <td class="px-4 py-3">
               @if (transaction.status === 'processed' && transaction.receipts.length > 0) {
