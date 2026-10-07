@@ -7,6 +7,7 @@ import { Transaction } from '../interfaces/transaction.interface';
 import { TransactionFilters } from '../interfaces/transaction-filters.interface';
 import { PaginatedResponse } from '../interfaces/paginated-response.interface';
 import { PaymentMethodOption } from '../interfaces/payment-method.interface';
+import { ReceiptValidationIssue } from '../interfaces/receipt.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -189,8 +190,17 @@ export class TransactionsService {
       }
     }
 
-    const wrapped = new Error(errorMessage) as Error & { status?: number };
+    // Al crear, el backend espera a que n8n lea los comprobantes y, si no son
+    // válidos, manda además el detalle por comprobante en `errors`: se conserva
+    // para que la pantalla lo muestre como lista junto a las imágenes.
+    const wrapped = new Error(errorMessage) as Error & {
+      status?: number;
+      receiptIssues?: ReceiptValidationIssue[];
+    };
     wrapped.status = error.status;
+    if (Array.isArray(error.error?.errors)) {
+      wrapped.receiptIssues = error.error.errors;
+    }
     return throwError(() => wrapped);
   }
 }

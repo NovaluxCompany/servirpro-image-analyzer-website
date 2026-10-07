@@ -7,6 +7,7 @@ import { AffiliatesFormComponent } from '../../components/affiliates-form/affili
 import { ImageUploaderComponent } from '../../components/image-uploader/image-uploader';
 import { Affiliate } from '../../interfaces/affiliate.interface';
 import { PaymentDestinationOption, PaymentMethodOption } from '../../interfaces/payment-method.interface';
+import { ReceiptValidationIssue } from '../../interfaces/receipt.interface';
 import { PermissionService } from '../../../../core/service/permission.service';
 import { ToastService } from '../../../../core/service/toast.service';
 
@@ -28,6 +29,15 @@ export class TransactionCreateComponent {
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   uploadedImages = signal<File[]>([]);
+
+  /**
+   * Por qué el backend rechazó los comprobantes. Al crear, el backend espera a
+   * que la IA (n8n) los lea y no guarda la transacción si alguno no es válido
+   * o no se pudo leer. Se muestran como lista junto a las imágenes, y no solo
+   * en un toast, porque el asesor tiene que corregir cada uno (subir otra foto
+   * o el comprobante correcto) antes de volver a enviar.
+   */
+  receiptIssues = signal<ReceiptValidationIssue[]>([]);
 
   /**
    * Bloqueo global de transacciones. Con el bloqueo encendido se puede entrar
@@ -111,6 +121,8 @@ export class TransactionCreateComponent {
 
   onImagesChanged(files: File[]): void {
     this.uploadedImages.set(files);
+    // Los motivos eran de las imágenes anteriores.
+    this.receiptIssues.set([]);
   }
 
   private updateValuePaid(): void {
@@ -148,6 +160,7 @@ export class TransactionCreateComponent {
 
   onSubmit(): void {
     this.errorMessage.set(null);
+    this.receiptIssues.set([]);
 
     // Se revisa antes que lo demás: con el bloqueo encendido, el pago de
     // alguien que no es nuevo no se va a poder registrar por más completo que
@@ -232,12 +245,17 @@ export class TransactionCreateComponent {
         this.isLoading.set(false);
         this._router.navigate(['/transacciones'], {
           state: {
-            successMessage: `Transacción ${transaction.reference} creada exitosamente. Procesando con IA...`
+            successMessage: `Transacción ${transaction.reference} creada exitosamente.`
           }
         });
       },
       error: (error) => {
         this.isLoading.set(false);
+        if (error.receiptIssues?.length) {
+          this.receiptIssues.set(error.receiptIssues);
+          document.getElementById('receipt-issues')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
         // A partir de aquí la transacción YA se mandó a crear: el error es
         // de la petición (backend/Siigo/inesperado), no de datos mal
         // llenados en el formulario — se muestra por notificación en vez

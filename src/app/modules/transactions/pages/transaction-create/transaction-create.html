@@ -131,7 +131,28 @@
       <!-- Comprobantes -->
       <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
         <h2 class="mb-4 text-xl font-semibold text-gray-900">Comprobantes de Pago</h2>
+        <p class="mb-4 text-sm text-gray-500">
+          Al crear la transacción, la IA lee los comprobantes y valida la fecha y la cuenta destino.
+          Si alguno es de otro año, va a una cuenta no autorizada o no se puede leer, la transacción no se guarda.
+        </p>
         <app-image-uploader (imagesChanged)="onImagesChanged($event)" />
+
+        @if (receiptIssues().length > 0) {
+        <div id="receipt-issues" class="p-4 mt-4 text-sm text-red-800 rounded-lg bg-red-100" role="alert">
+          <p class="font-medium">
+            Los comprobantes no son válidos de acuerdo con la información ingresada. No se guardó la transacción.
+          </p>
+          <ul class="mt-2 space-y-1 list-disc list-inside">
+            @for (issue of receiptIssues(); track $index) {
+            <li>{{ issue.message }}</li>
+            }
+          </ul>
+          <p class="mt-2 text-xs text-red-700">
+            Corrige lo indicado (sube una foto más clara o el comprobante correcto) y vuelve a crear la
+            transacción.
+          </p>
+        </div>
+        }
       </div>
 
       <!-- Actions -->
@@ -149,7 +170,7 @@
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
               </path>
             </svg>
-            Creando transacción...
+            Validando comprobantes...
           </span>
           } @else if (affiliatesForm?.hasLockedSelection() || lockedWithoutSelection()) {
           Solo se pueden pagar afiliados nuevos
@@ -175,7 +196,8 @@
 <div class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
   <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
   <p class="mt-4 text-lg font-medium text-gray-700 animate-pulse">
-    Creando transacción y enviando a IA...
+    Validando comprobantes con IA...
   </p>
+  <p class="mt-1 text-sm text-gray-500">Puede tardar hasta un minuto. No cierres ni recargues la página.</p>
 </div>
 }
