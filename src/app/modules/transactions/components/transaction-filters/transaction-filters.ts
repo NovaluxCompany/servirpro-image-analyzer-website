@@ -22,6 +22,8 @@ export class TransactionFiltersComponent {
     idNumber: [''],
     uploadedBy: [''],
     status: [''],
+    affiliateType: [''],
+    deactivationReason: [''],
   });
 
   onSearch(): void {
@@ -37,6 +39,8 @@ export class TransactionFiltersComponent {
     if (values.idNumber) filters.idNumber = values.idNumber;
     if (values.uploadedBy) filters.uploadedBy = values.uploadedBy;
     if (values.status) filters.status = values.status;
+    if (values.affiliateType) filters.affiliateType = values.affiliateType as TransactionFilters['affiliateType'];
+    if (values.deactivationReason) filters.deactivationReason = values.deactivationReason as TransactionFilters['deactivationReason'];
 
     this.filterApplied.emit(filters);
   }

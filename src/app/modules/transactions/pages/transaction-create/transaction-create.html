@@ -8,6 +8,14 @@
       </p>
     </div>
 
+    @if (transactionsLocked()) {
+    <div class="p-4 mb-6 text-sm text-amber-900 bg-amber-100 border border-amber-200 rounded-lg" role="alert">
+      <span class="font-medium">Transacciones bloqueadas:</span>
+      solo se pueden registrar pagos de afiliados nuevos. Los demás aparecen en los resultados,
+      pero no se pueden seleccionar hasta que el administrador desbloquee el módulo.
+    </div>
+    }
+
     <!-- Error Alert -->
     @if (errorMessage()) {
     <div class="p-4 mb-6 text-sm text-red-800 rounded-lg bg-red-100" role="alert">
@@ -19,7 +27,8 @@
     <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
       <!-- Afiliados -->
       <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
-        <app-affiliates-form (affiliatesChanged)="onAffiliatesChanged($event)" />
+        <app-affiliates-form [transactionsLocked]="transactionsLocked()"
+          (affiliatesChanged)="onAffiliatesChanged($event)" />
       </div>
 
       <!-- Información general -->
@@ -56,6 +65,46 @@
           </div>
         </div>
 
+        <!-- Forma de pago y destino del dinero -->
+        <div class="grid grid-cols-1 gap-4 mt-4 md:grid-cols-2">
+          <div>
+            <label for="paymentMethodId" class="block mb-2 text-sm font-medium text-gray-900">
+              Forma de Pago *
+            </label>
+            <select id="paymentMethodId" formControlName="paymentMethodId"
+              (change)="onPaymentMethodChange()"
+              [class.border-red-500]="isFieldInvalid('paymentMethodId')"
+              class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500">
+              <option value="">Selecciona una forma de pago...</option>
+              @for (method of paymentMethods(); track method.id) {
+                <option [value]="method.id">{{ method.name }}</option>
+              }
+            </select>
+            @if (isFieldInvalid('paymentMethodId')) {
+            <p class="mt-1 text-xs text-red-600">{{ getFieldError('paymentMethodId') }}</p>
+            }
+          </div>
+
+          <div>
+            <label for="paymentDestinationId" class="block mb-2 text-sm font-medium text-gray-900">
+              ¿A dónde llega el dinero? *
+            </label>
+            <select id="paymentDestinationId" formControlName="paymentDestinationId"
+              [class.border-red-500]="isFieldInvalid('paymentDestinationId')"
+              class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed">
+              <option value="">
+                {{ paymentDestinations().length === 0 ? 'Elige primero la forma de pago' : 'Selecciona un destino...' }}
+              </option>
+              @for (destination of paymentDestinations(); track destination.id) {
+                <option [value]="destination.id">{{ destination.name }}</option>
+              }
+            </select>
+            @if (isFieldInvalid('paymentDestinationId')) {
+            <p class="mt-1 text-xs text-red-600">{{ getFieldError('paymentDestinationId') }}</p>
+            }
+          </div>
+        </div>
+
         <!-- Observación -->
         <div class="mt-4">
           <label for="observation" class="block mb-2 text-sm font-medium text-gray-900">
@@ -82,13 +131,36 @@
       <!-- Comprobantes -->
       <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
         <h2 class="mb-4 text-xl font-semibold text-gray-900">Comprobantes de Pago</h2>
+        <p class="mb-4 text-sm text-gray-500">
+          Al crear la transacción, la IA lee los comprobantes y valida la fecha y la cuenta destino.
+          Si alguno es de otro año, va a una cuenta no autorizada o no se puede leer, la transacción no se guarda.
+        </p>
         <app-image-uploader (imagesChanged)="onImagesChanged($event)" />
+
+        @if (receiptIssues().length > 0) {
+        <div id="receipt-issues" class="p-4 mt-4 text-sm text-red-800 rounded-lg bg-red-100" role="alert">
+          <p class="font-medium">
+            Los comprobantes no son válidos de acuerdo con la información ingresada. No se guardó la transacción.
+          </p>
+          <ul class="mt-2 space-y-1 list-disc list-inside">
+            @for (issue of receiptIssues(); track $index) {
+            <li>{{ issue.message }}</li>
+            }
+          </ul>
+          <p class="mt-2 text-xs text-red-700">
+            Corrige lo indicado (sube una foto más clara o el comprobante correcto) y vuelve a crear la
+            transacción.
+          </p>
+        </div>
+        }
       </div>
 
       <!-- Actions -->
       <div class="flex items-center gap-4">
         <button type="submit" [disabled]="isSubmitBlocked()"
-          [title]="affiliatesForm?.hasDuplicates() ? 'Quita de la selección los afiliados que ya tienen una transacción este mes' : ''"
+          [title]="affiliatesForm?.hasLockedSelection() || lockedWithoutSelection()
+            ? 'Con el bloqueo activo solo se pueden pagar afiliados nuevos'
+            : (affiliatesForm?.hasDuplicates() ? 'Quita de la selección los afiliados que ya tienen una transacción este mes' : '')"
           class="flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50 disabled:cursor-not-allowed">
           @if (isLoading()) {
           <span class="inline-flex items-center gap-2">
@@ -98,8 +170,10 @@
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
               </path>
             </svg>
-            Creando transacción...
+            Validando comprobantes...
           </span>
+          } @else if (affiliatesForm?.hasLockedSelection() || lockedWithoutSelection()) {
+          Solo se pueden pagar afiliados nuevos
           } @else if (affiliatesForm?.hasDuplicates()) {
           Quita los afiliados duplicados para continuar
           } @else {
@@ -122,7 +196,8 @@
 <div class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
   <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
   <p class="mt-4 text-lg font-medium text-gray-700 animate-pulse">
-    Creando transacción y enviando a IA...
+    Validando comprobantes con IA...
   </p>
+  <p class="mt-1 text-sm text-gray-500">Puede tardar hasta un minuto. No cierres ni recargues la página.</p>
 </div>
 }

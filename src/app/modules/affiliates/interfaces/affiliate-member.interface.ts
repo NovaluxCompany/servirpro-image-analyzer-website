@@ -26,6 +26,10 @@ export interface AffiliateMember {
   departmentCode?: string;
   cityCode?: string;
   reference?: string;
+  // Número al que se le envían los certificados por WhatsApp. Sale de la
+  // referencia (que es texto libre: número + nombres) pero se guarda aparte,
+  // porque una misma referencia puede tener varios afiliados. Editable a mano.
+  whatsappNumber?: string | null;
   // Fecha whatsapp
   whatsappEntryDate?: string;
   companyEntryDate?: string;
@@ -40,6 +44,8 @@ export interface AffiliateMember {
   grouperName?: string;
   advisorId?: string;
   advisorName?: string;
+  fidelizadorId?: string;
+  fidelizadorName?: string;
   epsId?: string;
   epsName?: string;
   pensionId?: string;
@@ -110,6 +116,8 @@ export interface CreateAffiliateMemberDto {
   // (ver AffiliateMember), no se envían.
   cityCode?: string;
   reference: string;        // required
+  // null = limpiar el número guardado; undefined = no tocarlo (edición parcial)
+  whatsappNumber?: string | null;
   profession?: string;
   gender?: string;
   whatsappEntryDate?: string;
@@ -118,6 +126,7 @@ export interface CreateAffiliateMemberDto {
   companyId?: number | null;
   grouperId: number | null;
   advisorId: number | null;
+  fidelizadorId?: number | null;
   epsId?: number | null;
   pensionId?: number | null;
   compensationBoxId?: number | null;

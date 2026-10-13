@@ -3,22 +3,27 @@ import {
   Component,
   ElementRef,
   HostListener,
-  Input,
   OnDestroy,
-  OnInit,
-  ViewChild,
+  computed,
   forwardRef,
   inject,
+  input,
+  output,
   signal,
-  computed,
+  viewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 
 export interface SelectOption {
   value: string;
   label: string;
 }
+
+/** Espera antes de consultar al servidor, para no pegarle en cada tecla. */
+const SERVER_SEARCH_DEBOUNCE_MS = 300;
 
 @Component({
   selector: 'app-searchable-select',
@@ -33,59 +38,133 @@ export interface SelectOption {
   ],
   templateUrl: './searchable-select.html',
 })
-export class SearchableSelectComponent implements ControlValueAccessor, OnInit, AfterViewInit, OnDestroy {
+export class SearchableSelectComponent implements ControlValueAccessor, AfterViewInit, OnDestroy {
   private _elementRef = inject(ElementRef);
 
-  // `options` se reasigna de forma asíncrona (ej. la lista de municipios llega
-  // después de seleccionar el departamento, o después de cargar el afiliado en
-  // edición). `selectedLabel` es un computed() y solo reacciona a señales, así que
-  // sin este contador de versión no vuelve a calcular la etiqueta cuando cambian
-  // las opciones y se queda mostrando el valor crudo (el código) en vez del nombre.
-  private optionsVersion = signal(0);
-  private _options: SelectOption[] = [];
-  @Input() set options(value: SelectOption[]) {
-    this._options = value ?? [];
-    this.optionsVersion.update((v) => v + 1);
-  }
-  get options(): SelectOption[] {
-    return this._options;
-  }
-  @Input() placeholder = 'Seleccionar...';
-  @Input() isInvalid = false;
+  // ── Entradas ──────────────────────────────────────────────────────────────
+  // Signal inputs: `options` se reasigna de forma asíncrona (los municipios
+  // llegan después de elegir departamento; los resultados de una búsqueda al
+  // servidor, después de escribir). Como signal, `selectedLabel` reacciona
+  // sola — antes hacía falta un contador de versión manual para forzar el
+  // recálculo del computed.
+  options = input<SelectOption[]>([]);
+  placeholder = input('Seleccionar...');
+  isInvalid = input(false);
   /** Combobox mode: the trigger IS a text input. Typing sets the value directly.
    *  A chevron button opens a filtered suggestions list. */
-  @Input() allowFreeText = false;
+  allowFreeText = input(false);
 
-  @ViewChild('inputRef') inputRef!: ElementRef<HTMLInputElement>;
-  @ViewChild('triggerRef') triggerRef!: ElementRef<HTMLElement>;
-  @ViewChild('comboRef') comboRef!: ElementRef<HTMLInputElement>;
+  // ── Modo servidor ─────────────────────────────────────────────────────────
+  // Para catálogos que no caben en memoria (ej. CIE-10, ~14.000 filas): en vez
+  // de recibir todas las opciones y filtrarlas en el navegador, el componente
+  // emite lo que el usuario escribe y el padre le devuelve solo los resultados.
 
-  searchText = '';
+  /** true = `options` ya viene filtrado por el servidor; no se filtra de nuevo acá. */
+  serverSearch = input(false);
+  /** Muestra "Buscando..." mientras el padre resuelve la consulta. */
+  isLoading = input(false);
+  /** Mínimo de caracteres antes de consultar. Debajo de eso no se pega al servidor. */
+  minSearchLength = input(3);
+  /**
+   * Opción ya seleccionada cuando el valor viene precargado (ej. al editar).
+   * Sin esto el trigger mostraría el id crudo: `options` está vacío hasta que
+   * el usuario busca, así que no hay dónde resolver la etiqueta.
+   */
+  selectedOption = input<SelectOption | null>(null);
+
+  /** Texto escrito en el buscador, ya con debounce y sin repetidos. */
+  searchChange = output<string>();
+
+  // ── Referencias al DOM ────────────────────────────────────────────────────
+  private inputRef = viewChild<ElementRef<HTMLInputElement>>('inputRef');
+  private triggerRef = viewChild<ElementRef<HTMLElement>>('triggerRef');
+  private comboRef = viewChild<ElementRef<HTMLInputElement>>('comboRef');
+
+  // ── Estado ────────────────────────────────────────────────────────────────
+  searchText = signal('');
   isOpen = signal(false);
   selectedValue = signal<string>('');
+  isDisabled = signal(false);
   dropdownTop = signal(0);
   dropdownLeft = signal(0);
   dropdownWidth = signal(0);
   dropdownOpenUpward = signal(false);
 
+  private searchInput$ = new Subject<string>();
+  /** Última opción elegida: sobrevive a que `options` se reemplace por otra búsqueda. */
+  private lastSelected = signal<SelectOption | null>(null);
   /** Reference to the panel element while it lives in document.body */
   private _bodyPanelEl: Element | null = null;
 
-  private closeDropdownPanel(resetSearch = true): void {
-    this.isOpen.set(false);
-    if (this._bodyPanelEl) {
-      this._bodyPanelEl.remove();
-      this._bodyPanelEl = null;
-    }
-    if (resetSearch) {
-      this.searchText = '';
-    }
-    this.onTouched();
-  }
-
   private onChange: (value: string) => void = () => {};
   private onTouched: () => void = () => {};
-  isDisabled = signal(false);
+
+  constructor() {
+    this.searchInput$
+      .pipe(debounceTime(SERVER_SEARCH_DEBOUNCE_MS), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe((text) => this.searchChange.emit(text));
+  }
+
+  // ── Derivados ─────────────────────────────────────────────────────────────
+
+  selectedLabel = computed(() => {
+    const val = this.selectedValue();
+    if (!val) return '';
+
+    // En modo servidor `options` se reemplaza en cada búsqueda, así que la
+    // etiqueta de lo ya elegido no se puede resolver ahí: se cae a la última
+    // opción seleccionada y, si el valor vino precargado, a `selectedOption`.
+    const fromOptions = this.options().find((o) => o.value === val)?.label;
+    if (fromOptions) return fromOptions;
+
+    const remembered = this.lastSelected();
+    if (remembered?.value === val) return remembered.label;
+
+    const preloaded = this.selectedOption();
+    if (preloaded?.value === val) return preloaded.label;
+
+    return val;
+  });
+
+  /** Options filtered by the search box (select mode) */
+  filteredOptions = computed(() => {
+    // En modo servidor el filtrado ya lo hizo el backend: volver a filtrar acá
+    // escondería resultados que hicieron match por un campo que no es el label
+    // (ej. un CIE-10 encontrado por descripción y mostrado como "J00 — ...").
+    if (this.serverSearch()) return this.options();
+
+    const text = this.searchText().toLowerCase().trim();
+    if (!text) return this.options();
+    return this.options().filter((o) => o.label.toLowerCase().includes(text));
+  });
+
+  /** Options filtered by what the user typed (combobox mode) */
+  comboFilteredOptions = computed(() => {
+    const text = this.selectedValue().toLowerCase().trim();
+    if (!text) return this.options();
+    return this.options().filter((o) => o.label.toLowerCase().includes(text));
+  });
+
+  /** Qué mostrar en el panel cuando no hay opciones que listar (modo servidor). */
+  serverSearchHint = computed(() => {
+    if (!this.serverSearch()) return null;
+    if (this.searchText().trim().length < this.minSearchLength()) {
+      return `Escribe al menos ${this.minSearchLength()} caracteres para buscar`;
+    }
+    if (this.isLoading()) return 'Buscando...';
+    return null;
+  });
+
+  // ── Ciclo de vida ─────────────────────────────────────────────────────────
+
+  ngAfterViewInit(): void {
+    window.addEventListener('scroll', this.closeOnScroll, true);
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('scroll', this.closeOnScroll, true);
+    this.closeDropdownPanel(false);
+  }
 
   // Only close on scroll events that originate OUTSIDE the dropdown panel
   private readonly closeOnScroll = (event: Event): void => {
@@ -95,36 +174,16 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
     this.closeDropdownPanel();
   };
 
-  selectedLabel = computed(() => {
-    this.optionsVersion();
-    const val = this.selectedValue();
-    if (!val) return '';
-    return this.options.find((o) => o.value === val)?.label ?? val;
-  });
-
-  /** Options filtered by the search box (select mode) */
-  get filteredOptions(): SelectOption[] {
-    const text = this.searchText.toLowerCase().trim();
-    if (!text) return this.options;
-    return this.options.filter((o) => o.label.toLowerCase().includes(text));
-  }
-
-  /** Options filtered by what the user typed (combobox mode) */
-  get comboFilteredOptions(): SelectOption[] {
-    const text = this.selectedValue().toLowerCase().trim();
-    if (!text) return this.options;
-    return this.options.filter((o) => o.label.toLowerCase().includes(text));
-  }
-
-  ngOnInit(): void {}
-
-  ngAfterViewInit(): void {
-    window.addEventListener('scroll', this.closeOnScroll, true);
-  }
-
-  ngOnDestroy(): void {
-    window.removeEventListener('scroll', this.closeOnScroll, true);
-    this.closeDropdownPanel(false);
+  private closeDropdownPanel(resetSearch = true): void {
+    this.isOpen.set(false);
+    if (this._bodyPanelEl) {
+      this._bodyPanelEl.remove();
+      this._bodyPanelEl = null;
+    }
+    if (resetSearch) {
+      this.searchText.set('');
+    }
+    this.onTouched();
   }
 
   /**
@@ -145,7 +204,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
   }
 
   private updateDropdownPosition(): void {
-    const el = this.triggerRef?.nativeElement;
+    const el = this.triggerRef()?.nativeElement;
     const rect = el?.getBoundingClientRect();
     if (!rect) return;
 
@@ -175,9 +234,15 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
     this.dropdownWidth.set(width);
   }
 
+  // ── ControlValueAccessor ──────────────────────────────────────────────────
+
   writeValue(value: string): void {
-    this.selectedValue.set(value ?? '');
-    this.searchText = '';
+    const next = value ?? '';
+    this.selectedValue.set(next);
+    // Si el formulario cambia el valor por fuera (reset, precarga), la opción
+    // recordada ya no corresponde y no debe seguir prestando su etiqueta.
+    if (this.lastSelected()?.value !== next) this.lastSelected.set(null);
+    this.searchText.set('');
   }
 
   registerOnChange(fn: (value: string) => void): void {
@@ -194,6 +259,16 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
 
   // ── Select mode ───────────────────────────────────────────────────────────
 
+  onSearchTextChange(text: string): void {
+    this.searchText.set(text);
+    if (!this.serverSearch()) return;
+
+    const trimmed = text.trim();
+    // Por debajo del mínimo se avisa al padre con '' para que limpie resultados
+    // viejos, en vez de dejar en pantalla los de la búsqueda anterior.
+    this.searchInput$.next(trimmed.length >= this.minSearchLength() ? trimmed : '');
+  }
+
   openDropdown(): void {
     if (this.isDisabled()) return;
     if (this.isOpen()) {
@@ -202,16 +277,25 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
     }
     this.updateDropdownPosition();
     this.isOpen.set(true);
-    this.searchText = '';
+    this.searchText.set('');
     this.moveDropdownToBody();
-    setTimeout(() => this.inputRef?.nativeElement?.focus(), 50);
+    setTimeout(() => this.inputRef()?.nativeElement?.focus(), 50);
   }
 
   selectOption(option: SelectOption): void {
     this.selectedValue.set(option.value);
-    this.searchText = '';
+    this.lastSelected.set(option);
+    this.searchText.set('');
     this.closeDropdownPanel(false);
     this.onChange(option.value);
+  }
+
+  clearSelection(): void {
+    this.selectedValue.set('');
+    this.lastSelected.set(null);
+    this.searchText.set('');
+    this.closeDropdownPanel(false);
+    this.onChange('');
   }
 
   // ── Combobox mode (allowFreeText) ─────────────────────────────────────────
@@ -221,7 +305,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
     this.selectedValue.set(value);
     this.onChange(value);
     // Show suggestions while typing if there are options
-    if (this.options.length > 0) {
+    if (this.options().length > 0) {
       this.updateDropdownPosition();
       if (!this.isOpen()) {
         this.isOpen.set(true);
@@ -231,7 +315,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
   }
 
   onComboFocus(): void {
-    if (this.isDisabled() || this.options.length === 0) return;
+    if (this.isDisabled() || this.options().length === 0) return;
     this.updateDropdownPosition();
     if (!this.isOpen()) {
       this.isOpen.set(true);
@@ -247,7 +331,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
   }
 
   toggleComboDropdown(): void {
-    if (this.isDisabled() || this.options.length === 0) return;
+    if (this.isDisabled() || this.options().length === 0) return;
     if (this.isOpen()) {
       this.closeDropdownPanel(false);
     } else {
@@ -261,20 +345,13 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnInit, 
     this.selectedValue.set('');
     this.onChange('');
     this.closeDropdownPanel(false);
-    setTimeout(() => this.comboRef?.nativeElement?.focus(), 30);
+    setTimeout(() => this.comboRef()?.nativeElement?.focus(), 30);
   }
 
   selectComboOption(option: SelectOption): void {
     this.selectedValue.set(option.value);
     this.onChange(option.value);
     this.closeDropdownPanel(false);
-  }
-
-  clearSelection(): void {
-    this.selectedValue.set('');
-    this.searchText = '';
-    this.closeDropdownPanel(false);
-    this.onChange('');
   }
 
   @HostListener('document:click', ['$event'])

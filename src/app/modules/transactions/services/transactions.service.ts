@@ -6,6 +6,8 @@ import { TokenService } from '../../../core/service/token.service';
 import { Transaction } from '../interfaces/transaction.interface';
 import { TransactionFilters } from '../interfaces/transaction-filters.interface';
 import { PaginatedResponse } from '../interfaces/paginated-response.interface';
+import { PaymentMethodOption } from '../interfaces/payment-method.interface';
+import { ReceiptValidationIssue } from '../interfaces/receipt.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -33,6 +35,8 @@ export class TransactionsService {
       if (filters.reference) params = params.set('reference', filters.reference);
       if (filters.uploadedBy) params = params.set('uploadedBy', filters.uploadedBy);
       if (filters.status) params = params.set('status', filters.status);
+      if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
+      if (filters.deactivationReason) params = params.set('deactivationReason', filters.deactivationReason);
     }
 
     return this._http
@@ -57,6 +61,8 @@ export class TransactionsService {
       if (filters.reference) params = params.set('reference', filters.reference);
       if (filters.uploadedBy) params = params.set('uploadedBy', filters.uploadedBy);
       if (filters.status) params = params.set('status', filters.status);
+      if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
+      if (filters.deactivationReason) params = params.set('deactivationReason', filters.deactivationReason);
     }
 
     return this._http
@@ -91,6 +97,15 @@ export class TransactionsService {
       .pipe(catchError(this.handleError));
   }
 
+  /** Formas de pago con sus destinos anidados, para el formulario de creación. */
+  getPaymentMethods(): Observable<PaymentMethodOption[]> {
+    return this._http
+      .get<PaymentMethodOption[]>(`${environment.urlBD}/payment-methods/dropdown`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(this.handleError));
+  }
+
   getLockStatus(): Observable<{ locked: boolean }> {
     return this._http
       .get<{ locked: boolean }>(`${this.baseUrl}/lock-status`, { headers: this.getHeaders() })
@@ -114,6 +129,8 @@ export class TransactionsService {
       if (filters.reference) params = params.set('reference', filters.reference);
       if (filters.uploadedBy) params = params.set('uploadedBy', filters.uploadedBy);
       if (filters.status) params = params.set('status', filters.status);
+      if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
+      if (filters.deactivationReason) params = params.set('deactivationReason', filters.deactivationReason);
     }
 
     return this._http
@@ -173,8 +190,17 @@ export class TransactionsService {
       }
     }
 
-    const wrapped = new Error(errorMessage) as Error & { status?: number };
+    // Al crear, el backend espera a que n8n lea los comprobantes y, si no son
+    // válidos, manda además el detalle por comprobante en `errors`: se conserva
+    // para que la pantalla lo muestre como lista junto a las imágenes.
+    const wrapped = new Error(errorMessage) as Error & {
+      status?: number;
+      receiptIssues?: ReceiptValidationIssue[];
+    };
     wrapped.status = error.status;
+    if (Array.isArray(error.error?.errors)) {
+      wrapped.receiptIssues = error.error.errors;
+    }
     return throwError(() => wrapped);
   }
 }

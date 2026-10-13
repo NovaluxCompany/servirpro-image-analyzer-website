@@ -39,6 +39,7 @@ export interface RawInactivationAffiliateRow {
   entry_date?: string | null;
   entryDate?: string | null;
   advisor?: string;
+  fidelizador?: string;
   company?: string;
   grouper?: string;
   pension?: string;

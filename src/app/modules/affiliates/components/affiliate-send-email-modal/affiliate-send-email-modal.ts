@@ -29,6 +29,17 @@ export class AffiliateSendEmailModalComponent {
   isLoading = signal(false);
   emailError = signal<string | null>(null);
 
+  /**
+   * Salario que se adjunta en el correo. Se precarga con el que viajaría hoy
+   * (el del afiliado o, si no tiene, el mínimo configurado en el backend) y se
+   * puede cambiar antes de enviar. Solo existe en este modal: cambiarlo aplica
+   * únicamente a los afiliados Independiente.
+   */
+  salary = signal<number | null>(null);
+  salaryError = signal<string | null>(null);
+  isLoadingSalary = signal(false);
+  private loadedSalaryForId: number | null = null;
+
   constructor() {
     // Este modal es exclusivo del flujo Independiente (varios correos a elección).
     // El caso Dependiente/Gestión usa AffiliateSendEmailObservationModalComponent,
@@ -38,6 +49,54 @@ export class AffiliateSendEmailModalComponent {
       const a = this.affiliate();
       this.observation = (this.isVisible() && a?.emailObservation) || '';
     });
+
+    // El salario se pide al abrir, no al construir el modal: el componente vive
+    // en el listado y se reusa para cada afiliado.
+    effect(() => {
+      const a = this.affiliate();
+      if (!this.isVisible() || !a?.id) return;
+      this.loadSalary(Number(a.id));
+    });
+  }
+
+  private loadSalary(affiliationId: number): void {
+    if (this.loadedSalaryForId === affiliationId) return;
+    this.loadedSalaryForId = affiliationId;
+
+    this.isLoadingSalary.set(true);
+    this._service.getEmailSalary(affiliationId).subscribe({
+      next: (res) => {
+        this.salary.set(res.salary);
+        this.isLoadingSalary.set(false);
+      },
+      // Si no se pudo consultar, el campo queda vacío y el correo viaja con el
+      // salario de siempre: el backend usa ese valor cuando no le mandan uno.
+      error: () => {
+        this.salary.set(null);
+        this.loadedSalaryForId = null;
+        this.isLoadingSalary.set(false);
+      },
+    });
+  }
+
+  onSalaryChange(value: string): void {
+    this.salaryError.set(null);
+    const trimmed = (value ?? '').trim();
+    if (!trimmed) {
+      this.salary.set(null);
+      return;
+    }
+    this.salary.set(Number(trimmed));
+  }
+
+  /** Formato solo para mostrar debajo del campo; lo que se envía es el número. */
+  formatSalary(value: number | null): string {
+    if (value == null) return '';
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+    }).format(value);
   }
 
   addEmail(): void {
@@ -70,10 +129,18 @@ export class AffiliateSendEmailModalComponent {
       return;
     }
 
+    const salary = this.salary();
+    if (salary !== null && (!Number.isInteger(salary) || salary <= 0)) {
+      this.salaryError.set('El salario debe ser un número entero de pesos, mayor a cero.');
+      return;
+    }
+
     this.isLoading.set(true);
     // Se manda el string tal cual (incluso '') para que dejar el campo en blanco
     // borre una observación guardada previamente, en vez de conservarla.
-    this._service.sendEmail(Number(a.id), this.emails(), this.observation).subscribe({
+    // El salario, en cambio, se omite si quedó vacío: así el correo viaja con
+    // el de siempre en vez de con un cero.
+    this._service.sendEmail(Number(a.id), this.emails(), this.observation, salary ?? undefined).subscribe({
       next: () => {
         this._toast.showSuccess('Correo enviado correctamente');
         this.isLoading.set(false);
@@ -97,5 +164,10 @@ export class AffiliateSendEmailModalComponent {
     this.emailInput = '';
     this.observation = '';
     this.emailError.set(null);
+    this.salary.set(null);
+    this.salaryError.set(null);
+    // Se olvida cuál se cargó para que al reabrir vuelva a consultarlo: el
+    // afiliado puede ser otro, o el suyo haber cambiado.
+    this.loadedSalaryForId = null;
   }
 }

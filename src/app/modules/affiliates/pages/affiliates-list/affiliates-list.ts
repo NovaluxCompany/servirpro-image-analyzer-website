@@ -1,17 +1,21 @@
 import { Component, inject, signal, OnInit, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AffiliateMembersService, AffiliateFilters } from '../../services/affiliate-members.service';
 import { AffiliateMember, AffiliateDocument } from '../../interfaces/affiliate-member.interface';
 import { AffiliateFormModalComponent } from '../../components/affiliate-form-modal/affiliate-form-modal';
 import { AffiliateStatusModalComponent } from '../../components/affiliate-status-modal/affiliate-status-modal';
+import { AffiliateDisaffiliationModalComponent } from '../../components/affiliate-disaffiliation-modal/affiliate-disaffiliation-modal';
 import { AffiliateSendEmailModalComponent } from '../../components/affiliate-send-email-modal/affiliate-send-email-modal';
 import { AffiliateInfoModalComponent } from '../../components/affiliate-info-modal/affiliate-info-modal';
 import { AffiliateDocumentsModalComponent } from '../../components/affiliate-documents-modal/affiliate-documents-modal';
 import { AffiliateSendEmailObservationModalComponent } from '../../components/affiliate-send-email-observation-modal/affiliate-send-email-observation-modal';
-import { AffiliateSendWhatsappModalComponent } from '../../components/affiliate-send-whatsapp-modal/affiliate-send-whatsapp-modal';
+import { IncapacityFormModalComponent } from '../../../incapacities/components/incapacity-form-modal/incapacity-form-modal';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { INCAPACITIES_MENU_PATH } from '../../../incapacities/incapacities.routes';
+import { DOCUMENT_UPLOADS_MENU_PATH } from '../../affiliates.routes';
 import { ConfigGeneralService } from '../../../../core/service/config-general.service';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 import { PageSizeControlComponent, REGISTROS_POR_PAGINA_KEY, MIN_PAGE_SIZE } from '../../../../shared/components/page-size-control/page-size-control';
@@ -22,7 +26,7 @@ import { debounceTime, Subject } from 'rxjs';
 @Component({
   selector: 'app-affiliates-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateSendWhatsappModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
+  imports: [CommonModule, FormsModule, AffiliateFormModalComponent, AffiliateStatusModalComponent, AffiliateDisaffiliationModalComponent, AffiliateSendEmailModalComponent, AffiliateSendEmailObservationModalComponent, AffiliateInfoModalComponent, AffiliateDocumentsModalComponent, IncapacityFormModalComponent, SearchableSelectComponent, PageSizeControlComponent, TableScrollComponent],
   templateUrl: './affiliates-list.html',
 })
 export class AffiliatesListComponent implements OnInit {
@@ -30,6 +34,7 @@ export class AffiliatesListComponent implements OnInit {
   private _toast = inject(ToastService);
   private _permission = inject(PermissionService);
   private _configGeneralService = inject(ConfigGeneralService);
+  private _router = inject(Router);
 
   // ── Datos ─────────────────────────────────────────────────────────
   affiliates = signal<AffiliateMember[]>([]);
@@ -48,12 +53,25 @@ export class AffiliatesListComponent implements OnInit {
   filterCedula = '';
   filterReference = '';
   filterAdvisor = '';
+  filterFidelizador = '';
+  filterAffiliateType = '';
+  filterCompanyId = '';
+  filterEpsId = '';
   filterIsActive = '';
   filterGrupo = '';
   filterEntryDateFrom = '';
   filterEntryDateTo = '';
   filterPaymentStatus = '';
   advisorOptions = signal<SelectOption[]>([]);
+  fidelizadorOptions = signal<SelectOption[]>([]);
+  // Empresa y EPS se eligen del catálogo y viajan por id, así que el `value` de
+  // cada opción es el id (no el nombre, como en Asesor o Fidelización).
+  companyOptions = signal<SelectOption[]>([]);
+  epsOptions = signal<SelectOption[]>([]);
+  // id numérico de cada fidelizador por nombre (el filtro viaja al backend
+  // por nombre, igual que Asesor, pero la cascada necesita el id para pedir
+  // GET /advisors/dropdown?fidelizadorId=).
+  private fidelizadorIdByName = new Map<string, number>();
   referenceOptions = signal<SelectOption[]>([]);
   private departmentNameByCode = new Map<string, string>();
 
@@ -62,11 +80,12 @@ export class AffiliatesListComponent implements OnInit {
   // ── Modales ───────────────────────────────────────────────────────
   showFormModal = signal(false);
   showStatusModal = signal(false);
+  showDisaffiliationModal = signal(false);
   showSendEmailModal = signal(false);
   showSendEmailObservationModal = signal(false);
-  showSendWhatsappModal = signal(false);
   showInfoModal = signal(false);
   showDocumentsModal = signal(false);
+  showIncapacityModal = signal(false);
   formMode = signal<'create' | 'edit'>('create');
   selectedAffiliate = signal<AffiliateMember | null>(null);
 
@@ -148,6 +167,10 @@ export class AffiliatesListComponent implements OnInit {
       cedula: this.filterCedula || undefined,
       reference: this.filterReference || undefined,
       advisor: this.filterAdvisor || undefined,
+      fidelizador: this.filterFidelizador || undefined,
+      affiliateType: (this.filterAffiliateType === 'INDEPENDIENTE' || this.filterAffiliateType === 'DEPENDIENTE') ? this.filterAffiliateType : undefined,
+      companyId: this.filterCompanyId ? Number(this.filterCompanyId) : undefined,
+      epsId: this.filterEpsId ? Number(this.filterEpsId) : undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,
@@ -174,15 +197,40 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   private loadFilterOptions(): void {
+    this._service.getFidelizadores().subscribe((list) => {
+      this.fidelizadorOptions.set(list.map((f) => ({ value: f.name, label: f.name })));
+      this.fidelizadorIdByName = new Map(list.map((f) => [f.name, Number(f.id)]));
+    });
+    // Sin fidelización elegida, "Asesor" arranca con todos los activos (igual
+    // que hoy); al elegir una fidelización se filtra a sus asesores (ver
+    // onFidelizadorFilterChange), igual que en el modal de crear/editar.
     this._service.getAdvisors().subscribe((list) => {
       this.advisorOptions.set(list.map((a) => ({ value: a.name, label: a.name })));
     });
     this._service.getReferences().subscribe((list) => {
       this.referenceOptions.set(list.map((r) => ({ value: r, label: r })));
     });
+    this._service.getCompanies().subscribe((list) => {
+      this.companyOptions.set(list.map((c) => ({ value: String(c.id), label: c.name })));
+    });
+    this._service.getEpsList().subscribe((list) => {
+      this.epsOptions.set(list.map((e) => ({ value: String(e.id), label: e.name })));
+    });
     this._service.getDepartments().subscribe((list: Department[]) => {
       this.departmentNameByCode = new Map(list.map((d) => [d.code, d.name]));
     });
+  }
+
+  // "Asesor" depende de "Fidelización", igual que en el modal de crear/editar
+  // afiliado: al elegir un fidelizador, el desplegable de asesor se limita a
+  // los suyos y se limpia la selección de asesor si ya no aplica.
+  onFidelizadorFilterChange(): void {
+    this.filterAdvisor = '';
+    const fidelizadorId = this.filterFidelizador ? this.fidelizadorIdByName.get(this.filterFidelizador) : undefined;
+    this._service.getAdvisors(fidelizadorId).subscribe((list) => {
+      this.advisorOptions.set(list.map((a) => ({ value: a.name, label: a.name })));
+    });
+    this.onDropdownFilterChange();
   }
 
   getDepartmentName(departmentCode: string | null | undefined): string {
@@ -206,17 +254,24 @@ export class AffiliatesListComponent implements OnInit {
     this.filterCedula = '';
     this.filterReference = '';
     this.filterAdvisor = '';
+    this.filterFidelizador = '';
+    this.filterAffiliateType = '';
+    this.filterCompanyId = '';
+    this.filterEpsId = '';
     this.filterIsActive = '';
     this.filterGrupo = '';
     this.filterEntryDateFrom = '';
     this.filterEntryDateTo = '';
     this.filterPaymentStatus = '';
     this.currentPage.set(1);
+    this._service.getAdvisors().subscribe((list) => {
+      this.advisorOptions.set(list.map((a) => ({ value: a.name, label: a.name })));
+    });
     this.loadAffiliates();
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterFidelizador || this.filterAffiliateType || this.filterCompanyId || this.filterEpsId || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -255,13 +310,57 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   openInfo(affiliate: AffiliateMember): void {
+    if (!this._permission.check('view', undefined, 'Tu rol no tiene permiso para ver la información de los afiliados.')) return;
     this.selectedAffiliate.set(affiliate);
     this.showInfoModal.set(true);
+  }
+
+  /** El botón "Ver información" solo se muestra si el rol puede ver este menú. */
+  canViewInfo(): boolean {
+    return this._permission.can('view', undefined);
   }
 
   onInfoClosed(): void {
     this.showInfoModal.set(false);
     this.selectedAffiliate.set(null);
+  }
+
+  /**
+   * Abre el registro de incapacidad. El modal muestra primero el histórico
+   * del afiliado, que es lo que permite detectar un trámite duplicado antes
+   * de radicar.
+   *
+   * El permiso se valida contra '/incapacidades', NO contra la ruta actual:
+   * el usuario está parado en /afiliados, y `check('create')` sin path
+   * resolvería contra ese menú — daría permiso a cualquiera que pueda crear
+   * afiliados, que no es lo mismo que poder radicar una incapacidad.
+   */
+  openIncapacities(affiliate: AffiliateMember): void {
+    if (
+      !this._permission.check(
+        'create',
+        INCAPACITIES_MENU_PATH,
+        'Tu rol no tiene permiso para radicar incapacidades.',
+      )
+    ) {
+      return;
+    }
+    this.selectedAffiliate.set(affiliate);
+    this.showIncapacityModal.set(true);
+  }
+
+  /** El botón solo se muestra si el rol puede radicar. */
+  canCreateIncapacities(): boolean {
+    return this._permission.can('create', INCAPACITIES_MENU_PATH);
+  }
+
+  /** El botón de Cargue de Documentos solo se muestra si el rol tiene acceso a ese menú. */
+  canViewDocumentUploads(): boolean {
+    return this._permission.can('view', DOCUMENT_UPLOADS_MENU_PATH);
+  }
+
+  onIncapacityModalClosed(): void {
+    this.showIncapacityModal.set(false);
   }
 
   openDocuments(affiliate: AffiliateMember): void {
@@ -303,6 +402,27 @@ export class AffiliatesListComponent implements OnInit {
 
   onStatusCancelled(): void {
     this.showStatusModal.set(false);
+    this.selectedAffiliate.set(null);
+  }
+
+  openDisaffiliationModal(affiliate: AffiliateMember): void {
+    if (!this._permission.check('disaffiliate', undefined, 'Tu rol no tiene permiso para desafiliar afiliados.')) return;
+    this.selectedAffiliate.set(affiliate);
+    this.showDisaffiliationModal.set(true);
+  }
+
+  /** El botón "Desafiliar afiliado" solo se muestra si el rol tiene el permiso dedicado. */
+  canDisaffiliate(): boolean {
+    return this._permission.can('disaffiliate', undefined);
+  }
+
+  onDisaffiliationConfirmed(): void {
+    this.showDisaffiliationModal.set(false);
+    this.selectedAffiliate.set(null);
+  }
+
+  onDisaffiliationCancelled(): void {
+    this.showDisaffiliationModal.set(false);
     this.selectedAffiliate.set(null);
   }
 
@@ -353,6 +473,10 @@ export class AffiliatesListComponent implements OnInit {
       cedula: this.filterCedula || undefined,
       reference: this.filterReference || undefined,
       advisor: this.filterAdvisor || undefined,
+      fidelizador: this.filterFidelizador || undefined,
+      affiliateType: (this.filterAffiliateType === 'INDEPENDIENTE' || this.filterAffiliateType === 'DEPENDIENTE') ? this.filterAffiliateType : undefined,
+      companyId: this.filterCompanyId ? Number(this.filterCompanyId) : undefined,
+      epsId: this.filterEpsId ? Number(this.filterEpsId) : undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,
@@ -443,34 +567,8 @@ export class AffiliatesListComponent implements OnInit {
     return this.planIncludes(affiliate, 'AFP');
   }
 
-  // ── Check de documentos (EPS/ARL/CCF/Pensión) inline desde la tabla ────
-  // Antes solo se podía marcar el certificado abriendo el modal de edición
-  // completo; esto permite alternarlo directo desde la afiliación en la fila.
-  togglingCertId = signal<string | null>(null);
-
-  toggleCert(affiliate: AffiliateMember, field: 'certArl' | 'certEps' | 'certPension' | 'certCcf'): void {
-    if (!this._permission.check('edit', undefined, 'Tu rol no tiene permiso para editar afiliados.')) return;
-    if (!affiliate.id || this.togglingCertId() !== null) return;
-
-    const newValue = !affiliate[field];
-    this.togglingCertId.set(affiliate.id);
-    this._service
-      .updateAffiliate(affiliate.id, {
-        documentNumber: affiliate.documentNumber,
-        cityCode: affiliate.cityCode,
-        [field]: newValue,
-      })
-      .subscribe({
-        next: () => {
-          affiliate[field] = newValue;
-          this.togglingCertId.set(null);
-          this._toast.showSuccess('Certificado actualizado');
-        },
-        error: (err) => {
-          this._toast.showError(err.message ?? 'No se pudo actualizar el certificado');
-          this.togglingCertId.set(null);
-        },
-      });
+  goToDocumentUploads(): void {
+    this._router.navigate(['/afiliados/cargue-documentos']);
   }
 
   sendEmail(affiliate: AffiliateMember): void {
@@ -499,42 +597,6 @@ export class AffiliatesListComponent implements OnInit {
   onEmailModalCancelled(): void {
     this.showSendEmailModal.set(false);
     this.showSendEmailObservationModal.set(false);
-    this.selectedAffiliate.set(null);
-  }
-
-  // Reutiliza los flags cert_arl/cert_eps/cert_pension/cert_ccf (los mismos del
-  // toggle manual): el envío por WhatsApp los marca automáticamente al terminar.
-  // Se bloquea el reenvío solo cuando TODOS los certificados que aplican al plan
-  // ya están marcados; se desbloquea de nuevo al deshabilitar/habilitar (ver
-  // toggleStatus en el backend, que los resetea).
-  canSendWhatsapp(affiliate: AffiliateMember): boolean {
-    const applicable = [
-      this.planHasEps(affiliate) ? !!affiliate.certEps : null,
-      this.planHasArl(affiliate) ? !!affiliate.certArl : null,
-      this.planHasCcf(affiliate) ? !!affiliate.certCcf : null,
-      this.planHasPension(affiliate) ? !!affiliate.certPension : null,
-    ].filter((v): v is boolean => v !== null);
-
-    if (applicable.length === 0) return true;
-    return !applicable.every((sent) => sent);
-  }
-
-  sendWhatsapp(affiliate: AffiliateMember): void {
-    if (!this._permission.check('send_email', undefined, 'Tu rol no tiene permiso para enviar documentos de afiliación.')) {
-      return;
-    }
-    this.selectedAffiliate.set(affiliate);
-    this.showSendWhatsappModal.set(true);
-  }
-
-  onWhatsappSent(): void {
-    this.showSendWhatsappModal.set(false);
-    this.selectedAffiliate.set(null);
-    this.loadAffiliates();
-  }
-
-  onWhatsappModalCancelled(): void {
-    this.showSendWhatsappModal.set(false);
     this.selectedAffiliate.set(null);
   }
 

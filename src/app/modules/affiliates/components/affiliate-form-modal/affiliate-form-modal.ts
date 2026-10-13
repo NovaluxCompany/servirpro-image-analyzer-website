@@ -5,8 +5,9 @@ import { AffiliateMembersService } from '../../services/affiliate-members.servic
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
 import { AffiliateMember, CreateAffiliateMemberDto } from '../../interfaces/affiliate-member.interface';
-import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, Branch, Department, CityOption } from '../../interfaces/catalog.interface';
+import { Plan, Company, Grouper, Advisor, Fidelizador, EpsItem, Pension, CompensationBox, Branch, Department, CityOption } from '../../interfaces/catalog.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
+import { extractWhatsappNumber } from '../../utils/whatsapp-number.util';
 import { forkJoin, of, switchMap } from 'rxjs';
 
 @Component({
@@ -25,6 +26,12 @@ export class AffiliateFormModalComponent implements OnInit {
   // Solo los roles con el permiso 'edit_entry_date' sobre /afiliados —Administrador
   // por defecto— pueden corregirla a mano; el backend lo vuelve a validar.
   readonly canEditEntryDate = this._permission.can('edit_entry_date', '/afiliados');
+
+  // El plan solo se puede cambiar con el afiliado desactivado, salvo para los
+  // roles con 'edit_plan_active' —Administrador por defecto—. Obligar a
+  // desactivar y reactivar solo para corregir un plan mal digitado mueve la
+  // fecha de ingreso y ensucia la auditoría. El backend lo vuelve a validar.
+  readonly canEditPlanWhileActive = this._permission.can('edit_plan_active', '/afiliados');
 
   isVisible = input<boolean>(false);
   mode = input<'create' | 'edit'>('create');
@@ -54,6 +61,7 @@ export class AffiliateFormModalComponent implements OnInit {
   companies = signal<Company[]>([]);
   groupers = signal<Grouper[]>([]);
   advisors = signal<Advisor[]>([]);
+  fidelizadores = signal<Fidelizador[]>([]);
   epsList = signal<EpsItem[]>([]);
   pensions = signal<Pension[]>([]);
   compensationBoxes = signal<CompensationBox[]>([]);
@@ -67,6 +75,12 @@ export class AffiliateFormModalComponent implements OnInit {
 
   section1Open = true
   section2Open = false
+
+  // true = el número de WhatsApp lo escribió (o ya lo tenía guardado) una
+  // persona, así que cambiar la referencia no lo pisa. Mientras sea false el
+  // campo se recalcula en cada tecla de la referencia — si no, un número a
+  // medio digitar quedaría congelado.
+  private whatsappNumberEditedByUser = false;
 
   readonly documentTypeOptions: SelectOption[] = [
     { value: 'CC', label: 'CC' },
@@ -87,8 +101,18 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   // SelectOption arrays for searchable dropdowns
+  // Los planes DEPENDIENTE e INDEPENDIENTE pueden compartir nombre (mismo
+  // "EPS", "ARL1", etc. con precio distinto por tipo) — se filtra por el
+  // "Tipo de afiliado" ya elegido en el formulario para no mostrar ambos
+  // mezclados. El plan ya seleccionado se conserva en la lista aunque no
+  // matchee (dato legado o durante el patch inicial en modo edición), para
+  // no vaciar el select por debajo del usuario.
   get planOptions(): SelectOption[] {
-    return this.plans().map((p) => ({ value: String(p.id), label: p.name }));
+    const currentType = this.form.get('affiliateType')?.value ?? 'DEPENDIENTE';
+    const selectedPlanId = this.form.get('planId')?.value;
+    return this.plans()
+      .filter((p) => p.affiliateType === currentType || String(p.id) === String(selectedPlanId))
+      .map((p) => ({ value: String(p.id), label: p.name }));
   }
   get companyOptions(): SelectOption[] {
     return this.companies().map((c) => ({ value: String(c.id), label: c.name }));
@@ -98,6 +122,9 @@ export class AffiliateFormModalComponent implements OnInit {
   }
   get advisorOptions(): SelectOption[] {
     return this.advisors().map((a) => ({ value: String(a.id), label: a.name }));
+  }
+  get fidelizadorOptions(): SelectOption[] {
+    return this.fidelizadores().map((f) => ({ value: String(f.id), label: f.name }));
   }
   get epsOptions(): SelectOption[] {
     return this.epsList().map((e) => ({ value: String(e.id), label: e.name }));
@@ -147,6 +174,11 @@ export class AffiliateFormModalComponent implements OnInit {
     departmentCode: ['', Validators.required],
     cityCode: ['', Validators.required],
     reference: ['', Validators.required],
+    // Se auto-llena con el celular que traiga la referencia (ver
+    // ngOnInit) y se puede corregir a mano. No es obligatorio: sin él el
+    // afiliado simplemente no recibe certificados por WhatsApp (el cargue
+    // lo deja en ERROR con el motivo).
+    whatsappNumber: ['', [Validators.maxLength(20), Validators.pattern(/^[0-9+()\s.-]*$/)]],
     profession: ['', Validators.maxLength(255)],
     //Fecha whatsapp
     companyEntryDate: [{ value: '', disabled: false }, Validators.required],
@@ -155,6 +187,7 @@ export class AffiliateFormModalComponent implements OnInit {
     companyId: [''],
     grouperId: ['', Validators.required],
     advisorId: ['', Validators.required],
+    fidelizadorId: ['', Validators.required],
     epsId: [''],
     pensionId: [''],
     compensationBoxId: [''],
@@ -192,9 +225,13 @@ export class AffiliateFormModalComponent implements OnInit {
           this.loadEditData(this.affiliate()!);
         } else {
           this.loadCatalogs();
+          // "Asesor" depende de "Fidelización": arranca vacío, igual que Municipio
+          // arranca vacío hasta elegir Departamento (ver cities.set([]) más abajo).
+          this.advisors.set([]);
           this.formReady.set(true);
           this.citiesLoading.set(false);
           this.form.reset();
+          this.whatsappNumberEditedByUser = false;
           this.form.patchValue({
             documentType: 'CC',
             isActive: true,
@@ -397,6 +434,29 @@ export class AffiliateFormModalComponent implements OnInit {
     );
   }
 
+  // Cada plan existe duplicado por tipo: hay un "ARL2" DEPENDIENTE y otro
+  // INDEPENDIENTE, con ids distintos. Si el usuario elige el plan y despues
+  // cambia el tipo, el control sigue guardando el id del tipo anterior (el
+  // getter planOptions lo conserva a proposito para no vaciar el select) y el
+  // backend rechaza el guardado con "El plan X es para afiliados DEPENDIENTE,
+  // pero el afiliado es INDEPENDIENTE". Por eso al cambiar el tipo se remapea
+  // el plan a su homonimo del nuevo tipo y, si no existe, se limpia para que
+  // el usuario lo vuelva a elegir.
+  private remapPlanToAffiliateType(affiliateType: string | null | undefined): void {
+    const planControl = this.form.get('planId');
+    const selectedId = planControl?.value;
+    if (!planControl || !selectedId) return;
+
+    const selected = this.plans().find((p) => String(p.id) === String(selectedId));
+    if (!selected || selected.affiliateType === affiliateType) return;
+
+    const normalize = (name: string) => name.trim().toUpperCase();
+    const equivalent = this.plans().find(
+      (p) => p.affiliateType === affiliateType && normalize(p.name) === normalize(selected.name),
+    );
+    planControl.setValue(equivalent ? String(equivalent.id) : '');
+  }
+
   private validateAffiliateType(): void {
     const companyControl = this.form.get('companyId');
     const grouperControl = this.form.get('grouperId');
@@ -466,7 +526,13 @@ export class AffiliateFormModalComponent implements OnInit {
       }
     });
 
-    this.form.get('affiliateType')?.valueChanges.subscribe(() => {
+    this.form.get('fidelizadorId')?.valueChanges.subscribe((fidelizadorId) => {
+      this.form.get('advisorId')?.setValue('', { emitEvent: false });
+      this.loadAdvisorsForFidelizador(fidelizadorId).subscribe();
+    });
+
+    this.form.get('affiliateType')?.valueChanges.subscribe((type) => {
+      this.remapPlanToAffiliateType(type);
       this.validateAffiliateType();
     });
 
@@ -474,6 +540,19 @@ export class AffiliateFormModalComponent implements OnInit {
       this.validateOriginDate(value);
     });
     this.validateOriginDate(this.form.get('originId')?.value);
+
+    // La referencia es texto libre ("MARIA GOMEZ 300 123 4567"); de ahí sale
+    // el número al que se le mandan los certificados. Solo se auto-llena
+    // mientras nadie haya tocado el campo a mano (whatsappNumberEditedByUser).
+    this.form.get('reference')?.valueChanges.subscribe((reference: string | null) => {
+      if (this.whatsappNumberEditedByUser) return;
+      this.form.get('whatsappNumber')?.setValue(extractWhatsappNumber(reference) ?? '', { emitEvent: false });
+    });
+  }
+
+  /** El campo se editó a mano: de acá en adelante la referencia ya no lo pisa. */
+  onWhatsappNumberInput(): void {
+    this.whatsappNumberEditedByUser = true;
   }
 
   private loadCitiesForDepartment(departmentCode: string): void {
@@ -564,7 +643,7 @@ export class AffiliateFormModalComponent implements OnInit {
       plans: this._service.getPlans(),
       companies: this._service.getCompanies(),
       groupers: this._service.getGroupers(),
-      advisors: this._service.getAdvisors(),
+      fidelizadores: this._service.getFidelizadores(),
       epsList: this._service.getEpsList(),
       references: this._service.getReferences(),
       pensions: this._service.getPensions(),
@@ -573,11 +652,11 @@ export class AffiliateFormModalComponent implements OnInit {
       branches: this._service.getBranchesDropdown(),
       origins: this._service.getOrigins(),
     }).pipe(
-      switchMap(({ plans, companies, groupers, advisors, epsList, references, pensions, compensationBoxes, departments, branches, origins }) => {
+      switchMap(({ plans, companies, groupers, fidelizadores, epsList, references, pensions, compensationBoxes, departments, branches, origins }) => {
         this.plans.set(plans);
         this.companies.set(companies);
         this.groupers.set(groupers);
-        this.advisors.set(advisors);
+        this.fidelizadores.set(fidelizadores);
         this.epsList.set(epsList);
         this.references.set(references);
         this.pensions.set(pensions);
@@ -597,19 +676,36 @@ export class AffiliateFormModalComponent implements OnInit {
     });
   }
 
-  // Modo edición: primero cargamos catálogos y las ciudades del departamento del
-  // afiliado, y solo cuando todo eso ya está disponible rellenamos el formulario.
-  // Así evitamos que patchForm() dispare valueChanges (planId, cityCode, etc.) con
-  // catálogos todavía vacíos, que borraban campos (profesión, ARL, AFP, CCF, EPS,
-  // municipio) y luego "aparecían solos" al reabrir el modal.
+  // "Asesor" depende de "Fidelización" igual que Municipio depende de
+  // Departamento: sin fidelizador elegido, la lista de asesores queda vacía.
+  private loadAdvisorsForFidelizador(fidelizadorId: string | number | null | undefined) {
+    if (!fidelizadorId) {
+      this.advisors.set([]);
+      return of([]);
+    }
+    return this._service.getAdvisors(fidelizadorId).pipe(
+      switchMap((advisors) => {
+        this.advisors.set(advisors);
+        return of(advisors);
+      }),
+    );
+  }
+
+  // Modo edición: primero cargamos catálogos, los asesores del fidelizador del
+  // afiliado y las ciudades del departamento del afiliado, y solo cuando todo eso
+  // ya está disponible rellenamos el formulario. Así evitamos que patchForm()
+  // dispare valueChanges (planId, cityCode, fidelizadorId, etc.) con catálogos
+  // todavía vacíos, que borraban campos (profesión, ARL, AFP, CCF, EPS, municipio,
+  // asesor) y luego "aparecían solos" al reabrir el modal.
   private loadEditData(a: AffiliateMember): void {
     this.citiesLoading.set(true);
     this.loadCatalogs$().pipe(
-      switchMap(() => a.departmentCode
-        ? this._service.getCitiesByDepartment(a.departmentCode)
-        : of([])),
+      switchMap(() => forkJoin({
+        cities: a.departmentCode ? this._service.getCitiesByDepartment(a.departmentCode) : of([]),
+        advisors: this.loadAdvisorsForFidelizador(a.fidelizadorId),
+      })),
     ).subscribe({
-      next: (cities) => {
+      next: ({ cities }) => {
         this.cities.set(cities);
         this.citiesLoading.set(false);
 
@@ -618,14 +714,19 @@ export class AffiliateFormModalComponent implements OnInit {
         if (a.planId) {
           this.updatePlanLogic(String(a.planId));
         }
-        // El plan solo puede cambiarse mientras el afiliado está desactivado.
         this.affiliateIsActive = !!a.isActive;
-        if (a.isActive) {
+        // El plan solo puede cambiarse con el afiliado desactivado, salvo con
+        // el permiso 'edit_plan_active'.
+        if (a.isActive && !this.canEditPlanWhileActive) {
           this.form.get('planId')?.disable({ emitEvent: false });
-          // El origen del afiliado (y su fecha) solo pueden corregirse mientras está desactivado.
-          this.form.get('originId')?.disable({ emitEvent: false });
         } else {
           this.form.get('planId')?.enable({ emitEvent: false });
+        }
+        // El origen del afiliado (y su fecha) siguen la regla original: solo
+        // se corrigen con el afiliado desactivado.
+        if (a.isActive) {
+          this.form.get('originId')?.disable({ emitEvent: false });
+        } else {
           this.form.get('originId')?.enable({ emitEvent: false });
         }
         // Se llama después de fijar affiliateIsActive para que originDate quede
@@ -648,6 +749,9 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   private patchForm(a: AffiliateMember): void {
+    // Un número ya guardado cuenta como puesto a mano: editar la referencia
+    // no lo reemplaza (decisión 2026-09-22, "solo si está vacío").
+    this.whatsappNumberEditedByUser = !!a.whatsappNumber;
     this.selectedFiles = [];
     this.existingDocumentId = a.documents?.[0]?.id ?? null;
     this.keepExistingDocument = true;
@@ -670,12 +774,14 @@ export class AffiliateFormModalComponent implements OnInit {
       departmentCode: a.departmentCode ?? '',
       cityCode: a.cityCode ?? '',
       reference: a.reference ?? '',
+      whatsappNumber: a.whatsappNumber ?? '',
       profession: a.profession ?? '',
 
       companyId: a.companyId ? String(a.companyId) : '',
       planId: a.planId ? String(a.planId) : '',
       grouperId: a.grouperId ? String(a.grouperId) : '',
       advisorId: a.advisorId ? String(a.advisorId) : '',
+      fidelizadorId: a.fidelizadorId ? String(a.fidelizadorId) : '',
       epsId: a.epsId ? String(a.epsId) : '',
       isActive: a.isActive ?? true,
       discount: a.discount ?? null,
@@ -920,6 +1026,9 @@ export class AffiliateFormModalComponent implements OnInit {
       // que es la única columna real de ubicación (FK hacia cities).
       cityCode: raw.cityCode || undefined,
       reference: raw.reference!,
+      // null (no undefined) cuando queda vacío: así el backend sí limpia el
+      // número guardado si lo borraron a propósito en la edición.
+      whatsappNumber: raw.whatsappNumber?.trim() || null,
       profession: raw.profession || undefined,
       gender: raw.gender || undefined,
       whatsappEntryDate: this.todayDate(),
@@ -927,6 +1036,7 @@ export class AffiliateFormModalComponent implements OnInit {
       companyId: toNumberOrNull(raw.companyId),
       grouperId: toNumberOrNull(raw.grouperId),
       advisorId: toNumberOrNull(raw.advisorId),
+      fidelizadorId: toNumberOrNull(raw.fidelizadorId),
       epsId: toNumberOrNull(raw.epsId),
       pensionId: toNumberOrNull(raw.pensionId),
       compensationBoxId: toNumberOrNull(raw.compensationBoxId),

@@ -1,4 +1,4 @@
-import { Component, inject, signal, output } from '@angular/core';
+import { Component, inject, input, signal, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { AffiliatesService } from '../../services/affiliates.service';
@@ -28,7 +28,42 @@ export class AffiliatesFormComponent {
   /** idNumber -> mensaje de "ya tiene transacción este mes", detectado al seleccionar. */
   duplicateWarnings = signal<Map<string, string>>(new Map());
 
+  /**
+   * Bloqueo global de transacciones (param TRANSACCIONES_BLOQUEADAS, lo prende
+   * el Administrador para el cierre de mes). Con el bloqueo encendido solo se
+   * puede pagar a los afiliados nuevos: los demás no se dejan seleccionar, así
+   * el usuario no llena el comprobante entero para que el backend se lo
+   * rechace al final (TransactionsService.create valida lo mismo contra
+   * `affiliations.is_new`, que es la palabra final).
+   */
+  transactionsLocked = input<boolean>(false);
+
   affiliatesChanged = output<Affiliate[]>();
+
+  /** Con el bloqueo encendido, este afiliado no puede pagarse por no ser nuevo. */
+  isBlockedByLock(affiliate: Affiliate): boolean {
+    return this.transactionsLocked() && !affiliate.isNew;
+  }
+
+  private isBlockedIdNumber(idNumber: string): boolean {
+    const affiliate = this.affiliates().find((a) => a.idNumber === idNumber);
+    return !!affiliate && this.isBlockedByLock(affiliate);
+  }
+
+  /**
+   * Afiliados ya seleccionados que el bloqueo no permite pagar. Normalmente
+   * está vacío porque no se dejan seleccionar; cubre el caso de que el estado
+   * del bloqueo llegue (es una consulta aparte) después de haber seleccionado.
+   */
+  lockedSelectionNames(): string[] {
+    return this.getSelectedAffiliates()
+      .filter((a) => this.isBlockedByLock(a))
+      .map((a) => a.fullName);
+  }
+
+  hasLockedSelection(): boolean {
+    return this.lockedSelectionNames().length > 0;
+  }
 
   onSearch(): void {
     const { reference, fullName } = this.searchForm.value;
@@ -109,6 +144,8 @@ export class AffiliatesFormComponent {
       selected.delete(idNumber);
       this.clearDuplicateWarning(idNumber);
     } else {
+      // Deseleccionar siempre se puede; seleccionar no, si el bloqueo lo veda.
+      if (this.isBlockedIdNumber(idNumber)) return;
       selected.add(idNumber);
       this.checkDuplicateForAffiliate(idNumber);
     }
@@ -146,7 +183,11 @@ export class AffiliatesFormComponent {
   }
 
   selectAll(): void {
-    const allIds = this.filteredAffiliates().map(a => a.idNumber);
+    // "Todos" son todos los que se pueden pagar: con el bloqueo encendido, los
+    // que no son nuevos quedan afuera en vez de entrar y romper el envío.
+    const allIds = this.filteredAffiliates()
+      .filter((a) => !this.isBlockedByLock(a))
+      .map((a) => a.idNumber);
     this.selectedAffiliates.set(new Set(allIds));
     allIds.forEach((idNumber) => this.checkDuplicateForAffiliate(idNumber));
     this.affiliatesChanged.emit(this.getSelectedAffiliates());
@@ -180,6 +221,11 @@ export class AffiliatesFormComponent {
 
   isValid(): boolean {
     return this.selectedAffiliates().size > 0;
+  }
+
+  /** Cuántos de los resultados a la vista puede pagar el bloqueo. */
+  selectableCount(): number {
+    return this.filteredAffiliates().filter((a) => !this.isBlockedByLock(a)).length;
   }
 
   markAllAsTouched(): void {

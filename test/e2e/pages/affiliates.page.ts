@@ -1,6 +1,10 @@
 import { Page, Locator, expect } from '@playwright/test';
 import path from 'path';
-import { pickFirstSearchableSelectOption, pickFirstComboboxOption } from '../utils/searchable-select';
+import {
+  pickFirstSearchableSelectOption,
+  pickFirstComboboxOption,
+  fillSearchableCombobox,
+} from '../utils/searchable-select';
 
 const AFFILIATE_DOCUMENT_FIXTURE = path.resolve(__dirname, '../fixtures/subregiones.pdf');
 const AFFILIATE_DOCUMENT_FIXTURE_2 = path.resolve(__dirname, '../fixtures/generated/dummy-affiliate-document.pdf');
@@ -51,6 +55,13 @@ export interface NewAffiliateData {
   birthDate?: string;
   /** Texto del género (catálogo "Género"): "Hombre" o "Mujer" (así aparecen las opciones en el select, no "Masculino"/"Femenino"). Por defecto usa el primero disponible. */
   genderText?: string;
+  /**
+   * Referencia exacta a escribir (el campo es combobox de texto libre). Por
+   * defecto se elige la primera del catálogo. Se usa cuando la prueba
+   * necesita una referencia con un celular concreto, porque de ahí sale el
+   * "WhatsApp certificados".
+   */
+  reference?: string;
 }
 
 export class AffiliatesPage {
@@ -89,7 +100,11 @@ export class AffiliatesPage {
     await form.locator('input[formcontrolname="firstName"]').fill(data.firstName);
     await form.locator('input[formcontrolname="lastName"]').fill(data.lastName);
 
-    await pickFirstComboboxOption(this.page, form, 'Referencia');
+    if (data.reference) {
+      await fillSearchableCombobox(form, 'Referencia', data.reference);
+    } else {
+      await pickFirstComboboxOption(this.page, form, 'Referencia');
+    }
 
     if (data.birthDate) {
       await form.locator('input[formcontrolname="birthDate"]').fill(data.birthDate);
@@ -136,6 +151,11 @@ export class AffiliatesPage {
   async fillAffiliationData(overrides?: {
     planText?: string;
     agrupadoraText?: string;
+    /** "DEPENDIENTE" (default) | "INDEPENDIENTE". Se selecciona ANTES que el Plan: el
+     * desplegable de Plan filtra sus opciones por este tipo (ver planOptions en
+     * affiliate-form-modal.ts), así que si se elige después el Plan ya buscado podría
+     * no coincidir con el filtro. */
+    affiliateType?: 'DEPENDIENTE' | 'INDEPENDIENTE';
     /** "" (sin seleccionar) | "META" | "WEB" | "REINGRESO" | "REFERIDO" | "SIN_ESPECIFICAR" */
     referralType?: '' | 'META' | 'WEB' | 'REINGRESO' | 'REFERIDO' | 'SIN_ESPECIFICAR';
     /** Fecha de origen (YYYY-MM-DD). Obligatoria y solo visible cuando referralType es META o WEB. */
@@ -144,6 +164,11 @@ export class AffiliatesPage {
     documentFiles?: string[];
   }): Promise<void> {
     const form = this.page.locator('form');
+
+    // El "Tipo de afiliado" se fija ANTES de elegir el Plan porque el select de Plan
+    // filtra sus opciones según este valor (DEPENDIENTE e INDEPENDIENTE pueden tener
+    // planes con el mismo nombre, ej. "EPS", con precios distintos).
+    await form.locator('select[formcontrolname="affiliateType"]').selectOption(overrides?.affiliateType ?? 'DEPENDIENTE');
 
     // Match EXACTO para no caer en "EPS+AFP" al buscar "EPS". El <li> del
     // catálogo interpola {{ opt.label }} en su propia línea del template
@@ -159,28 +184,35 @@ export class AffiliatesPage {
         })
       : await pickFirstSearchableSelectOption(this.page, form, 'Plan');
 
-    if (overrides?.agrupadoraText) {
-      await pickFirstSearchableSelectOption(this.page, form, 'Agrupadora', {
-        matchText: new RegExp(`^\\s*${escapeRegExp(overrides.agrupadoraText)}\\s*$`, 'i'),
-        searchText: overrides.agrupadoraText,
-        timeoutMs: 45_000,
-      });
-    } else {
-      await pickFirstSearchableSelectOption(this.page, form, 'Agrupadora');
+    // Agrupadora (y Empresa) quedan deshabilitados y sin validar para
+    // INDEPENDIENTE (ver validateAffiliateType() en affiliate-form-modal.ts):
+    // los afiliados independientes no pertenecen a ninguna empresa/agrupadora.
+    const isIndependiente = (overrides?.affiliateType ?? 'DEPENDIENTE') === 'INDEPENDIENTE';
+    if (!isIndependiente) {
+      if (overrides?.agrupadoraText) {
+        await pickFirstSearchableSelectOption(this.page, form, 'Agrupadora', {
+          matchText: new RegExp(`^\\s*${escapeRegExp(overrides.agrupadoraText)}\\s*$`, 'i'),
+          searchText: overrides.agrupadoraText,
+          timeoutMs: 45_000,
+        });
+      } else {
+        await pickFirstSearchableSelectOption(this.page, form, 'Agrupadora');
+      }
     }
-    await pickFirstSearchableSelectOption(this.page, form, 'Asesor');
+    // "Asesor" arranca vacío hasta que se elige "Fidelización": el modal solo
+    // ofrece los asesores ligados a ese fidelizador (ver
+    // loadAdvisorsForFidelizador en affiliate-form-modal.ts). Sin este paso el
+    // desplegable de Asesor nunca muestra opciones y el llenado falla con
+    // "El campo Asesor no mostró opciones". Ambos catálogos vienen del
+    // backend, así que usan el mismo margen de 45s que Plan/Sucursal.
+    await pickFirstSearchableSelectOption(this.page, form, 'Fidelización', { timeoutMs: 45_000 });
+    await pickFirstSearchableSelectOption(this.page, form, 'Asesor', { timeoutMs: 45_000 });
 
     // Sucursal y Descuento son opcionales en el formulario, pero se llenan
     // explícito (en vez de dejarlos vacíos) para que el afiliado de prueba
     // quede con datos completos, igual que un afiliado real.
     await pickFirstSearchableSelectOption(this.page, form, 'Sucursal', { timeoutMs: 45_000 });
     await form.locator('input[formcontrolname="discount"]').fill('0');
-
-    // Campo obligatorio (select nativo formControlName="affiliateType"): aunque
-    // visualmente ya muestra "Dependiente" como primera opción, el FormControl
-    // arranca sin value hasta que se interactúa, así que sin este select
-    // explícito el formulario queda inválido y el botón de submit no habilita.
-    await form.locator('select[formcontrolname="affiliateType"]').selectOption('DEPENDIENTE');
 
     if (/ARL/i.test(planText)) {
       await form.locator('input[formcontrolname="profession"]').fill('Ingeniero de pruebas');
@@ -301,6 +333,20 @@ export class AffiliatesPage {
   async getReferralTypeLabel(): Promise<string> {
     const select = this.page.locator('form').locator('select[formcontrolname="originId"]');
     return select.locator('option:checked').innerText();
+  }
+
+  // ── WhatsApp certificados ─────────────────────────────────────────
+  // Campo abierto que se auto-llena con el celular que traiga la Referencia
+  // mientras nadie lo haya escrito a mano. Es el destino de los certificados
+  // que se cargan por cédula (ver DocumentUploadsService en la API).
+
+  get whatsappNumberInput(): Locator {
+    return this.page.locator('form').locator('input[formcontrolname="whatsappNumber"]');
+  }
+
+  /** Escribe la Referencia como texto libre (combobox allowFreeText). */
+  async fillReference(value: string): Promise<void> {
+    await fillSearchableCombobox(this.page.locator('form'), 'Referencia', value);
   }
 
   /** Valor actual del input "Fecha de origen" (solo visible/presente cuando el origen es Meta o Web). */
@@ -433,6 +479,27 @@ export class AffiliatesPage {
 
   async expectRowDisabled(name: string): Promise<void> {
     await expect(this.rowByName(name).getByText('Deshabilitado')).toBeVisible();
+  }
+
+  /**
+   * Reactiva un afiliado desactivado ("Activar" en el menú de acciones + "Sí,
+   * habilitar" en el modal, sin motivo — solo se pide al desactivar). Único
+   * camino real de UI para que el backend ponga `isNew = true`
+   * (AffiliatesService.toggle, ver affiliates.service.ts) sin tocar la BD a
+   * mano: activar = "nuevo ciclo de pago", igual que un reingreso real.
+   */
+  async reactivateRow(name: string): Promise<void> {
+    await this.openRowAction(name, 'Activar');
+    const modal = this.page.locator('.fixed.inset-0.z-50', { hasText: 'Activar Afiliado' });
+    await expect(modal.getByRole('heading', { name: 'Activar Afiliado' })).toBeVisible();
+
+    const [response] = await Promise.all([
+      this.page.waitForResponse(
+        (res) => /\/affiliates\/\d+\/toggle/.test(res.url()) && res.request().method() === 'PATCH'
+      ),
+      modal.getByRole('button', { name: /Sí, habilitar/ }).click(),
+    ]);
+    expect(response.ok()).toBe(true);
   }
 
   /** Abre el modal de desactivar para una fila, sin confirmar (para probar el propio modal: validaciones, estado inicial, etc.). */

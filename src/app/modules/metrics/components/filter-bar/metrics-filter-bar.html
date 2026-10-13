@@ -1,0 +1,100 @@
+<div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-6">
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+    @if (shows('dates')) {
+    <div>
+      <label class="block mb-1 text-xs font-medium text-gray-600">Desde{{ optionalDates() ? ' (opcional)' : '' }}</label>
+      <input type="date" [ngModel]="draft().from" (ngModelChange)="update('from', $event)"
+        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+    </div>
+    <div>
+      <label class="block mb-1 text-xs font-medium text-gray-600">Hasta{{ optionalDates() ? ' (opcional)' : '' }}</label>
+      <input type="date" [ngModel]="draft().to" (ngModelChange)="update('to', $event)"
+        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+    </div>
+    }
+    @if (shows('fidelizadores')) {
+    <app-metrics-multi-select label="Fidelizadores" [options]="fidelizadorOptions()" [selected]="draft().fidelizadorIds"
+      (selectedChange)="update('fidelizadorIds', $event)" />
+    }
+    @if (shows('origins')) {
+    <app-metrics-multi-select label="Orígenes" [options]="originOptions()" [selected]="draft().originIds"
+      (selectedChange)="update('originIds', $event)" />
+    }
+    @if (shows('branches')) {
+    <app-metrics-multi-select label="Sedes" [options]="branchOptions()" [selected]="draft().branchIds"
+      (selectedChange)="update('branchIds', $event)" />
+    }
+  </div>
+
+  @if (shows('dates')) {
+  <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+    <span class="text-gray-500">Rápido:</span>
+    <button type="button" (click)="setPreset('current')" class="rounded-full border border-gray-300 px-3 py-1 text-gray-700 hover:bg-gray-100">Mes actual</button>
+    <button type="button" (click)="setPreset('previous')" class="rounded-full border border-gray-300 px-3 py-1 text-gray-700 hover:bg-gray-100">Mes anterior</button>
+    <button type="button" (click)="setPreset('year')" class="rounded-full border border-gray-300 px-3 py-1 text-gray-700 hover:bg-gray-100">Año actual</button>
+  </div>
+  }
+
+  @if (showsAnyCost()) {
+  <div class="mt-4 border-t border-gray-100 pt-4">
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Valores digitables (no se guardan)</p>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+      @if (shows('advertising')) {
+      <div>
+        <label class="block mb-1 text-xs font-medium text-gray-600">Publicidad Meta</label>
+        <input type="number" min="0" step="1000" [ngModel]="draft().adMeta" (ngModelChange)="updateNumber('adMeta', $event)"
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+      </div>
+      <div>
+        <label class="block mb-1 text-xs font-medium text-gray-600">Publicidad Web</label>
+        <input type="number" min="0" step="1000" [ngModel]="draft().adWeb" (ngModelChange)="updateNumber('adWeb', $event)"
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+      </div>
+      <div>
+        <label class="block mb-1 text-xs font-medium text-gray-600">Total publicidad</label>
+        <p class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900">
+          ${{ adTotal().toLocaleString('es-CO') }}
+        </p>
+      </div>
+      }
+      @if (shows('affiliationCost')) {
+      <div>
+        <label class="block mb-1 text-xs font-medium text-gray-600">Costo por afiliación</label>
+        <input type="number" min="0" step="1000" [ngModel]="draft().affiliationCost" (ngModelChange)="updateNumber('affiliationCost', $event)"
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+      </div>
+      }
+      @if (shows('workerCost')) {
+      <div>
+        <label class="block mb-1 text-xs font-medium text-gray-600">Costo trabajador (por fidelizador)</label>
+        <input type="number" min="0" step="100000" [ngModel]="draft().workerCost" (ngModelChange)="updateNumber('workerCost', $event)"
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+      </div>
+      }
+    </div>
+  </div>
+  }
+
+  <ng-content />
+
+  <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+    @if (!canApply()) {
+    <span class="mr-auto text-xs text-red-600">La fecha "Desde" debe ser menor o igual a "Hasta".</span>
+    }
+    @if (optionalDates()) {
+    <span class="mr-auto text-xs text-gray-500">Sin fechas = toda la historia del afiliado.</span>
+    }
+    <button type="button" (click)="reset()"
+      class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">{{ optionalDates() ? 'Deshacer filtros' : 'Deshacer cambios' }}</button>
+    <button type="button" (click)="apply()" [disabled]="!canApply() || isLoading()"
+      class="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50">
+      @if (isLoading()) {
+      <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      </svg>
+      }
+      Aplicar filtros
+    </button>
+  </div>
+</div>

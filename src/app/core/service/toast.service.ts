@@ -3,8 +3,10 @@ import { Injectable, signal } from '@angular/core';
 export interface Toast {
   id: number;
   message: string;
-  type: 'success' | 'error' | 'info';
+  type: 'success' | 'error' | 'info' | 'warning';
 }
+
+const DEFAULT_DURATION_MS = 5000;
 
 @Injectable({
   providedIn: 'root',
@@ -13,6 +15,7 @@ export class ToastService {
   toasts = signal<Toast[]>([]);
   private nextId = 0;
 
+<<<<<<< HEAD
   showSuccess(message: string, durationMs = 5000): void {
     this.addToast(message, 'success', durationMs);
   }
@@ -26,6 +29,25 @@ export class ToastService {
   }
 
   private addToast(message: string, type: 'success' | 'error' | 'info', durationMs: number): void {
+=======
+  showSuccess(message: string, durationMs = DEFAULT_DURATION_MS): void {
+    this.addToast(message, 'success', durationMs);
+  }
+
+  showError(message: string, durationMs = DEFAULT_DURATION_MS): void {
+    this.addToast(message, 'error', durationMs);
+  }
+
+  showInfo(message: string, durationMs = DEFAULT_DURATION_MS): void {
+    this.addToast(message, 'info', durationMs);
+  }
+
+  showWarning(message: string, durationMs = DEFAULT_DURATION_MS): void {
+    this.addToast(message, 'warning', durationMs);
+  }
+
+  private addToast(message: string, type: Toast['type'], durationMs: number): void {
+>>>>>>> 8af2711e767b71613fe5fb3deb79c2b61747e961
     const id = this.nextId++;
     const toast: Toast = { id, message, type };
 

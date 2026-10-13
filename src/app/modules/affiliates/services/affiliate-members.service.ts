@@ -4,8 +4,9 @@ import { Observable, catchError, from, of, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../../core/service/token.service';
 import { AffiliateMember,CreateAffiliateMemberDto,UpdateAffiliateMemberDto,} from '../interfaces/affiliate-member.interface';
-import { Plan, Company, Grouper, Advisor, EpsItem, Pension, CompensationBox, Branch, Department, CityOption, } from '../interfaces/catalog.interface';
+import { Plan, Company, Grouper, Advisor, Fidelizador, EpsItem, Pension, CompensationBox, Branch, Department, CityOption, } from '../interfaces/catalog.interface';
 import { PaginatedAffiliatesResponse } from '../interfaces/paginated-affiliates.interface';
+import { DisaffiliationHistoryRow } from '../../deactivate-affiliates/interfaces/disaffiliation.interface';
 
 export interface AffiliateFilters {
   page?: number;
@@ -14,6 +15,13 @@ export interface AffiliateFilters {
   cedula?: string;
   reference?: string;
   advisor?: string;
+  fidelizador?: string;
+  affiliateType?: 'INDEPENDIENTE' | 'DEPENDIENTE';
+  // Empresa y EPS viajan por id (no por nombre como asesor o fidelizador):
+  // sus desplegables ya salen de /companies/dropdown y /eps-providers/dropdown,
+  // que devuelven id + nombre.
+  companyId?: number;
+  epsId?: number;
   isActive?: boolean;
   grupo?: string;
   entryDateFrom?: string;
@@ -41,6 +49,10 @@ export class AffiliateMembersService {
     if (filters.cedula) params = params.set('cedula', filters.cedula);
     if (filters.reference) params = params.set('reference', filters.reference);
     if (filters.advisor) params = params.set('advisor', filters.advisor);
+    if (filters.fidelizador) params = params.set('fidelizador', filters.fidelizador);
+    if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
+    if (filters.companyId) params = params.set('companyId', String(filters.companyId));
+    if (filters.epsId) params = params.set('epsId', String(filters.epsId));
     if (filters.isActive !== undefined) params = params.set('isActive', String(filters.isActive));
     if (filters.grupo) params = params.set('grupo', filters.grupo);
     if (filters.entryDateFrom) params = params.set('entryDateFrom', filters.entryDateFrom);
@@ -165,6 +177,10 @@ export class AffiliateMembersService {
     if (filters.cedula) params = params.set('cedula', filters.cedula);
     if (filters.reference) params = params.set('reference', filters.reference);
     if (filters.advisor) params = params.set('advisor', filters.advisor);
+    if (filters.fidelizador) params = params.set('fidelizador', filters.fidelizador);
+    if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
+    if (filters.companyId) params = params.set('companyId', String(filters.companyId));
+    if (filters.epsId) params = params.set('epsId', String(filters.epsId));
     if (filters.isActive !== undefined) {
       params = params.set('isActive', String(filters.isActive));
     }
@@ -205,43 +221,30 @@ export class AffiliateMembersService {
   // ── Enviar correo vía n8n ──────────────────────────────────────────
   // emails=undefined (Dependiente/Gestión): el backend usa el correo registrado
   // del afiliado por defecto. emails=[...] (Independiente): se envía solo a esos.
-  sendEmail(affiliationId: number, emails: string[] | undefined, observation?: string): Observable<{ success: boolean; message: string }> {
+  // `salary` solo viaja en el flujo Independiente, que es el único donde el
+  // modal ofrece cambiarlo; el backend rechaza el campo para los demás.
+  sendEmail(
+    affiliationId: number,
+    emails: string[] | undefined,
+    observation?: string,
+    salary?: number,
+  ): Observable<{ success: boolean; message: string }> {
     return this._http
       .post<{ success: boolean; message: string }>(
         `${environment.urlBD}/affiliates/${affiliationId}/send-email`,
-        { emails, observation },
+        { emails, observation, ...(salary !== undefined ? { salary } : {}) },
         { headers: this.getHeaders() }
       )
       .pipe(catchError(this.handleError));
   }
 
-  // ── Envío de documentos por WhatsApp ────────────────────────────────
-  getWhatsappSourceNumbers(): Observable<{ id: number; ownerName: string }[]> {
+  /** Salario que llevaría el correo si se enviara ahora, para precargar el campo. */
+  getEmailSalary(affiliationId: number): Observable<{ salary: number }> {
     return this._http
-      .get<{ id: number; ownerName: string }[]>(`${this.baseUrl}/whatsapp/source-numbers`, {
-        headers: this.getHeaders(),
-      })
-      .pipe(catchError(() => of([])));
-  }
-
-  sendWhatsapp(
-    affiliationId: number,
-    sourceNumberId: number,
-    destinationPhone: string,
-    files: { file: File; certType: 'EPS' | 'ARL' | 'CCF' | 'AFP' }[],
-  ): Observable<{ success: boolean; message: string }> {
-    const formData = new FormData();
-    formData.append('sourceNumberId', String(sourceNumberId));
-    formData.append('destinationPhone', destinationPhone);
-    files.forEach(({ file, certType }) => {
-      formData.append('files', file);
-      formData.append('certTypes', certType);
-    });
-
-    const token = this._tokenService.getToken();
-    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
-    return this._http
-      .post<{ success: boolean; message: string }>(`${this.baseUrl}/${affiliationId}/whatsapp-send`, formData, { headers })
+      .get<{ salary: number }>(
+        `${environment.urlBD}/affiliates/${affiliationId}/email-salary`,
+        { headers: this.getHeaders() }
+      )
       .pipe(catchError(this.handleError));
   }
 
@@ -268,9 +271,25 @@ export class AffiliateMembersService {
       .pipe(catchError(() => of([])));
   }
 
-  getAdvisors(): Observable<Advisor[]> {
+  // fidelizadorId filtra los asesores de ese fidelizador (formulario de
+  // afiliado, donde Asesor depende de Fidelización); sin él trae todos los
+  // asesores activos (filtros de listas que no dependen de un fidelizador).
+  getAdvisors(fidelizadorId?: string | number): Observable<Advisor[]> {
+    let params = new HttpParams();
+    if (fidelizadorId) {
+      params = params.set('fidelizadorId', String(fidelizadorId));
+    }
     return this._http
       .get<Advisor[]>(`${environment.urlBD}/advisors/dropdown`, {
+        headers: this.getHeaders(),
+        params,
+      })
+      .pipe(catchError(() => of([])));
+  }
+
+  getFidelizadores(): Observable<Fidelizador[]> {
+    return this._http
+      .get<Fidelizador[]>(`${environment.urlBD}/fidelizadores/dropdown`, {
         headers: this.getHeaders(),
       })
       .pipe(catchError(() => of([])));
@@ -331,6 +350,39 @@ export class AffiliateMembersService {
   getDeactivationReasons(): Observable<{ id: number; code: string; label: string }[]> {
     return this._http
       .get<{ id: number; code: string; label: string }[]>(`${environment.urlBD}/deactivation-reasons/dropdown`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(() => of([])));
+  }
+
+  // ── Desafiliación (paso 1: registrar la solicitud, "enviado a validar") ──
+  getDisaffiliationReasons(): Observable<{ id: number; code: string; label: string }[]> {
+    return this._http
+      .get<{ id: number; code: string; label: string }[]>(`${environment.urlBD}/disaffiliations/reasons/dropdown`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(() => of([])));
+  }
+
+  createDisaffiliationRequest(
+    affiliationId: number,
+    companyId: number | undefined,
+    reasonId: number,
+    observation?: string,
+  ): Observable<any> {
+    return this._http
+      .post(
+        `${environment.urlBD}/disaffiliations`,
+        { affiliationId, companyId, reasonId, observation },
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError(this.handleError));
+  }
+
+  // ── Desafiliación (historial completo para el tab de la ficha del afiliado) ──
+  getDisaffiliationHistory(affiliationId: number): Observable<DisaffiliationHistoryRow[]> {
+    return this._http
+      .get<DisaffiliationHistoryRow[]>(`${environment.urlBD}/disaffiliations/history/${affiliationId}`, {
         headers: this.getHeaders(),
       })
       .pipe(catchError(() => of([])));

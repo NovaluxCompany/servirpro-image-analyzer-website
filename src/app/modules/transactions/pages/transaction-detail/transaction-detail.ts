@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { interval, Subscription } from 'rxjs';
 import { switchMap, takeWhile } from 'rxjs/operators';
 import { TransactionsService } from '../../services/transactions.service';
-import { Transaction } from '../../interfaces/transaction.interface';
+import { DEACTIVATION_REASON_LABELS, DEACTIVATION_REASON_MESSAGES, Transaction } from '../../interfaces/transaction.interface';
 import { TransactionStatusBadgeComponent } from '../../components/transaction-status-badge/transaction-status-badge';
 import { ReceiptsTableComponent } from '../../components/receipts-table/receipts-table';
 
@@ -133,6 +133,16 @@ export class TransactionDetailComponent implements OnDestroy {
   closeImageModal(): void {
     this.showImageModal.set(false);
     this.selectedImageUrl.set(null);
+  }
+
+  /** Novedad del comprobante para la alerta, o null si no tiene. */
+  get deactivationAlert(): { label: string; message: string } | null {
+    const reason = this.transaction()?.deactivationReason;
+    if (!reason) return null;
+    return {
+      label: DEACTIVATION_REASON_LABELS[reason] ?? reason,
+      message: DEACTIVATION_REASON_MESSAGES[reason] ?? '',
+    };
   }
 
   getTotalPrice(): number {

@@ -1,0 +1,121 @@
+<div class="min-h-screen p-6 bg-gray-50">
+  <div class="max-w-3xl mx-auto">
+
+    <div class="flex items-center gap-2 mb-6">
+      <button type="button" (click)="goBack()" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <h1 class="text-2xl font-bold text-gray-900">Detalle de cargue</h1>
+    </div>
+
+    @if (isLoading()) {
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 animate-pulse">
+        <div class="h-4 bg-gray-100 rounded w-1/3 mb-3"></div>
+        <div class="h-4 bg-gray-100 rounded w-1/2"></div>
+      </div>
+    } @else if (errorMessage()) {
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-red-600">
+        {{ errorMessage() }}
+      </div>
+    } @else if (item(); as data) {
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-semibold text-gray-800">Estado actual</h2>
+          <app-document-upload-status-badge [status]="data.status" />
+        </div>
+
+        @if (data.status === 'QUEUED' || data.status === 'SENDING') {
+          <div class="flex items-center gap-2 mb-4 text-xs text-gray-500">
+            <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Verificando el estado del envío por WhatsApp cada pocos segundos...
+          </div>
+        }
+
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div>
+            <dt class="text-xs font-medium text-gray-500">Afiliado</dt>
+            <dd class="text-gray-900">{{ data.affiliation?.client?.fullName || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-gray-500">Cédula</dt>
+            <dd class="text-gray-900">{{ data.affiliation?.client?.documentNumber || data.cedulaDetected || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-gray-500">Documento</dt>
+            <dd class="text-gray-900">{{ data.documentType?.name || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-gray-500">Archivo</dt>
+            <dd class="text-gray-900 truncate" [title]="data.fileName">{{ data.fileName }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-gray-500">Creado</dt>
+            <dd class="text-gray-900">{{ data.createdAt | date:'dd/MM/yyyy HH:mm' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-gray-500">Última actualización</dt>
+            <dd class="text-gray-900">{{ data.updatedAt | date:'dd/MM/yyyy HH:mm' }}</dd>
+          </div>
+          @if (data.manuallyMarked) {
+            <div class="sm:col-span-2">
+              <dt class="text-xs font-medium text-gray-500">Marcado manualmente</dt>
+              <dd class="text-gray-900">Sí, el {{ data.manuallyMarkedAt | date:'dd/MM/yyyy HH:mm' }}</dd>
+            </div>
+          }
+        </dl>
+
+        @if (data.status === 'ERROR') {
+          <div class="mt-6 pt-4 border-t border-gray-100 flex items-center gap-2">
+            <button type="button" (click)="showErrorDetailModal.set(true)"
+              class="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100">
+              Ver error
+            </button>
+            <button type="button" (click)="markManualSend()" [disabled]="isMarkingManual()"
+              class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+              @if (isMarkingManual()) {
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              }
+              Marcar envío manual
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>
+
+@if (showErrorDetailModal() && item()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-red-600 to-red-700">
+        <h3 class="text-base font-bold text-white">Detalle del error</h3>
+      </div>
+      <div class="px-6 py-5">
+        <p class="text-sm text-gray-700 whitespace-pre-line">
+          {{ item()?.errorMessage || item()?.n8nLastError || 'No hay detalle disponible.' }}
+        </p>
+        <p class="mt-3 text-xs text-gray-400">
+          Si ya enviaste el documento manualmente por WhatsApp, usa "Marcar envío manual" para cerrar este registro sin esperar más al flujo automático.
+        </p>
+      </div>
+      <div class="flex items-center justify-end gap-2 px-6 py-4 bg-gray-50 border-t border-gray-100">
+        <button type="button" (click)="showErrorDetailModal.set(false)"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          Cerrar
+        </button>
+        <button type="button" (click)="markManualSend()" [disabled]="isMarkingManual()"
+          class="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+          Marcar envío manual
+        </button>
+      </div>
+    </div>
+  </div>
+}
