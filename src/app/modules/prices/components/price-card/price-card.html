@@ -1,0 +1,156 @@
+<section class="rounded-2xl border border-gray-200 bg-white shadow-sm">
+  <button type="button" (click)="toggle()" [attr.aria-expanded]="expanded()"
+    class="flex w-full items-start gap-3 px-5 py-4 text-left hover:bg-gray-50 rounded-2xl">
+    <svg class="mt-1 h-4 w-4 shrink-0 text-gray-500 transition-transform" [class.rotate-90]="expanded()" fill="none"
+      stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+    </svg>
+    <span class="flex-1 min-w-0">
+      <span class="block text-base font-semibold text-gray-900">{{ definition().title }}</span>
+      <span class="mt-0.5 block text-xs text-gray-500">{{ definition().description }}</span>
+    </span>
+    <span class="flex shrink-0 flex-col items-end gap-1 text-right">
+      <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+        {{ view().rows.length }} de {{ view().total }}
+      </span>
+      @if (ownFilterCount() > 0) {
+      <span class="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-medium text-amber-800">
+        {{ ownFilterCount() }} filtro{{ ownFilterCount() === 1 ? '' : 's' }} de la tarjeta
+      </span>
+      }
+      @if (view().min != null) {
+      <span class="text-xs text-gray-500">
+        {{ view().min === view().max ? money(view().min) : money(view().min) + ' – ' + money(view().max) }}
+      </span>
+      }
+    </span>
+  </button>
+
+  @if (expanded()) {
+  <div class="border-t border-gray-100 px-5 py-4">
+    <p class="mb-3 text-[11px] text-gray-500">
+      <span class="font-medium text-gray-600">Fuente:</span> {{ definition().source }}
+      · <span class="font-medium text-gray-600">Filtros generales que aplican:</span> {{ appliedGeneral() }}
+      @if (ignoredGeneral()) {
+      <span class="text-gray-400">· No aplica: {{ ignoredGeneral() }}</span>
+      }
+    </p>
+
+    <!-- Filtros propios de la tarjeta -->
+    <div class="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
+      <div class="mb-3 flex items-center justify-between gap-2">
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Filtros de esta tarjeta</p>
+        @if (ownFilterCount() > 0) {
+        <button type="button" (click)="clearOwn()" class="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">
+          Limpiar filtros de la tarjeta
+        </button>
+        }
+      </div>
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        @if (has('search')) {
+        <div class="md:col-span-2">
+          <label class="block mb-1 text-xs font-medium text-gray-600">Buscar en {{ definition().title }}</label>
+          <input type="text" [ngModel]="own().search" (ngModelChange)="update('search', $event)"
+            [placeholder]="definition().searchPlaceholder"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+        </div>
+        }
+        @if (has('grouper')) {
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Agrupador</label>
+          <select [ngModel]="own().grouper" (ngModelChange)="update('grouper', $event)"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+            <option value="">Todos</option>
+            @for (option of grouperOptions(); track option) {
+            <option [value]="option">{{ option }}</option>
+            }
+          </select>
+        </div>
+        }
+        @if (has('category')) {
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Categoría</label>
+          <select [ngModel]="own().category" (ngModelChange)="update('category', $event)"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+            <option value="">Todas</option>
+            @for (option of categoryOptions(); track option) {
+            <option [value]="option">{{ option }}</option>
+            }
+          </select>
+        </div>
+        }
+        @if (has('column')) {
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Comparar precio en</label>
+          <select [ngModel]="own().column" (ngModelChange)="update('column', $event)"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+            <option value="">{{ priceColumnOptions().join(' y ') }}</option>
+            @for (option of priceColumnOptions(); track option) {
+            <option [value]="option">Solo {{ option }}</option>
+            }
+          </select>
+        </div>
+        }
+        @if (has('range')) {
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Precio mínimo</label>
+          <input type="number" min="0" step="1000" [ngModel]="own().minPrice" (ngModelChange)="updatePrice('minPrice', $event)"
+            placeholder="Sin mínimo"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+        </div>
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Precio máximo</label>
+          <input type="number" min="0" step="1000" [ngModel]="own().maxPrice" (ngModelChange)="updatePrice('maxPrice', $event)"
+            placeholder="Sin máximo"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+        </div>
+        }
+        @if (has('hideZero')) {
+        <label class="flex items-center gap-2 self-end pb-2 text-sm text-gray-700">
+          <input type="checkbox" [ngModel]="own().hideZero" (ngModelChange)="update('hideZero', $event)"
+            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-300" />
+          Ocultar valores en $0
+        </label>
+        }
+      </div>
+      @if (invalidRange()) {
+      <p class="mt-2 text-xs text-red-600">El precio mínimo es mayor que el máximo: ninguna fila puede coincidir.</p>
+      }
+    </div>
+
+    @if (view().rows.length === 0) {
+    <p class="py-8 text-center text-sm text-gray-500">
+      {{ view().total === 0 ? 'No hay precios registrados en esta sección.' : 'Ningún precio coincide con los filtros actuales.' }}
+    </p>
+    } @else {
+    <div class="max-h-[32rem] overflow-auto rounded-lg border border-gray-200">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="sticky top-0 bg-gray-50">
+          <tr>
+            @for (column of definition().columns; track column.label) {
+            <th scope="col" class="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600"
+              [class.text-right]="column.money" [class.text-left]="!column.money">
+              {{ column.label }}
+            </th>
+            }
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 bg-white">
+          @for (row of view().rows; track $index) {
+          <tr class="hover:bg-gray-50">
+            @for (column of definition().columns; track column.label) {
+            <td class="whitespace-nowrap px-3 py-2"
+              [class.text-right]="column.money" [class.tabular-nums]="column.money"
+              [class.font-semibold]="isCompared(column)" [class.text-gray-900]="isCompared(column)" [class.text-gray-700]="!isCompared(column)">
+              {{ cell(column, row) }}
+            </td>
+            }
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+  </div>
+  }
+</section>
