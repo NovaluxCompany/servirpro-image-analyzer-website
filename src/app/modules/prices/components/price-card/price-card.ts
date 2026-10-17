@@ -2,9 +2,7 @@ import { Component, computed, input, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CardFilters, EMPTY_CARD_FILTERS, PricesFilters, PricesOverview } from '../../interfaces/prices.interface';
 import {
-  ALL_GENERAL_FILTERS,
   CardFilterField,
-  GENERAL_FILTER_LABELS,
   PriceCardDefinition,
   PriceColumn,
   buildCardView,
@@ -49,13 +47,6 @@ export class PriceCardComponent {
     const { minPrice, maxPrice } = this.own();
     return minPrice != null && maxPrice != null && minPrice > maxPrice;
   });
-
-  appliedGeneral = computed(() => this.definition().generalFilters.map((f) => GENERAL_FILTER_LABELS[f]).join(' · '));
-  ignoredGeneral = computed(() =>
-    ALL_GENERAL_FILTERS.filter((f) => !this.definition().generalFilters.includes(f))
-      .map((f) => GENERAL_FILTER_LABELS[f])
-      .join(' · '),
-  );
 
   has(field: CardFilterField): boolean {
     return this.definition().cardFilters.includes(field);

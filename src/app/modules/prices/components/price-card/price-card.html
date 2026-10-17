@@ -30,13 +30,10 @@
   <div class="border-t border-gray-100 px-5 py-4">
     <p class="mb-3 text-[11px] text-gray-500">
       <span class="font-medium text-gray-600">Fuente:</span> {{ definition().source }}
-      · <span class="font-medium text-gray-600">Filtros generales que aplican:</span> {{ appliedGeneral() }}
-      @if (ignoredGeneral()) {
-      <span class="text-gray-400">· No aplica: {{ ignoredGeneral() }}</span>
-      }
     </p>
 
     <!-- Filtros propios de la tarjeta -->
+    @if (definition().cardFilters.length) {
     <div class="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
       <div class="mb-3 flex items-center justify-between gap-2">
         <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Filtros de esta tarjeta</p>
@@ -117,6 +114,7 @@
       <p class="mt-2 text-xs text-red-600">El precio mínimo es mayor que el máximo: ninguna fila puede coincidir.</p>
       }
     </div>
+    }
 
     @if (view().rows.length === 0) {
     <p class="py-8 text-center text-sm text-gray-500">
