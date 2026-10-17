@@ -5,8 +5,11 @@ import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../../core/service/token.service';
 import { MetricChartKey } from '../metric-charts.config';
 import {
+  AdvertisingMonth,
   AdvertisingResponse,
   CohortsResponse,
+  ConditionsResponse,
+  FidelizadorCollectionResponse,
   FidelizadorSummaryResponse,
   LifelineResponse,
   MetricsFilterOptions,
@@ -27,11 +30,13 @@ const CHART_ENDPOINTS: Record<MetricChartKey, string> = {
   'nuevos-vs-reingresos': 'new-vs-reentry',
   publicidad: 'advertising',
   'ganancias-oficinas': 'office-profits',
+  'mensualidad-reingreso-retiro': 'conditions',
   retencion: 'retention',
   cohortes: 'cohorts',
   'linea-de-vida': 'lifeline',
   planes: 'top-plans',
   profesiones: 'top-professions',
+  'recaudo-fidelizadores': 'fidelizador-collection',
 };
 
 export interface MetricChartResponses {
@@ -40,11 +45,13 @@ export interface MetricChartResponses {
   'nuevos-vs-reingresos': NewVsReentryResponse;
   publicidad: AdvertisingResponse;
   'ganancias-oficinas': OfficeProfitsResponse;
+  'mensualidad-reingreso-retiro': ConditionsResponse;
   retencion: RetentionResponse;
   cohortes: CohortsResponse;
   'linea-de-vida': LifelineResponse;
   planes: TopPlansResponse;
   profesiones: TopProfessionsResponse;
+  'recaudo-fidelizadores': FidelizadorCollectionResponse;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -86,17 +93,30 @@ export class MetricsService {
       .pipe(catchError((error) => this.handleError(error, 'Error al exportar Excel')));
   }
 
+  // ── Publicidad por mes (botón del gráfico 1) ──────────────────────────
+  getAdvertisingMonths(year: number): Observable<AdvertisingMonth[]> {
+    return this._http
+      .get<AdvertisingMonth[]>(`${this.baseUrl}/advertising-spend`, { headers: this.getHeaders(), params: { year } })
+      .pipe(catchError((error) => this.handleError(error, 'Error al cargar la publicidad registrada')));
+  }
+
+  saveAdvertisingMonth(month: string, meta: number, web: number): Observable<AdvertisingMonth> {
+    return this._http
+      .put<AdvertisingMonth>(`${this.baseUrl}/advertising-spend`, { month, meta, web }, { headers: this.getHeaders() })
+      .pipe(catchError((error) => this.handleError(error, 'Error al guardar la publicidad del mes')));
+  }
+
   private toParams(filters: MetricsFilters, specific: MetricsSpecificFilters): HttpParams {
     // Fechas vacías solo pasan en la línea de vida (= toda la historia): no se envían.
+    // La publicidad no se envía: el backend la lee de lo guardado por mes.
     let params = new HttpParams()
-      .set('adMeta', filters.adMeta || 0)
-      .set('adWeb', filters.adWeb || 0)
       .set('affiliationCost', filters.affiliationCost || 0)
       .set('workerCost', filters.workerCost || 0);
     if (filters.from) params = params.set('from', filters.from);
     if (filters.to) params = params.set('to', filters.to);
 
     if (filters.fidelizadorIds.length) params = params.set('fidelizadorIds', filters.fidelizadorIds.join(','));
+    if (filters.advisorIds?.length) params = params.set('advisorIds', filters.advisorIds.join(','));
     if (filters.originIds.length) params = params.set('originIds', filters.originIds.join(','));
     if (filters.branchIds.length) params = params.set('branchIds', filters.branchIds.join(','));
 
@@ -105,6 +125,9 @@ export class MetricsService {
     if (specific.includeNew != null) params = params.set('includeNew', String(specific.includeNew));
     if (specific.includeReentries != null) params = params.set('includeReentries', String(specific.includeReentries));
     if (specific.document?.trim()) params = params.set('document', specific.document.trim());
+    if (specific.condition && specific.condition !== 'NEW') params = params.set('condition', specific.condition);
+    if (specific.collectionMonth) params = params.set('month', specific.collectionMonth);
+    if (specific.userIds?.length) params = params.set('userIds', specific.userIds.join(','));
 
     return params;
   }

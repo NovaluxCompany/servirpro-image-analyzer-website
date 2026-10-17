@@ -7,10 +7,9 @@ import { PRICE_CARDS, affiliateTypeLabel } from '../../price-cards.config';
 import { PricesService } from '../../services/prices.service';
 
 /**
- * Módulo Precios: muestra (solo lectura) todos los precios configurados,
- * una tarjeta desplegable por fuente. Los datos se cargan una vez y los
- * filtros se aplican en el navegador: los generales (aquí) afectan todas las
- * tarjetas y cada tarjeta tiene además los suyos.
+ * Módulo Precios: muestra (solo lectura) el precio de los planes que existen
+ * en el sistema. Los datos se cargan una vez y los filtros se aplican en el
+ * navegador.
  */
 @Component({
   selector: 'app-prices-page',
@@ -29,7 +28,8 @@ export class PricesPageComponent implements OnInit {
   loading = signal(false);
   error = signal<string | null>(null);
   filters = signal<PricesFilters>({ ...EMPTY_PRICES_FILTERS });
-  expanded = signal<Record<string, boolean>>({});
+  // Solo hay una tarjeta (Planes): arranca desplegada.
+  expanded = signal<Record<string, boolean>>(Object.fromEntries(PRICE_CARDS.map((c) => [c.key, true])));
 
   /**
    * Nombres de plan sin repetir: un mismo nombre agrupa Dependiente e
@@ -43,8 +43,6 @@ export class PricesPageComponent implements OnInit {
   });
 
   hasFilters = computed(() => JSON.stringify(this.filters()) !== JSON.stringify(EMPTY_PRICES_FILTERS));
-
-  allExpanded = computed(() => this.cards.every((c) => this.expanded()[c.key]));
 
   ngOnInit(): void {
     this.load();
@@ -89,11 +87,6 @@ export class PricesPageComponent implements OnInit {
 
   setExpanded(key: string, value: boolean): void {
     this.expanded.update((e) => ({ ...e, [key]: value }));
-  }
-
-  toggleAll(): void {
-    const value = !this.allExpanded();
-    this.expanded.set(Object.fromEntries(this.cards.map((c) => [c.key, value])));
   }
 
   private planNames(type: AffiliateType | ''): string[] {

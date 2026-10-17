@@ -1,13 +1,4 @@
-import {
-  AffiliateType,
-  DiscountPriceRow,
-  CardFilters,
-  PlanPriceRow,
-  PriceParameterRow,
-  PricesFilters,
-  PricesOverview,
-  PricingRuleRow,
-} from './interfaces/prices.interface';
+import { AffiliateType, CardFilters, PlanPriceRow, PricesFilters, PricesOverview } from './interfaces/prices.interface';
 
 /** Filtros generales (barra superior) que pueden aplicar a una tarjeta. */
 export type GeneralFilterField = 'search' | 'affiliateType' | 'plan' | 'price';
@@ -71,48 +62,6 @@ const AFFILIATE_TYPE_LABELS: Record<AffiliateType, string> = {
 export const affiliateTypeLabel = (type: AffiliateType | null | undefined): string =>
   type ? AFFILIATE_TYPE_LABELS[type] ?? type : '';
 
-const ruleFacets = (r: PricingRuleRow): RowFacets => ({
-  text: `${r.grouperName} ${r.categoryName} ${r.planName}`,
-  affiliateType: r.affiliateType,
-  planName: r.planName,
-  grouper: r.grouperName,
-  category: r.categoryName,
-});
-
-/**
- * Planilla, administración, reserva y ganancia salen de la misma regla de
- * precio (agrupador + categoría + tipo + plan); cada concepto tiene su
- * tarjeta con el valor para afiliación nueva y para mensualidad.
- */
-function ruleCard(
-  key: string,
-  title: string,
-  description: string,
-  newValue: (r: PricingRuleRow) => number,
-  monthlyValue: (r: PricingRuleRow) => number,
-): PriceCardDefinition<PricingRuleRow> {
-  return {
-    key,
-    title,
-    description,
-    source: 'Reglas de precio',
-    generalFilters: ['search', 'affiliateType', 'plan', 'price'],
-    cardFilters: ['search', 'grouper', 'category', 'column', 'range', 'hideZero'],
-    searchPlaceholder: 'Agrupador, categoría o plan',
-    rows: (data) => data.pricingRules,
-    facets: ruleFacets,
-    columns: [
-      { label: 'Agrupador', value: (r) => r.grouperName },
-      { label: 'Categoría', value: (r) => r.categoryName },
-      { label: 'Tipo', value: (r) => affiliateTypeLabel(r.affiliateType) },
-      { label: 'Plan', value: (r) => r.planName },
-      { label: 'Valor plan', value: (r) => r.planSalePrice, money: true },
-      { label: 'Nuevo', value: newValue, money: true, priced: true },
-      { label: 'Mensualidad', value: monthlyValue, money: true, priced: true },
-    ],
-  };
-}
-
 export const PRICE_CARDS: PriceCardDefinition[] = [
   {
     key: 'planes',
@@ -120,7 +69,8 @@ export const PRICE_CARDS: PriceCardDefinition[] = [
     description: 'Precio de venta de cada plan: valor del primer mes y de la mensualidad.',
     source: 'Planes',
     generalFilters: ['search', 'affiliateType', 'plan', 'price'],
-    cardFilters: ['search', 'column', 'range'],
+    // Búsqueda y rango ya están en los filtros de arriba; acá solo qué columna comparar.
+    cardFilters: ['column'],
     searchPlaceholder: 'Nombre del plan',
     rows: (data) => data.plans,
     facets: (p: PlanPriceRow) => ({ text: p.name, affiliateType: p.affiliateType, planName: p.name }),
@@ -129,50 +79,6 @@ export const PRICE_CARDS: PriceCardDefinition[] = [
       { label: 'Tipo', value: (p: PlanPriceRow) => affiliateTypeLabel(p.affiliateType) },
       { label: 'Primer mes', value: (p: PlanPriceRow) => p.firstMonthPrice, money: true, priced: true },
       { label: 'Mensualidad', value: (p: PlanPriceRow) => p.salePrice, money: true, priced: true },
-    ],
-  },
-  ruleCard('planilla', 'Planilla', 'Valor de planilla por agrupador, categoría, tipo y plan.', (r) => r.payrollNew, (r) => r.payrollMonthly),
-  ruleCard('administracion', 'Administración', 'Valor de administración por agrupador, categoría, tipo y plan.', (r) => r.adminNew, (r) => r.adminMonthly),
-  ruleCard('reserva', 'Reserva', 'Valor de reserva por agrupador, categoría, tipo y plan.', (r) => r.reserveNew, (r) => r.reserveMonthly),
-  ruleCard('ganancia', 'Ganancia', 'Ganancia por agrupador, categoría, tipo y plan (base de lo que se factura en Siigo).', (r) => r.profitNew, (r) => r.profitMonthly),
-  {
-    key: 'descuentos',
-    title: 'Descuentos especiales',
-    description: 'Descuentos vigentes sobre el plan (precios extraordinarios) y cuántos afiliados activos tienen cada uno.',
-    source: 'Afiliaciones activas',
-    generalFilters: ['search', 'affiliateType', 'plan', 'price'],
-    cardFilters: ['search', 'grouper', 'range'],
-    searchPlaceholder: 'Plan o agrupador',
-    rows: (data) => data.discounts,
-    facets: (d: DiscountPriceRow) => ({
-      text: `${d.planName} ${d.grouperName ?? ''}`,
-      affiliateType: d.affiliateType,
-      planName: d.planName,
-      grouper: d.grouperName,
-    }),
-    columns: [
-      { label: 'Plan', value: (d: DiscountPriceRow) => d.planName },
-      { label: 'Tipo', value: (d: DiscountPriceRow) => affiliateTypeLabel(d.affiliateType) },
-      { label: 'Agrupador', value: (d: DiscountPriceRow) => d.grouperName },
-      { label: 'Valor plan', value: (d: DiscountPriceRow) => d.planSalePrice, money: true },
-      { label: 'Descuento', value: (d: DiscountPriceRow) => d.discount, money: true, priced: true },
-      { label: 'Afiliados', value: (d: DiscountPriceRow) => d.affiliates },
-    ],
-  },
-  {
-    key: 'parametros',
-    title: 'Costos de referencia',
-    description: 'Parámetros generales con valor en pesos (por ejemplo, los costos que usa Métricas).',
-    source: 'Parámetros generales',
-    generalFilters: ['search', 'price'],
-    cardFilters: ['search', 'range'],
-    searchPlaceholder: 'Nombre o descripción del parámetro',
-    rows: (data) => data.parameters,
-    facets: (p: PriceParameterRow) => ({ text: `${p.key} ${p.description ?? ''}` }),
-    columns: [
-      { label: 'Parámetro', value: (p: PriceParameterRow) => p.key },
-      { label: 'Descripción', value: (p: PriceParameterRow) => p.description },
-      { label: 'Valor', value: (p: PriceParameterRow) => p.value, money: true, priced: true },
     ],
   },
 ];

@@ -86,7 +86,7 @@ export class MetricsDashboardComponent implements OnInit {
   }
 
   appliedFilters(chart: MetricChartDefinition): string {
-    return chart.filters.map((f) => FILTER_FIELD_LABELS[f]).join(' · ');
+    return chart.ownFilters ?? chart.filters.map((f) => FILTER_FIELD_LABELS[f]).join(' · ');
   }
 
   ignoredFilters(chart: MetricChartDefinition): string {

@@ -8,8 +8,10 @@ import { RetentionViewComponent } from './retention-view';
 import { CohortsViewComponent } from './cohorts-view';
 import { LifelineViewComponent } from './lifeline-view';
 import { OfficeProfitsViewComponent } from './office-profits-view';
+import { ConditionsViewComponent } from './conditions-view';
 import { TopPlansViewComponent } from './top-plans-view';
 import { TopProfessionsViewComponent } from './top-professions-view';
+import { CollectionViewComponent } from './collection-view';
 
 /** Pinta la vista que corresponde a cada gráfico (misma en tablero y detalle). */
 @Component({
@@ -24,8 +26,10 @@ import { TopProfessionsViewComponent } from './top-professions-view';
     CohortsViewComponent,
     LifelineViewComponent,
     OfficeProfitsViewComponent,
+    ConditionsViewComponent,
     TopPlansViewComponent,
     TopProfessionsViewComponent,
+    CollectionViewComponent,
   ],
   template: `
     @switch (chartKey()) {
@@ -44,6 +48,9 @@ import { TopProfessionsViewComponent } from './top-professions-view';
       @case ('ganancias-oficinas') {
         <app-office-profits-view [data]="data()" [detailed]="detailed()" />
       }
+      @case ('mensualidad-reingreso-retiro') {
+        <app-conditions-view [data]="data()" [detailed]="detailed()" />
+      }
       @case ('retencion') {
         <app-retention-view [data]="data()" [detailed]="detailed()" />
       }
@@ -58,6 +65,9 @@ import { TopProfessionsViewComponent } from './top-professions-view';
       }
       @case ('profesiones') {
         <app-top-professions-view [data]="data()" [detailed]="detailed()" />
+      }
+      @case ('recaudo-fidelizadores') {
+        <app-collection-view [data]="data()" [detailed]="detailed()" />
       }
     }
   `,

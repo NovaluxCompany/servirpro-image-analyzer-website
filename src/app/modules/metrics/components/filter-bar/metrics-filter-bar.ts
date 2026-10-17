@@ -38,6 +38,10 @@ export class MetricsFilterBarComponent {
     ...this.options().fidelizadores.map((f) => ({ value: f.id, label: f.name })),
     { value: 0, label: 'Sin fidelizador' },
   ]);
+  // Solo los asesores del bot del gráfico 1 (Hanna, Sebas, Tania): el backend ya los filtra.
+  advisorOptions = computed<MultiSelectOption[]>(() =>
+    (this.options().advisors ?? []).map((a) => ({ value: a.id, label: a.name })),
+  );
   originOptions = computed<MultiSelectOption[]>(() => [
     ...this.options().origins.map((o) => ({ value: o.id, label: o.name })),
     { value: 0, label: 'Sin origen' },
@@ -47,21 +51,19 @@ export class MetricsFilterBarComponent {
     { value: 0, label: 'Sin sede' },
   ]);
 
-  adTotal = computed(() => Number(this.draft().adMeta || 0) + Number(this.draft().adWeb || 0));
-
   shows(field: MetricsFilterField): boolean {
     return this.fields().includes(field);
   }
 
   showsAnyCost(): boolean {
-    return this.shows('advertising') || this.shows('affiliationCost') || this.shows('workerCost');
+    return this.shows('affiliationCost') || this.shows('workerCost');
   }
 
   update<K extends keyof MetricsFilters>(key: K, value: MetricsFilters[K]): void {
     this.draft.update((d) => ({ ...d, [key]: value }));
   }
 
-  updateNumber(key: 'adMeta' | 'adWeb' | 'affiliationCost' | 'workerCost', value: unknown): void {
+  updateNumber(key: 'affiliationCost' | 'workerCost', value: unknown): void {
     const n = Number(value);
     this.update(key, Number.isFinite(n) && n >= 0 ? n : 0);
   }

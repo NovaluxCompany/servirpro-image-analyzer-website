@@ -6,11 +6,13 @@ export type MetricChartKey =
   | 'nuevos-vs-reingresos'
   | 'publicidad'
   | 'ganancias-oficinas'
+  | 'mensualidad-reingreso-retiro'
   | 'retencion'
   | 'cohortes'
   | 'linea-de-vida'
   | 'planes'
-  | 'profesiones';
+  | 'profesiones'
+  | 'recaudo-fidelizadores';
 
 export interface MetricChartDefinition {
   key: MetricChartKey;
@@ -24,14 +26,16 @@ export interface MetricChartDefinition {
    * limpia. Solo la línea de vida, que es por afiliado.
    */
   optionalDates?: boolean;
+  /** Filtros propios del detalle, para la tarjeta del tablero (p. ej. el 9 no usa el filtro general). */
+  ownFilters?: string;
 }
 
 export const ALL_FILTER_FIELDS: MetricsFilterField[] = [
   'dates',
   'fidelizadores',
+  'advisors',
   'origins',
   'branches',
-  'advertising',
   'affiliationCost',
   'workerCost',
 ];
@@ -39,32 +43,32 @@ export const ALL_FILTER_FIELDS: MetricsFilterField[] = [
 export const FILTER_FIELD_LABELS: Record<MetricsFilterField, string> = {
   dates: 'Fechas',
   fidelizadores: 'Fidelizadores',
+  advisors: 'Asesores',
   origins: 'Orígenes',
   branches: 'Sedes',
-  advertising: 'Publicidad',
   affiliationCost: 'Costo afiliación',
   workerCost: 'Costo trabajador',
 };
 
 /**
- * Gráficos del documento GRAFICOS.docx, en su orden. El 5 (Mensualidad /
- * Reingreso / Retiro por fidelizador) quedó pendiente a pedido del cliente y
- * se muestra como tarjeta informativa en el tablero, sin detalle.
+ * Gráficos del documento GRAFICOS.docx, en su orden. La publicidad (Meta y
+ * Web) ya no es un filtro: se registra por mes con el botón "Publicidad por
+ * mes" del detalle del gráfico 1 y la usan los gráficos 1, 2 y 4.
  */
 export const METRIC_CHARTS: MetricChartDefinition[] = [
   {
     key: 'afiliaciones-nuevas',
     number: '1',
-    title: 'Afiliaciones nuevas por fidelizador y origen',
-    description: 'Afiliados con transacción nueva, publicidad, costo de afiliación, ventas, ganancia neta y costo por cliente.',
-    filters: ['dates', 'fidelizadores', 'origins', 'branches', 'advertising', 'affiliationCost'],
+    title: 'Afiliaciones nuevas por asesor y origen',
+    description: 'Por asesor (Hanna, Sebas, Tatiana...) con la fila total del Bot Meta / Bot Web: afiliados, publicidad del mes, costo de afiliación, ventas, ganancia neta y costo por cliente. Filtra Nuevos, Mensualidades o Retiros.',
+    filters: ['dates', 'advisors', 'origins', 'branches', 'affiliationCost'],
   },
   {
     key: 'resumen-fidelizadores',
     number: '2',
     title: 'Resumen por fidelizador',
     description: 'Ventas, costo de afiliaciones, publicidad y costo del trabajador para la ganancia neta. Oficinas en fila aparte.',
-    filters: ['dates', 'fidelizadores', 'origins', 'branches', 'advertising', 'affiliationCost', 'workerCost'],
+    filters: ['dates', 'fidelizadores', 'origins', 'branches', 'affiliationCost', 'workerCost'],
   },
   {
     key: 'nuevos-vs-reingresos',
@@ -77,14 +81,21 @@ export const METRIC_CHARTS: MetricChartDefinition[] = [
     key: 'publicidad',
     number: '4',
     title: 'Gastos de publicidad',
-    description: 'Publicidad digitada de Meta y Web y su participación en el total.',
-    filters: ['advertising'],
+    description: 'Por canal (Meta y Web): afiliados nuevos, recaudo, inversión en publicidad, costo de afiliaciones y costo por afiliado.',
+    filters: ['dates', 'fidelizadores', 'origins', 'branches', 'affiliationCost'],
   },
   {
     key: 'ganancias-oficinas',
     number: '4B',
     title: 'Ganancias por oficina',
     description: 'Ganancia de las afiliaciones nuevas hechas en oficina, agrupada por sede.',
+    filters: ['dates', 'fidelizadores', 'origins', 'branches'],
+  },
+  {
+    key: 'mensualidad-reingreso-retiro',
+    number: '5',
+    title: 'Mensualidad / Reingreso / Retiro por fidelizador',
+    description: 'Usuarios, lo vendido, planilla y Vlr. administración (regla de Siigo), mora digitada al facturar, % de recaudo y % de retiro por fidelizador y de la empresa.',
     filters: ['dates', 'fidelizadores', 'origins', 'branches'],
   },
   {
@@ -122,6 +133,14 @@ export const METRIC_CHARTS: MetricChartDefinition[] = [
     title: 'Profesiones con más afiliados',
     description: 'Profesiones de los afiliados con transacciones aprobadas en el rango.',
     filters: ['dates', 'fidelizadores', 'origins', 'branches'],
+  },
+  {
+    key: 'recaudo-fidelizadores',
+    number: '9',
+    title: 'Recaudo de mensualidades por usuario',
+    description: 'Por el usuario que realizó los pagos: mensualidades del mes, cuántas ya se recaudaron, cuáles faltan, % de recaudo y si llegó a la meta.',
+    filters: [],
+    ownFilters: 'Mes · Realizado por (en el detalle)',
   },
 ];
 

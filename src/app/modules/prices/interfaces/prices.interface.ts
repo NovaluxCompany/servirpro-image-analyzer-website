@@ -8,48 +8,8 @@ export interface PlanPriceRow {
   firstMonthPrice: number | null;
 }
 
-export interface PricingRuleRow {
-  id: number;
-  planId: number;
-  planName: string;
-  planSalePrice: number;
-  grouperId: number;
-  grouperName: string;
-  categoryId: number;
-  categoryName: string;
-  affiliateType: AffiliateType;
-  adminNew: number;
-  adminMonthly: number;
-  profitNew: number;
-  profitMonthly: number;
-  reserveNew: number;
-  reserveMonthly: number;
-  payrollNew: number;
-  payrollMonthly: number;
-}
-
-/** Descuento especial vigente, agrupado por plan + tipo + agrupador + valor. */
-export interface DiscountPriceRow {
-  planId: number;
-  planName: string;
-  planSalePrice: number;
-  affiliateType: AffiliateType;
-  grouperName: string | null;
-  discount: number;
-  affiliates: number;
-}
-
-export interface PriceParameterRow {
-  key: string;
-  description: string | null;
-  value: number;
-}
-
 export interface PricesOverview {
   plans: PlanPriceRow[];
-  pricingRules: PricingRuleRow[];
-  discounts: DiscountPriceRow[];
-  parameters: PriceParameterRow[];
 }
 
 /**

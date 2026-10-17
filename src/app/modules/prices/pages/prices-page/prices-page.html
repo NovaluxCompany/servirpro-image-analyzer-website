@@ -6,40 +6,30 @@
       <div>
         <h1 class="text-3xl font-bold text-gray-900">Precios</h1>
         <p class="mt-1 text-sm text-gray-500">
-          Consulta de todos los precios configurados en el sistema. Solo lectura: aquí no se modifica ningún valor.
+          Precio de los planes que existen en el sistema. Solo lectura: aquí no se modifica ningún valor.
         </p>
       </div>
-      @if (data()) {
-      <button type="button" (click)="toggleAll()"
-        class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">
-        {{ allExpanded() ? 'Contraer todo' : 'Desplegar todo' }}
-      </button>
-      }
     </div>
 
     <!-- Filtros generales -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-6">
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p class="text-sm font-semibold text-gray-900">Filtros generales</p>
-          <p class="text-xs text-gray-500">Aplican a todas las tarjetas. Cada tarjeta tiene además sus propios filtros al desplegarla.</p>
+          <p class="text-sm font-semibold text-gray-900">Filtros</p>
         </div>
         @if (hasFilters()) {
         <button type="button" (click)="clearFilters()" class="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">
-          Limpiar filtros generales
+          Limpiar filtros
         </button>
         }
       </div>
 
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <div class="md:col-span-2">
-          <label class="block mb-1 text-xs font-medium text-gray-600">Buscar en todas las tarjetas</label>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Buscar plan</label>
           <input type="text" [ngModel]="filters().search" (ngModelChange)="update('search', $event)"
-            placeholder="Ej.: EPS+ARL2, GESTION, ORDINARIO"
+            placeholder="Ej.: EPS+ARL2"
             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
-          <p class="mt-1 text-[11px] text-gray-500">
-            Busca por nombre de plan, agrupador, categoría o nombre del parámetro de costo.
-          </p>
         </div>
         <div>
           <label class="block mb-1 text-xs font-medium text-gray-600">Tipo de afiliado</label>
@@ -77,7 +67,7 @@
       </div>
 
       <p class="mt-3 text-[11px] text-gray-500">
-        El rango de precio se compara con las columnas en negrilla de cada tarjeta; una fila aparece si alguna de ellas está dentro del rango.
+        El rango de precio se compara con el primer mes y la mensualidad; un plan aparece si alguno de los dos está dentro del rango.
       </p>
       @if (invalidRange()) {
       <p class="mt-2 text-xs text-red-600">El precio mínimo es mayor que el máximo: ninguna fila puede coincidir.</p>
@@ -94,7 +84,7 @@
     </div>
     } @else if (loading()) {
     <div class="flex flex-col gap-4">
-      @for (i of [1, 2, 3, 4]; track i) {
+      @for (i of [1]; track i) {
       <div class="h-20 animate-pulse rounded-2xl border border-gray-200 bg-white"></div>
       }
     </div>

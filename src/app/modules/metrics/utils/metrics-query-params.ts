@@ -11,10 +11,9 @@ export function filtersToQueryParams(filters: MetricsFilters, specific: MetricsS
     from: filters.from || null,
     to: filters.to || null,
     fid: filters.fidelizadorIds.join(',') || null,
+    ases: filters.advisorIds?.join(',') || null,
     orig: filters.originIds.join(',') || null,
     sede: filters.branchIds.join(',') || null,
-    adMeta: filters.adMeta || null,
-    adWeb: filters.adWeb || null,
     costoAfil: filters.affiliationCost,
     costoTrab: filters.workerCost,
     cohorteDesde: specific.cohortFrom || null,
@@ -22,6 +21,10 @@ export function filtersToQueryParams(filters: MetricsFilters, specific: MetricsS
     nuevos: specific.includeNew === false ? 'false' : null,
     reingresos: specific.includeReentries === false ? 'false' : null,
     doc: specific.document?.trim() || null,
+    // Nuevos es el valor por defecto: solo se escribe Mensualidades o Retiros.
+    cond: specific.condition && specific.condition !== 'NEW' ? specific.condition : null,
+    mes: specific.collectionMonth || null,
+    usuarios: specific.userIds?.join(',') || null,
   };
 }
 
@@ -46,10 +49,9 @@ export function queryParamsToFilters(params: Params, base: MetricsFilters): Metr
     from: date(params['from'], base.from),
     to: date(params['to'], base.to),
     fidelizadorIds: ids(params['fid']),
+    advisorIds: ids(params['ases']),
     originIds: ids(params['orig']),
     branchIds: ids(params['sede']),
-    adMeta: num(params['adMeta'], 0),
-    adWeb: num(params['adWeb'], 0),
     affiliationCost: num(params['costoAfil'], base.affiliationCost),
     workerCost: num(params['costoTrab'], base.workerCost),
   };
@@ -64,5 +66,11 @@ export function queryParamsToSpecific(params: Params): MetricsSpecificFilters {
     includeNew: params['nuevos'] !== 'false',
     includeReentries: params['reingresos'] !== 'false',
     document: typeof params['doc'] === 'string' ? params['doc'] : '',
+    condition: params['cond'] === 'MONTHLY' || params['cond'] === 'WITHDRAWAL' ? params['cond'] : 'NEW',
+    collectionMonth: month(params['mes']),
+    userIds:
+      typeof params['usuarios'] === 'string' && params['usuarios']
+        ? params['usuarios'].split(',').map(Number).filter((n: number) => Number.isInteger(n) && n >= 0)
+        : [],
   };
 }
