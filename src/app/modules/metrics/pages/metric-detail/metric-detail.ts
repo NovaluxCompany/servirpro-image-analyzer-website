@@ -3,10 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
+import { AdvertisingSpendModalComponent } from '../../components/advertising-spend-modal/advertising-spend-modal';
 import { MetricsFilterBarComponent } from '../../components/filter-bar/metrics-filter-bar';
 import { MissingDataComponent } from '../../components/missing-data/missing-data';
 import { MetricChartViewComponent } from '../../components/views/metric-chart-view';
-import { MetricsFilterOptions, MetricsFilters, MetricsSpecificFilters } from '../../interfaces/metrics.interface';
+import { MetricsMultiSelectComponent, MultiSelectOption } from '../../components/multi-select/multi-select';
+import { MetricsCondition, MetricsFilterOptions, MetricsFilters, MetricsSpecificFilters } from '../../interfaces/metrics.interface';
 import { MetricChartDefinition, findMetricChart } from '../../metric-charts.config';
 import { MetricsService } from '../../services/metrics.service';
 import { MetricsFiltersStore, colombiaToday } from '../../services/metrics-filters.store';
@@ -26,7 +28,7 @@ import {
 @Component({
   selector: 'app-metric-detail',
   standalone: true,
-  imports: [FormsModule, RouterLink, MetricsFilterBarComponent, MissingDataComponent, MetricChartViewComponent],
+  imports: [FormsModule, RouterLink, MetricsFilterBarComponent, MissingDataComponent, MetricChartViewComponent, MetricsMultiSelectComponent, AdvertisingSpendModalComponent],
   templateUrl: './metric-detail.html',
 })
 export class MetricDetailComponent implements OnInit {
@@ -52,7 +54,23 @@ export class MetricDetailComponent implements OnInit {
 
   originCatalogIds = computed(() => (this.options()?.origins ?? []).map((o) => o.id));
   canExport = computed(() => this.chart()?.key === 'afiliaciones-nuevas' && this._permissions.can('export', '/metricas'));
+  canEditAdvertising = computed(() => this._permissions.can('edit', '/metricas'));
   currentMonth = colombiaToday().slice(0, 7);
+  showAdvertisingModal = signal(false);
+  /** Gráficos que usan la publicidad guardada por mes: muestran el botón "Publicidad por mes". */
+  usesAdvertising = computed(() => ['afiliaciones-nuevas', 'resumen-fidelizadores', 'publicidad'].includes(this.chart()?.key ?? ''));
+
+  /** Gráfico 9: usuarios que han realizado pagos (vienen en la respuesta del propio gráfico). */
+  collectionUserOptions = computed<MultiSelectOption[]>(() => {
+    const users: Array<{ id: number; name: string }> = this.chart()?.key === 'recaudo-fidelizadores' ? (this.data()?.users ?? []) : [];
+    return users.length ? [...users.map((u) => ({ value: u.id, label: u.name })), { value: 0, label: 'Sin usuario' }] : [];
+  });
+
+  readonly conditionOptions: Array<{ value: MetricsCondition; label: string }> = [
+    { value: 'NEW', label: 'Nuevos' },
+    { value: 'MONTHLY', label: 'Mensualidades' },
+    { value: 'WITHDRAWAL', label: 'Retiros' },
+  ];
 
   ngOnInit(): void {
     const chart = findMetricChart(this._route.snapshot.paramMap.get('chart'));
@@ -99,6 +117,9 @@ export class MetricDetailComponent implements OnInit {
       includeNew: true,
       includeReentries: true,
       document: '',
+      condition: 'NEW',
+      collectionMonth: this.currentMonth,
+      userIds: [],
     };
   }
 
@@ -114,6 +135,9 @@ export class MetricDetailComponent implements OnInit {
   onApply(filters: MetricsFilters): void {
     if (this.chart()?.key === 'linea-de-vida' && !this.specificDraft().document?.trim()) {
       this._toast.showWarning('Escoge un afiliado: escribe su documento para ver la línea de vida.');
+    }
+    if (this.chart()?.key === 'recaudo-fidelizadores' && !this.specificDraft().userIds?.length) {
+      this._toast.showWarning('Escoge uno o más usuarios en "Realizado por" para ver su recaudo.');
     }
     this.filters.set(filters);
     this.specificApplied.set({ ...this.specificDraft() });
@@ -142,6 +166,15 @@ export class MetricDetailComponent implements OnInit {
         this.isLoading.set(false);
       },
     });
+  }
+
+  /**
+   * Tras guardar publicidad se cierra el modal y se recarga el gráfico con los
+   * filtros ya aplicados: los de la barra solo cuentan al presionar "Aplicar filtros".
+   */
+  onAdvertisingSaved(): void {
+    this.showAdvertisingModal.set(false);
+    this.load();
   }
 
   downloadExcel(): void {

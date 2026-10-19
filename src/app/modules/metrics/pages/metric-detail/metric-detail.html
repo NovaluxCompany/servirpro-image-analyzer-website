@@ -16,6 +16,16 @@
         </h1>
         <p class="mt-1 text-sm text-gray-500">{{ chart.description }}</p>
       </div>
+      <div class="flex flex-wrap items-center gap-2">
+      @if (usesAdvertising()) {
+      <button type="button" (click)="showAdvertisingModal.set(true)"
+        class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-blue-700 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 focus:ring-4 focus:outline-none focus:ring-blue-200">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+        </svg>
+        Publicidad por mes
+      </button>
+      }
       @if (canExport()) {
       <button type="button" (click)="downloadExcel()" [disabled]="isExporting() || !data()"
         class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-green-700 rounded-lg hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -25,6 +35,7 @@
         {{ isExporting() ? 'Descargando...' : 'Descargar (Excel: detalle y resumen)' }}
       </button>
       }
+      </div>
     </div>
 
     <p class="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-900">
@@ -35,6 +46,22 @@
     <app-metrics-filter-bar [filters]="filters()!" [options]="options()!" [fields]="chart.filters" [isLoading]="isLoading()"
       [optionalDates]="!!chart.optionalDates" (applied)="onApply($event)" (resetted)="onReset()">
       <!-- Filtros propios del gráfico -->
+      @if (chart.key === 'afiliaciones-nuevas') {
+      <div class="mt-4 border-t border-gray-100 pt-4">
+        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Condición</p>
+        <div class="inline-flex rounded-lg border border-gray-200 p-0.5 text-sm" role="group" aria-label="Condición">
+          @for (option of conditionOptions; track option.value) {
+          <button type="button" (click)="updateSpecific('condition', option.value)" [attr.aria-pressed]="(specificDraft().condition ?? 'NEW') === option.value"
+            [class]="(specificDraft().condition ?? 'NEW') === option.value ? 'rounded-md bg-blue-700 px-3 py-1 text-white' : 'rounded-md px-3 py-1 text-gray-700 hover:bg-gray-100'">
+            {{ option.label }}
+          </button>
+          }
+        </div>
+        <p class="mt-1 text-xs text-gray-500">
+          Nuevos: transacciones nuevas. Mensualidades: transacciones aprobadas que no son nuevas. Retiros: afiliados inactivados en el rango (con lo que pagaron en él).
+        </p>
+      </div>
+      }
       @if (chart.key === 'cohortes') {
       <div class="mt-4 border-t border-gray-100 pt-4">
         <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Filtros de cohortes</p>
@@ -79,6 +106,24 @@
         <p class="mt-1 text-xs text-gray-500">La línea de vida es por persona: sin documento no se muestra nada.</p>
       </div>
       }
+      @if (chart.key === 'recaudo-fidelizadores') {
+      <div class="mt-4 border-t border-gray-100 pt-4">
+        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Recaudo</p>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div>
+            <label for="collection-month" class="block mb-1 text-xs font-medium text-gray-600">Mes</label>
+            <input id="collection-month" type="month" [max]="currentMonth" [ngModel]="specificDraft().collectionMonth"
+              (ngModelChange)="updateSpecific('collectionMonth', $event)"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+          </div>
+          @if (collectionUserOptions().length) {
+          <app-metrics-multi-select label="Realizado por" [options]="collectionUserOptions()" [selected]="specificDraft().userIds ?? []"
+            (selectedChange)="updateSpecific('userIds', $event)" />
+          }
+        </div>
+        <p class="mt-1 text-xs text-gray-500">Es por el usuario que realizó los pagos: sin usuario escogido no se muestra nada. El filtro general no aplica.</p>
+      </div>
+      }
     </app-metrics-filter-bar>
     }
 
@@ -96,6 +141,11 @@
       <div class="h-80 animate-pulse rounded-lg bg-gray-100"></div>
       }
     </section>
+
+    @if (showAdvertisingModal()) {
+    <app-advertising-spend-modal [initialMonth]="(filters()?.from || currentMonth).slice(0, 7)" [canEdit]="canEditAdvertising()"
+      (closed)="showAdvertisingModal.set(false)" (saved)="onAdvertisingSaved()" />
+    }
     }
   </div>
 </div>

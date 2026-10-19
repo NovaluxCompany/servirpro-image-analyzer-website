@@ -2,11 +2,13 @@
   <div class="max-w-full mx-auto">
 
     <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-gray-900">Métricas</h1>
-      <p class="mt-1 text-sm text-gray-500">
-        Transacciones aprobadas. El filtro general aplica a todos los gráficos; haz clic en un gráfico para verlo en detalle con sus propios filtros.
-      </p>
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Métricas</h1>
+        <p class="mt-1 text-sm text-gray-500">
+          Transacciones aprobadas. El filtro general aplica a todos los gráficos; haz clic en un gráfico para verlo en detalle con sus propios filtros.
+        </p>
+      </div>
     </div>
 
     @if (options() && filters()) {
@@ -66,18 +68,6 @@
         }
       </section>
 
-      @if (chart.number === '4B') {
-      <!-- Gráfico 5: pendiente de definición (a pedido del cliente no se construye aún) -->
-      <section class="flex flex-col rounded-2xl border border-dashed border-gray-300 bg-white/60 px-5 py-4">
-        <div class="flex items-start gap-3">
-          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-bold text-gray-500">5</span>
-          <div>
-            <p class="text-base font-semibold text-gray-500">Mensualidad / Reingreso / Retiro por fidelizador</p>
-            <p class="mt-0.5 text-xs text-gray-500">Pendiente: este gráfico queda para una siguiente fase.</p>
-          </div>
-        </div>
-      </section>
-      }
       }
     </div>
   </div>
