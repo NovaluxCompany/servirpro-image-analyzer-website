@@ -158,6 +158,14 @@
           </app-searchable-select>
         </div>
 
+        <!-- Agrupadora -->
+        <div>
+          <label class="block mb-1 text-xs font-medium text-gray-600">Agrupadora</label>
+          <app-searchable-select [options]="grouperOptions()" [ngModel]="filterGrouperId"
+            (ngModelChange)="filterGrouperId = $event; onDropdownFilterChange()" placeholder="Todas las agrupadoras...">
+          </app-searchable-select>
+        </div>
+
         <div>
           <label class="block mb-1 text-xs font-medium text-gray-600">Grupo</label>
           <select [(ngModel)]="filterGrupo" (ngModelChange)="onDropdownFilterChange()"

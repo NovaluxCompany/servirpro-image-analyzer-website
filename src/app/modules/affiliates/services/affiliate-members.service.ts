@@ -22,6 +22,7 @@ export interface AffiliateFilters {
   // que devuelven id + nombre.
   companyId?: number;
   epsId?: number;
+  grouperId?: number;
   isActive?: boolean;
   grupo?: string;
   entryDateFrom?: string;
@@ -53,6 +54,7 @@ export class AffiliateMembersService {
     if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
     if (filters.companyId) params = params.set('companyId', String(filters.companyId));
     if (filters.epsId) params = params.set('epsId', String(filters.epsId));
+    if (filters.grouperId) params = params.set('grouperId', String(filters.grouperId));
     if (filters.isActive !== undefined) params = params.set('isActive', String(filters.isActive));
     if (filters.grupo) params = params.set('grupo', filters.grupo);
     if (filters.entryDateFrom) params = params.set('entryDateFrom', filters.entryDateFrom);
@@ -181,6 +183,7 @@ export class AffiliateMembersService {
     if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
     if (filters.companyId) params = params.set('companyId', String(filters.companyId));
     if (filters.epsId) params = params.set('epsId', String(filters.epsId));
+    if (filters.grouperId) params = params.set('grouperId', String(filters.grouperId));
     if (filters.isActive !== undefined) {
       params = params.set('isActive', String(filters.isActive));
     }

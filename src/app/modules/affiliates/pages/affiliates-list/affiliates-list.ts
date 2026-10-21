@@ -57,6 +57,7 @@ export class AffiliatesListComponent implements OnInit {
   filterAffiliateType = '';
   filterCompanyId = '';
   filterEpsId = '';
+  filterGrouperId = '';
   filterIsActive = '';
   filterGrupo = '';
   filterEntryDateFrom = '';
@@ -64,10 +65,11 @@ export class AffiliatesListComponent implements OnInit {
   filterPaymentStatus = '';
   advisorOptions = signal<SelectOption[]>([]);
   fidelizadorOptions = signal<SelectOption[]>([]);
-  // Empresa y EPS se eligen del catálogo y viajan por id, así que el `value` de
-  // cada opción es el id (no el nombre, como en Asesor o Fidelización).
+  // Empresa, EPS y Agrupadora se eligen del catálogo y viajan por id, así que el
+  // `value` de cada opción es el id (no el nombre, como en Asesor o Fidelización).
   companyOptions = signal<SelectOption[]>([]);
   epsOptions = signal<SelectOption[]>([]);
+  grouperOptions = signal<SelectOption[]>([]);
   // id numérico de cada fidelizador por nombre (el filtro viaja al backend
   // por nombre, igual que Asesor, pero la cascada necesita el id para pedir
   // GET /advisors/dropdown?fidelizadorId=).
@@ -171,6 +173,7 @@ export class AffiliatesListComponent implements OnInit {
       affiliateType: (this.filterAffiliateType === 'INDEPENDIENTE' || this.filterAffiliateType === 'DEPENDIENTE') ? this.filterAffiliateType : undefined,
       companyId: this.filterCompanyId ? Number(this.filterCompanyId) : undefined,
       epsId: this.filterEpsId ? Number(this.filterEpsId) : undefined,
+      grouperId: this.filterGrouperId ? Number(this.filterGrouperId) : undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,
@@ -216,6 +219,9 @@ export class AffiliatesListComponent implements OnInit {
     this._service.getEpsList().subscribe((list) => {
       this.epsOptions.set(list.map((e) => ({ value: String(e.id), label: e.name })));
     });
+    this._service.getGroupers().subscribe((list) => {
+      this.grouperOptions.set(list.map((g) => ({ value: String(g.id), label: g.name })));
+    });
     this._service.getDepartments().subscribe((list: Department[]) => {
       this.departmentNameByCode = new Map(list.map((d) => [d.code, d.name]));
     });
@@ -258,6 +264,7 @@ export class AffiliatesListComponent implements OnInit {
     this.filterAffiliateType = '';
     this.filterCompanyId = '';
     this.filterEpsId = '';
+    this.filterGrouperId = '';
     this.filterIsActive = '';
     this.filterGrupo = '';
     this.filterEntryDateFrom = '';
@@ -271,7 +278,7 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterFidelizador || this.filterAffiliateType || this.filterCompanyId || this.filterEpsId || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterFidelizador || this.filterAffiliateType || this.filterCompanyId || this.filterEpsId || this.filterGrouperId || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -477,6 +484,7 @@ export class AffiliatesListComponent implements OnInit {
       affiliateType: (this.filterAffiliateType === 'INDEPENDIENTE' || this.filterAffiliateType === 'DEPENDIENTE') ? this.filterAffiliateType : undefined,
       companyId: this.filterCompanyId ? Number(this.filterCompanyId) : undefined,
       epsId: this.filterEpsId ? Number(this.filterEpsId) : undefined,
+      grouperId: this.filterGrouperId ? Number(this.filterGrouperId) : undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,

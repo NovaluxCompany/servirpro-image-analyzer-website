@@ -46,18 +46,22 @@
           </p>
         </header>
 
-        <div class="flex-1 cursor-pointer px-5 py-4 transition-opacity" [class.opacity-50]="state(chart.key)?.loading && state(chart.key)?.data"
-          (click)="openDetail(chart)" title="Ver detalle">
+        <div class="relative flex-1 cursor-pointer px-5 py-4" (click)="openDetail(chart)" title="Ver detalle">
           @if (state(chart.key); as s) {
-          @if (s.error) {
+          @if (s.error && !s.loading) {
           <p class="py-10 text-center text-sm text-red-600">{{ s.error }}</p>
           } @else if (s.data) {
-          <app-metric-chart-view [chartKey]="chart.key" [data]="s.data" [originCatalogIds]="originCatalogIds()" />
-          } @else {
-          <div class="h-60 animate-pulse rounded-lg bg-gray-100"></div>
+          <div class="transition-opacity" [class.opacity-40]="s.loading">
+            <app-metric-chart-view [chartKey]="chart.key" [data]="s.data" [originCatalogIds]="originCatalogIds()" />
+          </div>
+          @if (s.loading) {
+          <app-metrics-loading-spinner [overlay]="true" label="Actualizando gráfico..." />
           }
           } @else {
-          <div class="h-60 animate-pulse rounded-lg bg-gray-100"></div>
+          <app-metrics-loading-spinner />
+          }
+          } @else {
+          <app-metrics-loading-spinner />
           }
         </div>
 
