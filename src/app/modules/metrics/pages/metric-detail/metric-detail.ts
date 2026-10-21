@@ -5,6 +5,7 @@ import { ToastService } from '../../../../core/service/toast.service';
 import { PermissionService } from '../../../../core/service/permission.service';
 import { AdvertisingSpendModalComponent } from '../../components/advertising-spend-modal/advertising-spend-modal';
 import { MetricsFilterBarComponent } from '../../components/filter-bar/metrics-filter-bar';
+import { MetricsLoadingSpinnerComponent } from '../../components/loading-spinner/loading-spinner';
 import { MissingDataComponent } from '../../components/missing-data/missing-data';
 import { MetricChartViewComponent } from '../../components/views/metric-chart-view';
 import { MetricsMultiSelectComponent, MultiSelectOption } from '../../components/multi-select/multi-select';
@@ -28,7 +29,7 @@ import {
 @Component({
   selector: 'app-metric-detail',
   standalone: true,
-  imports: [FormsModule, RouterLink, MetricsFilterBarComponent, MissingDataComponent, MetricChartViewComponent, MetricsMultiSelectComponent, AdvertisingSpendModalComponent],
+  imports: [FormsModule, RouterLink, MetricsFilterBarComponent, MissingDataComponent, MetricChartViewComponent, MetricsMultiSelectComponent, AdvertisingSpendModalComponent, MetricsLoadingSpinnerComponent],
   templateUrl: './metric-detail.html',
 })
 export class MetricDetailComponent implements OnInit {

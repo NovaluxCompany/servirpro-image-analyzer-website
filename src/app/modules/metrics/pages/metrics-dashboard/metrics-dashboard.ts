@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ToastService } from '../../../../core/service/toast.service';
 import { MetricsFilterBarComponent } from '../../components/filter-bar/metrics-filter-bar';
+import { MetricsLoadingSpinnerComponent } from '../../components/loading-spinner/loading-spinner';
 import { MissingDataComponent } from '../../components/missing-data/missing-data';
 import { MetricChartViewComponent } from '../../components/views/metric-chart-view';
 import { MetricsFilterField, MetricsFilters } from '../../interfaces/metrics.interface';
@@ -23,7 +24,7 @@ interface CardState {
 @Component({
   selector: 'app-metrics-dashboard',
   standalone: true,
-  imports: [MetricsFilterBarComponent, MissingDataComponent, MetricChartViewComponent],
+  imports: [MetricsFilterBarComponent, MissingDataComponent, MetricChartViewComponent, MetricsLoadingSpinnerComponent],
   templateUrl: './metrics-dashboard.html',
 })
 export class MetricsDashboardComponent implements OnInit {
