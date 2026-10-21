@@ -56,7 +56,7 @@
 }
 
 <app-chart-canvas [config]="chartConfig()" [height]="detailed() ? '380px' : '240px'"
-  ariaLabel="Hanna, Sebas, Tania y el total del bot de publicidad" />
+  ariaLabel="Hanna, Sebas, Tatiana y el total del bot de publicidad" />
 
 @if (!detailed()) {
 @if (botTable(); as table) {
@@ -143,7 +143,7 @@
 }
 }
 <p class="mt-1 text-xs text-gray-500">
-  Filas: solo los asesores del bot (Hanna, Sebas, Tania). La fila del bot es el recuento de todos los afiliados del canal.
+  Filas: solo los asesores del bot (Hanna, Sebas, Tatiana). La fila del bot es el recuento de todos los afiliados del canal.
   @for (table of data().byChannel; track table.channel) {
   @if (table.otherAffiliates > 0) {
   {{ table.label }} incluye {{ table.otherAffiliates }} afiliado(s) de otros asesores.
@@ -208,7 +208,7 @@
   </table>
 </div>
 <p class="mt-1 text-xs text-gray-500">
-  Filas: solo Hanna, Sebas y Tania. Los totales cuentan a todos los afiliados del origen
+  Filas: solo Hanna, Sebas y Tatiana. Los totales cuentan a todos los afiliados del origen
   @if (data().otherAffiliates > 0) { ({{ data().otherAffiliates }} de otros asesores o sin asesor) }.
   La publicidad de Meta se descuenta del origen Meta y la de Web del origen Web. Ganancia neta = ventas − costo afiliación − publicidad.
   Costo x cliente = publicidad ÷ afiliados.

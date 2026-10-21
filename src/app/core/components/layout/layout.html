@@ -46,7 +46,11 @@
       <!-- Navigation Menu -->
       <!-- min-h-0 es lo que deja que flex-1 encoja de verdad: sin eso el nav
            crece hasta su alto natural y el overflow-y-auto nunca se activa. -->
-      <nav class="flex-1 min-h-0 overflow-y-auto space-y-1 sidebar-scroll">
+
+           <!-- Contraído: la barra se oculta (sigue scrolleando con la rueda/touch);
+           solo se ve cuando el menú está ampliado. -->
+      <nav class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-1 sidebar-scroll"
+        [class.sidebar-scroll--hidden]="!isSidebarExpanded()">
         <!-- Transacciones -->
         @if (canSee('/transacciones')) {
         <a routerLink="/transacciones" routerLinkActive="bg-white/20 shadow-lg"
