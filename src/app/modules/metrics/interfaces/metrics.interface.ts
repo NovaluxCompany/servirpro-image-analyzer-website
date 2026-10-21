@@ -80,7 +80,7 @@ export interface NewAffiliationsResponse extends MetricsResponseBase {
 export interface AdvertisingChannelTable {
   channel: 'META' | 'WEB';
   label: string;
-  /** Solo los asesores del bot (Hanna, Sebas, Tania). */
+  /** Solo los asesores del bot (Hanna, Sebas, Tatiana). */
   rows: Array<{ advisor: string; affiliates: number; sales: number; affiliationCost: number }>;
   /** Recuento de todos los afiliados del canal. */
   total: CostBreakdown;
@@ -136,7 +136,8 @@ export interface AdvertisingMonth {
 }
 
 // ── Gráfico 5 ────────────────────────────────────────────────────────────
-export type ConditionKind = 'MONTHLY' | 'REENTRY' | 'WITHDRAWAL';
+/** MONTHLY = Ordinarios, REENTRY = No ordinarios, RESOLUTION = Resolución (solo si hay), WITHDRAWAL = Retiros. */
+export type ConditionKind = 'MONTHLY' | 'REENTRY' | 'RESOLUTION' | 'WITHDRAWAL';
 
 export interface ConditionRow {
   condition: ConditionKind;
@@ -153,7 +154,8 @@ export interface ConditionRow {
 export interface ConditionsFidelizador {
   fidelizador: string;
   conditions: ConditionRow[];
-  monthlyCollection: { expected: number; paid: number; rate: number | null };
+  /** pending / pendingAmount: los que faltan por cobrar y el valor de su plan. */
+  monthlyCollection: { expected: number; paid: number; rate: number | null; pending: number; pendingAmount: number };
   withdrawalRate: number;
 }
 

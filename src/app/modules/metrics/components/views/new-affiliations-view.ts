@@ -14,7 +14,7 @@ const CONDITION_LABELS: Record<MetricsCondition, string> = {
 };
 
 /**
- * Gráfico 1: barras de Hanna, Sebas, Tania y el total del bot (Bot Meta /
+ * Gráfico 1: barras de Hanna, Sebas, Tatiana y el total del bot (Bot Meta /
  * Bot Web), igual que la tabla "Datos afiliaciones del bot de publicidad".
  */
 @Component({
@@ -48,7 +48,7 @@ export class NewAffiliationsViewComponent {
       case 'WITHDRAWAL':
         return 'No hay retiros con estos filtros.';
       default:
-        return 'No hay transacciones nuevas aprobadas con estos filtros.';
+        return 'No hay afiliados con fecha de ingreso en este rango con estos filtros.';
     }
   });
 

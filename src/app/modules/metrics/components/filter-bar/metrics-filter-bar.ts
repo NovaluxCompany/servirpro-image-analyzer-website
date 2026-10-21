@@ -38,7 +38,7 @@ export class MetricsFilterBarComponent {
     ...this.options().fidelizadores.map((f) => ({ value: f.id, label: f.name })),
     { value: 0, label: 'Sin fidelizador' },
   ]);
-  // Solo los asesores del bot del gráfico 1 (Hanna, Sebas, Tania): el backend ya los filtra.
+  // Solo los asesores del bot del gráfico 1 (Hanna, Sebas, Tatiana): el backend ya los filtra.
   advisorOptions = computed<MultiSelectOption[]>(() =>
     (this.options().advisors ?? []).map((a) => ({ value: a.id, label: a.name })),
   );

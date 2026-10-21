@@ -95,7 +95,7 @@ export const METRIC_CHARTS: MetricChartDefinition[] = [
     key: 'mensualidad-reingreso-retiro',
     number: '5',
     title: 'Mensualidad / Reingreso / Retiro por fidelizador',
-    description: 'Usuarios, lo vendido, planilla y Vlr. administración (regla de Siigo), mora digitada al facturar, % de recaudo y % de retiro por fidelizador y de la empresa.',
+    description: 'Mensualidad = Ordinarios, Reingreso = No ordinarios. Usuarios, lo vendido, planilla y Vlr. administración (regla de Siigo), mora digitada al facturar, % de recaudo, lo que falta por cobrar y % de retiro por fidelizador y de la empresa.',
     filters: ['dates', 'fidelizadores', 'origins', 'branches'],
   },
   {
