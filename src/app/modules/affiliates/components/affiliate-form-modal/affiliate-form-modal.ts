@@ -195,7 +195,8 @@ export class AffiliateFormModalComponent implements OnInit {
     isActive: [true],
     discount: [<number | null>null],
     affiliateType: ['DEPENDIENTE', Validators.required],
-    isNew: [false],
+    // Oculto en el formulario: todo afiliado creado (incluido Reingreso) nace como nuevo.
+    isNew: [true],
     // Obligatorio solo VISUALMENTE (el label mantiene el "*" en el HTML):
     // forzarlo con Validators.required bloqueaba crear/editar afiliados a
     // los que no se les puede asignar un origen. La fecha de origen sigue
@@ -1061,8 +1062,8 @@ export class AffiliateFormModalComponent implements OnInit {
         certPension: raw.certPension ?? false,
         certCcf: raw.certCcf ?? false,
       } : {
-        // isNew solo se captura al crear; en edición no se envía (el backend tampoco lo acepta)
-        isNew: raw.isNew ?? false,
+        // isNew solo se envía al crear (siempre true); en edición no se envía (el backend tampoco lo acepta)
+        isNew: true,
       }),
     };
 
