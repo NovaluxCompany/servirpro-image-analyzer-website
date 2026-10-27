@@ -9,7 +9,13 @@ import { MetricsLoadingSpinnerComponent } from '../../components/loading-spinner
 import { MissingDataComponent } from '../../components/missing-data/missing-data';
 import { MetricChartViewComponent } from '../../components/views/metric-chart-view';
 import { MetricsMultiSelectComponent, MultiSelectOption } from '../../components/multi-select/multi-select';
-import { MetricsCondition, MetricsFilterOptions, MetricsFilters, MetricsSpecificFilters } from '../../interfaces/metrics.interface';
+import {
+  AffiliateTypeFilter,
+  MetricsCondition,
+  MetricsFilterOptions,
+  MetricsFilters,
+  MetricsSpecificFilters,
+} from '../../interfaces/metrics.interface';
 import { MetricChartDefinition, findMetricChart } from '../../metric-charts.config';
 import { MetricsService } from '../../services/metrics.service';
 import { MetricsFiltersStore, colombiaToday } from '../../services/metrics-filters.store';
@@ -73,6 +79,12 @@ export class MetricDetailComponent implements OnInit {
     { value: 'WITHDRAWAL', label: 'Retiros' },
   ];
 
+  readonly affiliateTypeOptions: Array<{ value: AffiliateTypeFilter; label: string }> = [
+    { value: '', label: 'Todos' },
+    { value: 'DEPENDIENTE', label: 'Dependiente' },
+    { value: 'INDEPENDIENTE', label: 'Independiente' },
+  ];
+
   ngOnInit(): void {
     const chart = findMetricChart(this._route.snapshot.paramMap.get('chart'));
     if (!chart) {
@@ -121,6 +133,7 @@ export class MetricDetailComponent implements OnInit {
       condition: 'NEW',
       collectionMonth: this.currentMonth,
       userIds: [],
+      affiliateType: '',
     };
   }
 

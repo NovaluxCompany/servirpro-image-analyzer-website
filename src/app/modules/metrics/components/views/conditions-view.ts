@@ -175,7 +175,8 @@ const CONDITION_COLORS: Record<ConditionKind, string> = {
           </table>
         </div>
         <p class="mt-1 text-xs text-gray-500">
-          Mensualidad: pagos aprobados del rango de afiliados Ordinarios. Reingreso: pagos aprobados de afiliados No ordinarios.
+          No se cuentan las afiliaciones nuevas. Mensualidad: pagos aprobados del rango de afiliados Ordinarios. Reingreso: pagos
+          aprobados de afiliados No ordinarios, más los que se retiraron y volvieron en el rango (con todos sus pagos, o $0 si aún no pagan).
           La categoría es la de la afiliación; si no la tiene guardada se calcula con la regla del sistema (edad por género, plan con
           AFP, documento extranjero). Retiro: afiliados inactivados en el rango. Planilla y Vlr. administración: regla de Siigo de
           cada afiliado. I. Mora: mora digitada al enviar la factura a Siigo. % del recaudo: lo vendido en la condición sobre lo

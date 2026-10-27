@@ -25,6 +25,7 @@ export function filtersToQueryParams(filters: MetricsFilters, specific: MetricsS
     cond: specific.condition && specific.condition !== 'NEW' ? specific.condition : null,
     mes: specific.collectionMonth || null,
     usuarios: specific.userIds?.join(',') || null,
+    tipo: specific.affiliateType || null,
   };
 }
 
@@ -72,5 +73,6 @@ export function queryParamsToSpecific(params: Params): MetricsSpecificFilters {
       typeof params['usuarios'] === 'string' && params['usuarios']
         ? params['usuarios'].split(',').map(Number).filter((n: number) => Number.isInteger(n) && n >= 0)
         : [],
+    affiliateType: params['tipo'] === 'DEPENDIENTE' || params['tipo'] === 'INDEPENDIENTE' ? params['tipo'] : '',
   };
 }
