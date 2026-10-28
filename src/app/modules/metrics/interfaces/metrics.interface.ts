@@ -25,9 +25,13 @@ export interface MetricsSpecificFilters {
   collectionMonth?: string;
   /** Gráfico 9: usuarios que realizaron los pagos (0 = "Sin usuario"). */
   userIds?: number[];
+  /** Gráfico 5: Dependiente / Independiente; '' = todos. */
+  affiliateType?: AffiliateTypeFilter;
 }
 
 export type MetricsCondition = 'NEW' | 'MONTHLY' | 'WITHDRAWAL';
+
+export type AffiliateTypeFilter = '' | 'DEPENDIENTE' | 'INDEPENDIENTE';
 
 export type MetricsFilterField = 'dates' | 'fidelizadores' | 'advisors' | 'origins' | 'branches' | 'affiliationCost' | 'workerCost';
 
@@ -307,7 +311,7 @@ export interface LifelineSummary {
 
 export interface LifelineResponse extends MetricsResponseBase {
   requiresDocument: boolean;
-  affiliate: { fullName: string; documentNumber: string; documentType: string | null } | null;
+  affiliate: { fullName: string; documentNumber: string; documentType: string | null; affiliateType: string | null } | null;
   summary: LifelineSummary | null;
   segments: LifelineSegment[];
   events: LifelineEvent[];

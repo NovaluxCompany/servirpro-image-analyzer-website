@@ -128,6 +128,7 @@ export class MetricsService {
     if (specific.condition && specific.condition !== 'NEW') params = params.set('condition', specific.condition);
     if (specific.collectionMonth) params = params.set('month', specific.collectionMonth);
     if (specific.userIds?.length) params = params.set('userIds', specific.userIds.join(','));
+    if (specific.affiliateType) params = params.set('affiliateType', specific.affiliateType);
 
     return params;
   }

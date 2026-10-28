@@ -28,10 +28,17 @@
     <p class="text-base font-semibold text-blue-950">{{ affiliate.fullName }}</p>
     <p class="text-xs text-blue-900">{{ affiliate.documentType ?? 'Doc.' }} {{ affiliate.documentNumber }}</p>
   </div>
-  <span class="rounded-full px-3 py-1 text-xs font-semibold"
-    [class]="s.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'">
-    {{ s.isActive ? '● Activo' : '○ Inactivo' }}
-  </span>
+  <div class="flex flex-wrap items-center gap-2">
+    @if (affiliate.affiliateType) {
+    <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800" title="Tipo de afiliado de la afiliación actual">
+      {{ affiliate.affiliateType }}
+    </span>
+    }
+    <span class="rounded-full px-3 py-1 text-xs font-semibold"
+      [class]="s.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'">
+      {{ s.isActive ? '● Activo' : '○ Inactivo' }}
+    </span>
+  </div>
 </div>
 
 @if (s.withdrawalRisk) {
