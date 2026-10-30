@@ -5,6 +5,7 @@ import { AffiliateMembersService } from '../../services/affiliate-members.servic
 import { ToastService } from '../../../../core/service/toast.service';
 import { AffiliateMember } from '../../interfaces/affiliate-member.interface';
 import { Company } from '../../interfaces/catalog.interface';
+import { DisaffiliationReason } from '../../../deactivate-affiliates/interfaces/disaffiliation.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 
 @Component({
@@ -27,18 +28,32 @@ export class AffiliateDisaffiliationModalComponent implements OnInit {
   observation = '';
   reasonId: number | null = null;
   showReasonError = false;
+  subReasonId: number | null = null;
+  showSubReasonError = false;
   companyId: string | null = null;
   companies: Company[] = [];
 
-  // Viene de disaffiliation_reasons (Retiro x 1 días / Retiro x 30 días):
-  // agregar un motivo nuevo es un INSERT en esa tabla, no un deploy de este archivo.
-  reasonOptions: { value: number; label: string }[] = [];
+  // Viene de disaffiliation_reasons (Retiro x 1 días / Retiro x 30 días), cada
+  // motivo con sus submotivos (disaffiliation_sub_reasons): agregar uno es un
+  // INSERT en esas tablas, no un deploy de este archivo.
+  reasons: DisaffiliationReason[] = [];
 
   ngOnInit(): void {
-    this._service.getDisaffiliationReasons().subscribe((reasons) => {
-      this.reasonOptions = reasons.map((r) => ({ value: r.id, label: r.label }));
-    });
+    this._service.getDisaffiliationReasons().subscribe((reasons) => (this.reasons = reasons));
     this._service.getCompanies().subscribe((companies) => (this.companies = companies));
+  }
+
+  /** Submotivos del motivo escogido; vacío mientras no haya motivo. */
+  get subReasonOptions(): { value: number; label: string }[] {
+    const reason = this.reasons.find((r) => r.id === Number(this.reasonId));
+    return (reason?.subReasons ?? []).map((s) => ({ value: s.id, label: s.label }));
+  }
+
+  onReasonChange(): void {
+    this.showReasonError = false;
+    // Cada motivo tiene su propia lista: el submotivo anterior ya no aplica.
+    this.subReasonId = null;
+    this.showSubReasonError = false;
   }
 
   get companyOptions(): SelectOption[] {
@@ -60,13 +75,19 @@ export class AffiliateDisaffiliationModalComponent implements OnInit {
       this._toast.showError('Selecciona el motivo de la desafiliación antes de continuar.');
       return;
     }
+    if (this.subReasonOptions.length > 0 && !this.subReasonId) {
+      this.showSubReasonError = true;
+      this._toast.showError('Selecciona el submotivo de la desafiliación antes de continuar.');
+      return;
+    }
 
     this.isLoading.set(true);
     this._service
       .createDisaffiliationRequest(
         Number(a.id),
         this.companyId ? Number(this.companyId) : undefined,
-        this.reasonId,
+        Number(this.reasonId),
+        this.subReasonId ? Number(this.subReasonId) : undefined,
         this.observation,
       )
       .subscribe({
@@ -91,7 +112,9 @@ export class AffiliateDisaffiliationModalComponent implements OnInit {
   private resetForm(): void {
     this.observation = '';
     this.reasonId = null;
+    this.subReasonId = null;
     this.companyId = null;
     this.showReasonError = false;
+    this.showSubReasonError = false;
   }
 }

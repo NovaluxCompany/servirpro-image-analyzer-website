@@ -26,6 +26,27 @@
   </div>
 </div>
 
+@if (data().entryKinds; as kinds) {
+<div class="grid grid-cols-2 gap-3 mb-4 md:grid-cols-4">
+  <div class="rounded-lg border-l-4 border-blue-600 bg-gray-50 px-3 py-2">
+    <p class="text-xs text-gray-500">Nuevos</p>
+    <p class="text-lg font-semibold text-gray-900">{{ kinds.newOnes.affiliates }}</p>
+    <p class="text-[11px] text-gray-500">{{ kinds.newOnes.sales | money }} en ventas</p>
+  </div>
+  <div class="rounded-lg border-l-4 border-amber-500 bg-gray-50 px-3 py-2">
+    <p class="text-xs text-gray-500">Reingresos</p>
+    <p class="text-lg font-semibold text-gray-900">{{ kinds.reentries.affiliates }}</p>
+    <p class="text-[11px] text-gray-500">{{ kinds.reentries.sales | money }} en ventas</p>
+  </div>
+  @if (detailed()) {
+  <p class="col-span-2 self-center text-xs text-gray-500">
+    Reingreso: persona que pagaba, dejó de pagar y se volvió a afiliar (reactivada o con una afiliación nueva). Ya tenía un pago
+    aprobado antes de este ingreso. Los dos suman el total de Afiliados.
+  </p>
+  }
+</div>
+}
+
 @if (detailed()) {
 <div class="mb-3 flex flex-wrap items-center gap-2">
 <div class="inline-flex rounded-lg border border-gray-200 p-0.5 text-sm" role="group" aria-label="Canal">
@@ -238,7 +259,12 @@
       </tr>
       }
       <tr class="bg-gray-50 font-semibold">
-        <td class="px-3 py-2" colspan="2">Total {{ adv.advisor }}</td>
+        <td class="px-3 py-2" colspan="2">
+          Total {{ adv.advisor }}
+          @if (data().entryKinds && adv.reentries > 0) {
+          <span class="ml-1 text-xs font-normal text-gray-500">({{ adv.reentries }} reingreso(s))</span>
+          }
+        </td>
         <td class="px-3 py-2 text-right">{{ adv.affiliates }}</td>
         <td class="px-3 py-2 text-right">{{ adv.sales | money }}</td>
         <td class="px-3 py-2 text-right">{{ adv.affiliationCost | money }}</td>

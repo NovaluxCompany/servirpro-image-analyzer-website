@@ -28,6 +28,18 @@
     <app-metrics-multi-select label="Sedes" [options]="branchOptions()" [selected]="draft().branchIds"
       (selectedChange)="update('branchIds', $event)" />
     }
+    @if (shows('affiliateType')) {
+    <div>
+      <label for="metrics-affiliate-type" class="block mb-1 text-xs font-medium text-gray-600">Tipo de afiliado</label>
+      <select id="metrics-affiliate-type" [ngModel]="draft().affiliateType" (ngModelChange)="update('affiliateType', $event)"
+        title="Los afiliados sin tipo registrado cuentan como Dependiente"
+        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+        @for (option of affiliateTypeOptions; track option.value) {
+        <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select>
+    </div>
+    }
   </div>
 
   @if (shows('dates')) {
@@ -58,6 +70,64 @@
       </div>
       }
     </div>
+  </div>
+  }
+
+  @if (shows('inactivations')) {
+  <div class="mt-4 border-t border-gray-100 pt-4">
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Gráfico 10 · Inactivaciones y solicitudes de desafiliación</p>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div>
+        <label for="inactivations-view" class="block mb-1 text-xs font-medium text-gray-600">Ver</label>
+        <select id="inactivations-view" [ngModel]="draft().inactivations.view" (ngModelChange)="setInactivationsView($event)"
+          class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+          <option value="">Selecciona qué ver...</option>
+          @for (option of inactivationsViewOptions; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      @if (inactivationsDetail() && draft().inactivations.view === 'DEACTIVATIONS') {
+      <app-metrics-multi-select label="Motivo" [options]="deactivationReasonOptions()" [selected]="draft().inactivations.reasonIds"
+        (selectedChange)="updateInactivations('reasonIds', $event)" />
+      <app-metrics-multi-select label="Realizado por" [options]="deactivationUserOptions()" [selected]="draft().inactivations.userIds"
+        (selectedChange)="updateInactivations('userIds', $event)" />
+      }
+
+      @if (inactivationsDetail() && draft().inactivations.view === 'DISAFFILIATIONS') {
+      <div>
+        <p class="block mb-1 text-xs font-medium text-gray-600">Estado</p>
+        <div class="inline-flex flex-wrap rounded-lg border border-gray-200 p-0.5 text-sm" role="group" aria-label="Estado de la solicitud">
+          @for (option of requestStatusOptions; track option.value) {
+          <button type="button" (click)="toggleRequestStatus(option.value)" [attr.aria-pressed]="draft().inactivations.statuses.includes(option.value)"
+            [class]="draft().inactivations.statuses.includes(option.value) ? 'rounded-md bg-blue-700 px-3 py-1 text-white' : 'rounded-md px-3 py-1 text-gray-700 hover:bg-gray-100'">
+            {{ option.label }}
+          </button>
+          }
+        </div>
+      </div>
+      <app-metrics-multi-select label="Motivo" [options]="disaffiliationReasonOptions()" [selected]="draft().inactivations.reasonIds"
+        (selectedChange)="setDisaffiliationReasons($event)" />
+      <app-metrics-multi-select label="Submotivo" [options]="subReasonOptions()" [selected]="draft().inactivations.subReasonIds"
+        (selectedChange)="updateInactivations('subReasonIds', $event)" />
+      <app-metrics-multi-select label="Empresa" [options]="companyOptions()" [selected]="draft().inactivations.companyIds"
+        (selectedChange)="updateInactivations('companyIds', $event)" />
+      <app-metrics-multi-select label="Solicitado por" [options]="requesterOptions()" [selected]="draft().inactivations.userIds"
+        (selectedChange)="updateInactivations('userIds', $event)" />
+      }
+    </div>
+    <p class="mt-1 text-xs text-gray-500">
+      @if (!inactivationsDetail()) {
+      Solo afecta al gráfico 10. Sin escoger qué ver, el gráfico 10 no se muestra ni se puede abrir; sus filtros (motivo, estado, etc.) están en su detalle.
+      } @else if (draft().inactivations.view === 'DEACTIVATIONS') {
+      Inactivaciones hechas desde "Desactivar", por la fecha de la desactivación.
+      } @else if (draft().inactivations.view === 'DISAFFILIATIONS') {
+      Solicitudes hechas desde Afiliación, por la fecha de la solicitud. Sin estado escogido salen todos; el submotivo depende del motivo escogido.
+      } @else {
+      Escoge qué ver para que aparezcan sus filtros. Sin escoger, el gráfico no se muestra.
+      }
+    </p>
   </div>
   }
 

@@ -6,10 +6,27 @@ export interface MetricsFilters {
   advisorIds: number[]; // 0 = sin asesor (solo gráfico 1)
   originIds: number[]; // 0 = sin origen
   branchIds: number[]; // 0 = sin sede
+  /** Dependiente / Independiente (affiliations.affiliate_type); '' = todos. */
+  affiliateType: AffiliateTypeFilter;
   // La publicidad ya no va en el filtro: se guarda por mes (botón
   // "Publicidad por mes" del gráfico 1) y el backend la lee de la BD.
   affiliationCost: number;
   workerCost: number;
+  /** Gráfico 10: qué se ve y los filtros de esa vista (solo los usa ese gráfico). */
+  inactivations: InactivationsFilters;
+}
+
+/** Filtros del gráfico 10; con view '' no se muestra el gráfico. */
+export interface InactivationsFilters {
+  view: InactivationsView | '';
+  /** Motivos de desactivación o de desafiliación, según la vista (0 = sin motivo). */
+  reasonIds: number[];
+  /** "Realizado por" (inactivaciones) o "Solicitado por" (desafiliaciones); 0 = sin usuario. */
+  userIds: number[];
+  /** Solo desafiliaciones; vacío = todos los estados. */
+  statuses: DisaffiliationRequestStatus[];
+  subReasonIds: number[];
+  companyIds: number[];
 }
 
 /** Filtros propios de un gráfico (solo los usa su vista de detalle). */
@@ -25,15 +42,26 @@ export interface MetricsSpecificFilters {
   collectionMonth?: string;
   /** Gráfico 9: usuarios que realizaron los pagos (0 = "Sin usuario"). */
   userIds?: number[];
-  /** Gráfico 5: Dependiente / Independiente; '' = todos. */
-  affiliateType?: AffiliateTypeFilter;
 }
+
+export type InactivationsView = 'DEACTIVATIONS' | 'DISAFFILIATIONS';
+
+export type DisaffiliationRequestStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED';
 
 export type MetricsCondition = 'NEW' | 'MONTHLY' | 'WITHDRAWAL';
 
 export type AffiliateTypeFilter = '' | 'DEPENDIENTE' | 'INDEPENDIENTE';
 
-export type MetricsFilterField = 'dates' | 'fidelizadores' | 'advisors' | 'origins' | 'branches' | 'affiliationCost' | 'workerCost';
+export type MetricsFilterField =
+  | 'dates'
+  | 'fidelizadores'
+  | 'advisors'
+  | 'origins'
+  | 'branches'
+  | 'affiliateType'
+  | 'affiliationCost'
+  | 'workerCost'
+  | 'inactivations';
 
 export interface MetricsFilterOptions {
   fidelizadores: Array<{ id: number; name: string }>;
@@ -42,6 +70,8 @@ export interface MetricsFilterOptions {
   branches: Array<{ id: number; name: string }>;
   defaults: { affiliationCost: number; workerCost: number };
   minCohortMonth: string;
+  /** Gráfico 10: motivos, submotivos, usuarios y empresas para sus filtros. */
+  inactivations?: InactivationsFilterOptions;
 }
 
 interface MetricsResponseBase {
@@ -72,10 +102,14 @@ export interface NewAffiliationsResponse extends MetricsResponseBase {
     affiliates: number;
     sales: number;
     affiliationCost: number;
+    /** De sus afiliados, cuántos son reingresos (solo en Nuevos). */
+    reentries: number;
   }>;
   /** Afiliados de otros asesores o sin asesor: cuentan en los totales, sin fila propia. */
   otherAffiliates: number;
   totals: CostBreakdown;
+  /** Solo en Nuevos: nuevos y reingresos (pagaban, dejaron de pagar y se volvieron a afiliar); suman totals. */
+  entryKinds: { newOnes: { affiliates: number; sales: number }; reentries: { affiliates: number; sales: number } } | null;
   condition: MetricsCondition;
   /** "Datos afiliaciones del bot de publicidad": asesores por canal pagado y el total del bot. */
   byChannel: AdvertisingChannelTable[];
@@ -140,8 +174,8 @@ export interface AdvertisingMonth {
 }
 
 // ── Gráfico 5 ────────────────────────────────────────────────────────────
-/** MONTHLY = Ordinarios, REENTRY = No ordinarios, RESOLUTION = Resolución (solo si hay), WITHDRAWAL = Retiros. */
-export type ConditionKind = 'MONTHLY' | 'REENTRY' | 'RESOLUTION' | 'WITHDRAWAL';
+/** MONTHLY = Ordinarios, NON_ORDINARY = No ordinarios, RESOLUTION = Resolución (solo si hay), WITHDRAWAL = Retiros. */
+export type ConditionKind = 'MONTHLY' | 'NON_ORDINARY' | 'RESOLUTION' | 'WITHDRAWAL';
 
 export interface ConditionRow {
   condition: ConditionKind;
@@ -326,4 +360,79 @@ export interface TopPlansResponse extends MetricsResponseBase {
 
 export interface TopProfessionsResponse extends MetricsResponseBase {
   professions: Array<{ profession: string; affiliates: number }>;
+}
+
+// ── Gráfico 10: inactivaciones o solicitudes de desafiliación ───────────
+export interface InactivationsOption {
+  id: number;
+  name: string;
+}
+
+export interface InactivationsFilterOptions {
+  deactivationReasons: InactivationsOption[];
+  deactivationUsers: InactivationsOption[];
+  disaffiliationReasons: InactivationsOption[];
+  /** reasonId null = "Sin submotivo", que aplica a cualquier motivo. */
+  disaffiliationSubReasons: Array<InactivationsOption & { reasonId: number | null }>;
+  companies: InactivationsOption[];
+  requesters: InactivationsOption[];
+}
+
+export interface DeactivationRow {
+  affiliationId: number;
+  /** ISO (UTC). */
+  deactivatedAt: string;
+  fullName: string;
+  documentNumber: string;
+  plan: string | null;
+  fidelizador: string;
+  reason: string;
+  observation: string | null;
+  kind: 'Individual' | 'Masiva';
+  user: string | null;
+}
+
+export interface DeactivationsData {
+  total: number;
+  byReason: Array<{ reason: string; affiliates: number }>;
+  byFidelizador: Array<{ fidelizador: string; total: number; byReason: Partial<Record<string, number>> }>;
+  rows: DeactivationRow[];
+}
+
+export interface DisaffiliationRequestRow {
+  requestId: number;
+  affiliationId: number;
+  /** ISO (UTC). */
+  requestedAt: string;
+  fullName: string;
+  documentNumber: string;
+  plan: string | null;
+  fidelizador: string;
+  reason: string;
+  subReason: string | null;
+  company: string | null;
+  observation: string | null;
+  status: DisaffiliationRequestStatus;
+  requestedBy: string | null;
+  confirmedBy: string | null;
+  /** ISO (UTC). */
+  confirmedAt: string | null;
+}
+
+export type CountByStatus = Record<DisaffiliationRequestStatus, number>;
+
+export interface DisaffiliationsData {
+  total: number;
+  byStatus: CountByStatus;
+  /** Por "Motivo · Submotivo". */
+  byReason: Array<{ reason: string; total: number; byStatus: CountByStatus }>;
+  byFidelizador: Array<{ fidelizador: string; total: number; byStatus: CountByStatus }>;
+  rows: DisaffiliationRequestRow[];
+}
+
+export interface DeactivationsResponse extends MetricsResponseBase {
+  /** null = no se escogió qué ver: no hay datos. */
+  view: InactivationsView | null;
+  deactivations: DeactivationsData | null;
+  disaffiliations: DisaffiliationsData | null;
 }

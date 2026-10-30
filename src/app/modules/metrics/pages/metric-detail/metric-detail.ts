@@ -10,7 +10,6 @@ import { MissingDataComponent } from '../../components/missing-data/missing-data
 import { MetricChartViewComponent } from '../../components/views/metric-chart-view';
 import { MetricsMultiSelectComponent, MultiSelectOption } from '../../components/multi-select/multi-select';
 import {
-  AffiliateTypeFilter,
   MetricsCondition,
   MetricsFilterOptions,
   MetricsFilters,
@@ -79,12 +78,6 @@ export class MetricDetailComponent implements OnInit {
     { value: 'WITHDRAWAL', label: 'Retiros' },
   ];
 
-  readonly affiliateTypeOptions: Array<{ value: AffiliateTypeFilter; label: string }> = [
-    { value: '', label: 'Todos' },
-    { value: 'DEPENDIENTE', label: 'Dependiente' },
-    { value: 'INDEPENDIENTE', label: 'Independiente' },
-  ];
-
   ngOnInit(): void {
     const chart = findMetricChart(this._route.snapshot.paramMap.get('chart'));
     if (!chart) {
@@ -133,7 +126,6 @@ export class MetricDetailComponent implements OnInit {
       condition: 'NEW',
       collectionMonth: this.currentMonth,
       userIds: [],
-      affiliateType: '',
     };
   }
 
@@ -152,6 +144,9 @@ export class MetricDetailComponent implements OnInit {
     }
     if (this.chart()?.key === 'recaudo-fidelizadores' && !this.specificDraft().userIds?.length) {
       this._toast.showWarning('Escoge uno o más usuarios en "Realizado por" para ver su recaudo.');
+    }
+    if (this.chart()?.key === 'desactivaciones' && !filters.inactivations?.view) {
+      this._toast.showWarning('Escoge en "Ver" si quieres Inactivaciones o Solicitudes de desafiliación.');
     }
     this.filters.set(filters);
     this.specificApplied.set({ ...this.specificDraft() });
