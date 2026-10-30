@@ -693,8 +693,14 @@
               <td class="px-4 py-3 whitespace-nowrap">{{ row.plan || '-' }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ row.affiliateType }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ row.company || '-' }}</td>
-              <td class="px-4 py-3 max-w-xs truncate" [title]="row.reasonLabel + (row.observation ? ': ' + row.observation : '')">
-                {{ row.reasonLabel }}
+              <td class="px-4 py-3 max-w-xs truncate"
+                [title]="row.reasonLabel + (row.subReasonLabel ? ' - ' + row.subReasonLabel : '') + (row.observation ? ': ' + row.observation : '')">
+                <div class="flex flex-col">
+                  <span>{{ row.reasonLabel }}</span>
+                  @if (row.subReasonLabel) {
+                    <span class="text-xs text-gray-500 truncate">{{ row.subReasonLabel }}</span>
+                  }
+                </div>
               </td>
               <td class="px-4 py-3 whitespace-nowrap">{{ row.fidelizadorName || '-' }}</td>
               <td class="px-4 py-3 whitespace-nowrap">{{ formatDateColombia(row.requestedAt) }}</td>

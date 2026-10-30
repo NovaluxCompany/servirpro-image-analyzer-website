@@ -8,18 +8,18 @@ import { BAR_STYLE, STATUS_COLORS, baseOptions, seriesColor } from '../../utils/
 /**
  * Colores con significado (pedido del cliente): verde = lo que entra
  * (mensualidad de ordinarios), rojo = lo que se pierde (retiros y lo que falta
- * por cobrar), azul = reingresos de no ordinarios, morado = resolución. El
+ * por cobrar), azul = no ordinarios, morado = resolución. El
  * mismo color en la barra, la leyenda y la tabla; siempre con su etiqueta.
  */
 const CONDITION_COLORS: Record<ConditionKind, string> = {
   MONTHLY: STATUS_COLORS.GREEN,
-  REENTRY: seriesColor(0),
+  NON_ORDINARY: seriesColor(0),
   RESOLUTION: seriesColor(6),
   WITHDRAWAL: STATUS_COLORS.RED,
 };
 
 /**
- * Gráfico 5: Mensualidad (Ordinarios) / Reingreso (No ordinarios) / Retiro
+ * Gráfico 5: Mensualidad (Ordinarios) / No ordinario / Retiro
  * por fidelizador, como la tabla del Excel (ASESOR / CONDICIÓN / USUARIOS /
  * MENSUALIDAD / PLANILLA / P. RETI / I. MORA), con Vlr. administración,
  * % de recaudo, lo que falta por cobrar y % de retiro. Las condiciones y su
@@ -31,7 +31,7 @@ const CONDITION_COLORS: Record<ConditionKind, string> = {
   imports: [ChartCanvasComponent, MoneyPipe],
   template: `
     @if (data().rows.length === 0) {
-      <p class="py-10 text-center text-sm text-gray-500">No hay mensualidades, reingresos ni retiros con estos filtros.</p>
+      <p class="py-10 text-center text-sm text-gray-500">No hay mensualidades, no ordinarios ni retiros con estos filtros.</p>
     } @else {
       <div class="grid grid-cols-2 gap-3 mb-4 md:grid-cols-3 xl:grid-cols-5">
         <div class="rounded-lg border-l-4 bg-gray-50 px-3 py-2" [style.border-left-color]="color('MONTHLY')">
@@ -59,7 +59,7 @@ const CONDITION_COLORS: Record<ConditionKind, string> = {
       </div>
 
       <app-chart-canvas [config]="chartConfig()" [height]="detailed() ? '360px' : '240px'"
-        ariaLabel="Usuarios en mensualidad (ordinarios), reingreso (no ordinarios) y retiro por fidelizador" />
+        ariaLabel="Usuarios en mensualidad (ordinarios), no ordinario y retiro por fidelizador" />
 
       @if (!detailed()) {
         <div class="mt-4 max-h-64 overflow-auto rounded-lg border border-gray-200">
@@ -175,9 +175,9 @@ const CONDITION_COLORS: Record<ConditionKind, string> = {
           </table>
         </div>
         <p class="mt-1 text-xs text-gray-500">
-          No se cuentan las afiliaciones nuevas. Mensualidad: pagos aprobados del rango de afiliados Ordinarios. Reingreso: pagos
-          aprobados de afiliados No ordinarios, más los que se retiraron y volvieron en el rango (con todos sus pagos, o $0 si aún no pagan).
-          La categoría es la de la afiliación; si no la tiene guardada se calcula con la regla del sistema (edad por género, plan con
+          No se cuentan las afiliaciones nuevas ni los reingresos (van en "Nuevos" del gráfico 1). Mensualidad: pagos aprobados del
+          rango de afiliados Ordinarios. No ordinario: pagos aprobados de afiliados No ordinarios (menores de la edad límite por género,
+          sin AFP ni documento extranjero: la regla de Actualizar empresa). La categoría es la de la afiliación; si no la tiene guardada se calcula con la regla del sistema (edad por género, plan con
           AFP, documento extranjero). Retiro: afiliados inactivados en el rango. Planilla y Vlr. administración: regla de Siigo de
           cada afiliado. I. Mora: mora digitada al enviar la factura a Siigo. % del recaudo: lo vendido en la condición sobre lo
           vendido por el fidelizador. Recaudo mensualidades: afiliados activos al iniciar el rango que pagaron en él; faltan por

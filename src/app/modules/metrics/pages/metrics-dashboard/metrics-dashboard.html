@@ -26,7 +26,7 @@
     <!-- Gráficos -->
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
       @for (chart of charts; track chart.key) {
-      <section class="flex flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <section #card [attr.data-chart-key]="chart.key" class="flex flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
         <header class="border-b border-gray-100 px-5 py-4">
           <button type="button" (click)="openDetail(chart)" class="group flex w-full items-start gap-3 text-left">
             <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-sm font-bold text-blue-800">{{ chart.number }}</span>
@@ -46,15 +46,16 @@
           </p>
         </header>
 
-        <div class="relative flex-1 cursor-pointer px-5 py-4" (click)="openDetail(chart)" title="Ver detalle">
+        <div class="relative flex-1 px-5 py-4" [class.cursor-pointer]="!isBlocked(chart)" (click)="openDetail(chart)"
+          [attr.title]="isBlocked(chart) ? null : 'Ver detalle'">
           @if (state(chart.key); as s) {
           @if (s.error && !s.loading) {
           <p class="py-10 text-center text-sm text-red-600">{{ s.error }}</p>
           } @else if (s.data) {
-          <div class="transition-opacity" [class.opacity-40]="s.loading">
+          <div class="transition-opacity" [class.opacity-40]="s.loading || s.pending">
             <app-metric-chart-view [chartKey]="chart.key" [data]="s.data" [originCatalogIds]="originCatalogIds()" />
           </div>
-          @if (s.loading) {
+          @if (s.loading || s.pending) {
           <app-metrics-loading-spinner [overlay]="true" label="Actualizando gráfico..." />
           }
           } @else {

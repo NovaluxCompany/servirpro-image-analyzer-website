@@ -6,7 +6,7 @@ import { TokenService } from '../../../core/service/token.service';
 import { AffiliateMember,CreateAffiliateMemberDto,UpdateAffiliateMemberDto,} from '../interfaces/affiliate-member.interface';
 import { Plan, Company, Grouper, Advisor, Fidelizador, EpsItem, Pension, CompensationBox, Branch, Department, CityOption, } from '../interfaces/catalog.interface';
 import { PaginatedAffiliatesResponse } from '../interfaces/paginated-affiliates.interface';
-import { DisaffiliationHistoryRow } from '../../deactivate-affiliates/interfaces/disaffiliation.interface';
+import { DisaffiliationHistoryRow, DisaffiliationReason } from '../../deactivate-affiliates/interfaces/disaffiliation.interface';
 
 export interface AffiliateFilters {
   page?: number;
@@ -359,9 +359,9 @@ export class AffiliateMembersService {
   }
 
   // ── Desafiliación (paso 1: registrar la solicitud, "enviado a validar") ──
-  getDisaffiliationReasons(): Observable<{ id: number; code: string; label: string }[]> {
+  getDisaffiliationReasons(): Observable<DisaffiliationReason[]> {
     return this._http
-      .get<{ id: number; code: string; label: string }[]>(`${environment.urlBD}/disaffiliations/reasons/dropdown`, {
+      .get<DisaffiliationReason[]>(`${environment.urlBD}/disaffiliations/reasons/dropdown`, {
         headers: this.getHeaders(),
       })
       .pipe(catchError(() => of([])));
@@ -371,12 +371,13 @@ export class AffiliateMembersService {
     affiliationId: number,
     companyId: number | undefined,
     reasonId: number,
+    subReasonId: number | undefined,
     observation?: string,
   ): Observable<any> {
     return this._http
       .post(
         `${environment.urlBD}/disaffiliations`,
-        { affiliationId, companyId, reasonId, observation },
+        { affiliationId, companyId, reasonId, subReasonId, observation },
         { headers: this.getHeaders() },
       )
       .pipe(catchError(this.handleError));

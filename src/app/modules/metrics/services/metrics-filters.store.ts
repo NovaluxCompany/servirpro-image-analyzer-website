@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { MetricsFilterOptions, MetricsFilters } from '../interfaces/metrics.interface';
+import { InactivationsFilters, MetricsFilterOptions, MetricsFilters } from '../interfaces/metrics.interface';
 
 /**
  * Filtro GENERAL del tablero de Métricas. Vive en un servicio raíz para
@@ -29,8 +29,10 @@ export class MetricsFiltersStore {
       advisorIds: [],
       originIds: [],
       branchIds: [],
+      affiliateType: '',
       affiliationCost: options.defaults.affiliationCost,
       workerCost: options.defaults.workerCost,
+      inactivations: emptyInactivations(),
     };
   }
 
@@ -47,6 +49,25 @@ export function cloneFilters(filters: MetricsFilters): MetricsFilters {
     advisorIds: [...(filters.advisorIds ?? [])],
     originIds: [...filters.originIds],
     branchIds: [...filters.branchIds],
+    // Un filtro guardado antes de existir el campo queda en "todos".
+    affiliateType: filters.affiliateType ?? '',
+    inactivations: cloneInactivations(filters.inactivations ?? emptyInactivations()),
+  };
+}
+
+/** Gráfico 10 sin nada escogido: el gráfico no se muestra. */
+export function emptyInactivations(view: InactivationsFilters['view'] = ''): InactivationsFilters {
+  return { view, reasonIds: [], userIds: [], statuses: [], subReasonIds: [], companyIds: [] };
+}
+
+function cloneInactivations(f: InactivationsFilters): InactivationsFilters {
+  return {
+    ...f,
+    reasonIds: [...f.reasonIds],
+    userIds: [...f.userIds],
+    statuses: [...f.statuses],
+    subReasonIds: [...f.subReasonIds],
+    companyIds: [...f.companyIds],
   };
 }
 

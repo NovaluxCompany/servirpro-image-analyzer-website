@@ -25,6 +25,14 @@ export class TransactionDetailComponent implements OnDestroy {
   selectedImageUrl = signal<string | null>(null);
   showImageModal = signal(false);
 
+  // Estado de carga de cada comprobante, por URL: mientras la imagen baja de
+  // Supabase se muestra un spinner encima. Va por URL y no por posición porque
+  // el polling puede traer URLs firmadas nuevas, que vuelven a descargarse.
+  loadedImages = signal<ReadonlySet<string>>(new Set());
+  failedImages = signal<ReadonlySet<string>>(new Set());
+  modalImageLoaded = signal(false);
+  modalImageFailed = signal(false);
+
   private pollingSubscription?: Subscription;
 
   ngOnInit(): void {
@@ -125,8 +133,22 @@ export class TransactionDetailComponent implements OnDestroy {
     });
   }
 
+  isImageLoading(url: string): boolean {
+    return !this.loadedImages().has(url) && !this.failedImages().has(url);
+  }
+
+  onImageLoaded(url: string): void {
+    this.loadedImages.update((set) => new Set(set).add(url));
+  }
+
+  onImageFailed(url: string): void {
+    this.failedImages.update((set) => new Set(set).add(url));
+  }
+
   openImageModal(imageBase64: string): void {
     this.selectedImageUrl.set(`${imageBase64}`);
+    this.modalImageLoaded.set(false);
+    this.modalImageFailed.set(false);
     this.showImageModal.set(true);
   }
 

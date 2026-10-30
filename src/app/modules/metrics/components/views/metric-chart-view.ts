@@ -12,6 +12,7 @@ import { ConditionsViewComponent } from './conditions-view';
 import { TopPlansViewComponent } from './top-plans-view';
 import { TopProfessionsViewComponent } from './top-professions-view';
 import { CollectionViewComponent } from './collection-view';
+import { InactivationsViewComponent } from './inactivations-view';
 
 /** Pinta la vista que corresponde a cada gráfico (misma en tablero y detalle). */
 @Component({
@@ -30,6 +31,7 @@ import { CollectionViewComponent } from './collection-view';
     TopPlansViewComponent,
     TopProfessionsViewComponent,
     CollectionViewComponent,
+    InactivationsViewComponent,
   ],
   template: `
     @switch (chartKey()) {
@@ -68,6 +70,9 @@ import { CollectionViewComponent } from './collection-view';
       }
       @case ('recaudo-fidelizadores') {
         <app-collection-view [data]="data()" [detailed]="detailed()" />
+      }
+      @case ('desactivaciones') {
+        <app-inactivations-view [data]="data()" [detailed]="detailed()" />
       }
     }
   `,

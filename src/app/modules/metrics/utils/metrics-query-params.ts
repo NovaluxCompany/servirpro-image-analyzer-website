@@ -1,5 +1,5 @@
 import { Params } from '@angular/router';
-import { MetricsFilters, MetricsSpecificFilters } from '../interfaces/metrics.interface';
+import { DisaffiliationRequestStatus, MetricsFilters, MetricsSpecificFilters } from '../interfaces/metrics.interface';
 
 /**
  * Filtros del detalle en la URL: así el detalle de un gráfico con sus filtros
@@ -14,6 +14,7 @@ export function filtersToQueryParams(filters: MetricsFilters, specific: MetricsS
     ases: filters.advisorIds?.join(',') || null,
     orig: filters.originIds.join(',') || null,
     sede: filters.branchIds.join(',') || null,
+    tipo: filters.affiliateType || null,
     costoAfil: filters.affiliationCost,
     costoTrab: filters.workerCost,
     cohorteDesde: specific.cohortFrom || null,
@@ -25,7 +26,13 @@ export function filtersToQueryParams(filters: MetricsFilters, specific: MetricsS
     cond: specific.condition && specific.condition !== 'NEW' ? specific.condition : null,
     mes: specific.collectionMonth || null,
     usuarios: specific.userIds?.join(',') || null,
-    tipo: specific.affiliateType || null,
+    // Gráfico 10 (filtro general, pero solo lo usa ese gráfico).
+    ver: filters.inactivations?.view || null,
+    motivos: filters.inactivations?.reasonIds.join(',') || null,
+    hechoPor: filters.inactivations?.userIds.join(',') || null,
+    estados: filters.inactivations?.statuses.join(',') || null,
+    submotivos: filters.inactivations?.subReasonIds.join(',') || null,
+    empresas: filters.inactivations?.companyIds.join(',') || null,
   };
 }
 
@@ -45,6 +52,8 @@ export function queryParamsToFilters(params: Params, base: MetricsFilters): Metr
   };
   const date = (value: unknown, fallback: string): string =>
     typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : fallback;
+  const statuses: DisaffiliationRequestStatus[] = ['PENDING', 'CONFIRMED', 'REJECTED'];
+  const view = params['ver'] === 'DEACTIVATIONS' || params['ver'] === 'DISAFFILIATIONS' ? params['ver'] : '';
 
   return {
     from: date(params['from'], base.from),
@@ -53,8 +62,20 @@ export function queryParamsToFilters(params: Params, base: MetricsFilters): Metr
     advisorIds: ids(params['ases']),
     originIds: ids(params['orig']),
     branchIds: ids(params['sede']),
+    affiliateType: params['tipo'] === 'DEPENDIENTE' || params['tipo'] === 'INDEPENDIENTE' ? params['tipo'] : '',
     affiliationCost: num(params['costoAfil'], base.affiliationCost),
     workerCost: num(params['costoTrab'], base.workerCost),
+    inactivations: {
+      view,
+      reasonIds: ids(params['motivos']),
+      userIds: ids(params['hechoPor']),
+      statuses:
+        typeof params['estados'] === 'string'
+          ? (params['estados'].split(',').filter((s: string) => statuses.includes(s as DisaffiliationRequestStatus)) as DisaffiliationRequestStatus[])
+          : [],
+      subReasonIds: ids(params['submotivos']),
+      companyIds: ids(params['empresas']),
+    },
   };
 }
 
@@ -73,6 +94,5 @@ export function queryParamsToSpecific(params: Params): MetricsSpecificFilters {
       typeof params['usuarios'] === 'string' && params['usuarios']
         ? params['usuarios'].split(',').map(Number).filter((n: number) => Number.isInteger(n) && n >= 0)
         : [],
-    affiliateType: params['tipo'] === 'DEPENDIENTE' || params['tipo'] === 'INDEPENDIENTE' ? params['tipo'] : '',
   };
 }
