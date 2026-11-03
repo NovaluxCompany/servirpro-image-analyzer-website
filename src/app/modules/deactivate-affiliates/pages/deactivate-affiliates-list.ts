@@ -546,7 +546,7 @@ export class DeactivateAffiliatesList implements OnInit {
         this._toastService.showSuccess(response.message || 'Afiliados desafiliados exitosamente.');
         if (response.failed?.length) {
           // El motivo importa: una solicitud puede quedar frenada por el bloqueo
-          // de 30 días tras el envío por WhatsApp, y hay que decir hasta cuándo.
+          // del mes de creación tras el envío por WhatsApp, y hay que decir hasta cuándo.
           const [first] = response.failed;
           this._toastService.showError(
             `${response.failed.length} solicitud(es) no pudieron procesarse. ${first.name}: ${first.reason}`,
