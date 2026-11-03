@@ -367,6 +367,15 @@ export class AffiliateMembersService {
       .pipe(catchError(() => of([])));
   }
 
+  getDisaffiliationEligibility(affiliationId: number): Observable<{ canDisaffiliate: boolean; message: string | null }> {
+    return this._http
+      .get<{ canDisaffiliate: boolean; message: string | null }>(
+        `${environment.urlBD}/disaffiliations/eligibility/${affiliationId}`,
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError(this.handleError));
+  }
+
   createDisaffiliationRequest(
     affiliationId: number,
     companyId: number | undefined,
