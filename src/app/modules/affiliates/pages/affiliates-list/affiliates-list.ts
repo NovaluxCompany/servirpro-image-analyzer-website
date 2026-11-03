@@ -414,8 +414,25 @@ export class AffiliatesListComponent implements OnInit {
 
   openDisaffiliationModal(affiliate: AffiliateMember): void {
     if (!this._permission.check('disaffiliate', undefined, 'Tu rol no tiene permiso para desafiliar afiliados.')) return;
-    this.selectedAffiliate.set(affiliate);
-    this.showDisaffiliationModal.set(true);
+
+    const show = () => {
+      this.selectedAffiliate.set(affiliate);
+      this.showDisaffiliationModal.set(true);
+    };
+
+    // Se valida antes de abrir el modal para no hacer llenar el formulario en
+    // vano. Si la consulta falla se abre igual: el backend vuelve a validar al
+    // registrar la solicitud.
+    this._service.getDisaffiliationEligibility(Number(affiliate.id)).subscribe({
+      next: ({ canDisaffiliate, message }) => {
+        if (canDisaffiliate) {
+          show();
+        } else {
+          this._toast.showWarning(message ?? 'Este afiliado no se puede desafiliar por ahora.', 10000);
+        }
+      },
+      error: () => show(),
+    });
   }
 
   /** El botón "Desafiliar afiliado" solo se muestra si el rol tiene el permiso dedicado. */
