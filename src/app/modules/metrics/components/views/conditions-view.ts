@@ -174,16 +174,64 @@ const CONDITION_COLORS: Record<ConditionKind, string> = {
             </tfoot>
           </table>
         </div>
-        <p class="mt-1 text-xs text-gray-500">
-          No se cuentan las afiliaciones nuevas ni los reingresos (van en "Nuevos" del gráfico 1). Mensualidad: pagos aprobados del
-          rango de afiliados Ordinarios. No ordinario: pagos aprobados de afiliados No ordinarios (menores de la edad límite por género,
-          sin AFP ni documento extranjero: la regla de Actualizar empresa). La categoría es la de la afiliación; si no la tiene guardada se calcula con la regla del sistema (edad por género, plan con
-          AFP, documento extranjero). Retiro: afiliados inactivados en el rango. Planilla y Vlr. administración: regla de Siigo de
-          cada afiliado. I. Mora: mora digitada al enviar la factura a Siigo. % del recaudo: lo vendido en la condición sobre lo
-          vendido por el fidelizador. Recaudo mensualidades: afiliados activos al iniciar el rango que pagaron en él; faltan por
-          cobrar: los que no, con el precio de venta de su plan. % retiro: retiros ÷ usuarios totales (igual que el gráfico 6).
-          P. Retiro: pendiente de definir.
-        </p>
+        <div class="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
+          <p class="mb-2 font-semibold text-gray-900">¿Cómo se calcula este gráfico?</p>
+          <ul class="list-disc space-y-1.5 pl-4">
+            <li>
+              <span class="font-medium text-gray-800">Qué pagos entran:</span> solo las transacciones aprobadas del rango. No entran
+              las afiliaciones nuevas ni los reingresos: el pago marcado con la casilla "Nuevo" va en "Nuevos" del gráfico 1. Las
+              mensualidades siguientes de esa persona sí entran, en la condición que le corresponda.
+            </li>
+            <li>
+              <span class="font-medium text-gray-800">Condición (la categoría decide la fila):</span>
+              Mensualidad = afiliados Ordinarios (con la edad límite por género o más, con AFP en el plan o con documento extranjero).
+              No ordinario = el resto: los que pagan mes a mes y a los que se les cambia la empresa (la misma regla de Actualizar
+              empresa). Resolución = mayores de edad con un plan que tiene ARL y no tiene EPS; la fila solo sale si hay alguno. Se usa la categoría guardada
+              en la afiliación y, si no tiene, se calcula con esta misma regla.
+            </li>
+            <li>
+              <span class="font-medium text-gray-800">Retiro:</span> igual que el gráfico 6. Cuenta la afiliación que en el rango tuvo
+              una <em>desafiliación</em> o una <em>inactivación masiva</em> (módulo Desactivar afiliados), aunque después se haya
+              reactivado. Si se usó el botón <em>Desactivar</em>, solo cuenta si la afiliación sigue inactiva al cierre del rango:
+              quien se desactiva y se reactiva dentro del rango (por ejemplo, para cambiarle el plan) no es retiro. Si la afiliación
+              se creó dentro del rango y al cierre ya está reactivada, tampoco es retiro: entró y sigue, así que cuenta solo como
+              nuevo (gráfico 1). Si entra en el mes y no vuelve, sí es retiro. Tampoco es retiro la desafiliación que se solicitó
+              con empresa y a la que se le quitó la empresa antes de confirmarla: el retiro se reporta por empresa y ya no tenía
+              ninguna. Al retiro no se le suman Mensualidad, Planilla ni Vlr. administración.
+            </li>
+            <li>
+              <span class="font-medium text-gray-800">Afiliados que no cuentan:</span> los que hoy están inactivos y cuya última
+              inactivación fue con <em>Desactivar</em> (error en digitación, no se logró tramitar, etc.) no se cuentan en ninguna fila;
+              van en el gráfico de Desactivaciones. Si el motivo de Desactivar fue "No pagó", sí cuentan, porque es un retiro real.
+              Si se reactivan, vuelven a contar.
+            </li>
+            <li>
+              <span class="font-medium text-gray-800">Planilla y Vlr. administración:</span> valores de mensualidad de la regla de Siigo
+              de cada afiliado (agrupador, categoría, tipo de afiliado y plan). Sin regla que coincida, cuentan como 0.
+            </li>
+            <li>
+              <span class="font-medium text-gray-800">I. Mora:</span> la mora digitada al enviar la factura a Siigo en los meses del rango.
+            </li>
+            <li>
+              <span class="font-medium text-gray-800">% del recaudo:</span> lo vendido en la condición sobre todo lo vendido por el fidelizador.
+            </li>
+            <li>
+              <span class="font-medium text-gray-800">Recaudo mensualidades y Faltan por cobrar:</span> se toman las afiliaciones
+              activas al iniciar el rango. Pagaron = tienen una transacción aprobada en el rango. Faltan por cobrar = las que no, con el
+              precio de venta de su plan. Quien se retira dentro del rango sin pagar no se cuenta, porque al retiro no se le cobra el mes.
+            </li>
+            <li>
+              <span class="font-medium text-gray-800">% retiro:</span> retiros ÷ usuarios totales (igual que el gráfico 6).
+            </li>
+            <li>
+              <span class="font-medium text-gray-800">Filtro Dependiente / Independiente:</span> aplica a todas las filas, a Faltan por
+              cobrar y al % de retiro.
+            </li>
+            <li>
+              <span class="font-medium text-gray-800">P. Retiro:</span> pendiente de definir con el cliente; se muestra en 0.
+            </li>
+          </ul>
+        </div>
       }
     }
   `,
