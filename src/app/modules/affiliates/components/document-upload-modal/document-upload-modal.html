@@ -45,11 +45,17 @@
                       <p class="text-xs text-red-600 mt-0.5">{{ pending.error }}</p>
                     }
                   </div>
-                  <button type="button" (click)="removeFile(i)" class="shrink-0 text-gray-400 hover:text-gray-600">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" (click)="openPreview(pending.file)" title="Ver el archivo antes de cargarlo"
+                      class="px-2 py-0.5 text-xs font-medium text-indigo-700 bg-indigo-50 rounded hover:bg-indigo-100">
+                      Ver
+                    </button>
+                    <button type="button" (click)="removeFile(i)" class="text-gray-400 hover:text-gray-600" title="Quitar">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                 </li>
               }
             </ul>
@@ -78,4 +84,23 @@
       </div>
     </div>
   </div>
+
+  <!-- Vista previa: el PDF se abre desde el equipo, todavía no se ha subido ni enviado -->
+  @if (preview(); as current) {
+    <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70">
+      <div class="flex flex-col w-full max-w-4xl h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-gray-200">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-gray-800 truncate">{{ current.name }}</p>
+            <p class="text-xs text-gray-500">Vista previa. El archivo todavía no se ha cargado ni enviado.</p>
+          </div>
+          <button type="button" (click)="closePreview()"
+            class="shrink-0 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+            Cerrar
+          </button>
+        </div>
+        <iframe [src]="current.url" class="flex-1 w-full" title="Vista previa del certificado"></iframe>
+      </div>
+    </div>
+  }
 }

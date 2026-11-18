@@ -1,6 +1,7 @@
-import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { Component, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { DocumentUploadsService } from '../../services/document-uploads.service';
 import { DocumentType, UploadItemError } from '../../interfaces/document-upload.interface';
 import { ToastService } from '../../../../core/service/toast.service';
@@ -19,6 +20,7 @@ interface PendingFile {
 export class DocumentUploadModalComponent {
   private _service = inject(DocumentUploadsService);
   private _toast = inject(ToastService);
+  private _sanitizer = inject(DomSanitizer);
 
   isVisible = input<boolean>(false);
   uploaded = output<void>();
@@ -29,9 +31,16 @@ export class DocumentUploadModalComponent {
   selectedTypeId: number | null = null;
   pendingFiles = signal<PendingFile[]>([]);
   isSubmitting = signal(false);
+  /** PDF abierto en la vista previa; rawUrl se libera al cerrarla. */
+  preview = signal<{ name: string; rawUrl: string; url: SafeResourceUrl } | null>(null);
 
   constructor() {
     effect(() => {
+      // untracked: closePreview lee preview(); sin esto el effect dependería
+      // de esa señal y abrir la vista previa vaciaría la lista de archivos.
+      if (!this.isVisible()) {
+        untracked(() => this.closePreview());
+      }
       if (this.isVisible()) {
         this.selectedTypeId = null;
         this.pendingFiles.set([]);
@@ -59,6 +68,28 @@ export class DocumentUploadModalComponent {
 
   removeFile(index: number): void {
     this.pendingFiles.update((current) => current.filter((_, i) => i !== index));
+  }
+
+  /**
+   * Abre el PDF desde el equipo, antes de subirlo: apenas se carga, el
+   * archivo queda en cola y sale por WhatsApp en el siguiente minuto, y
+   * cuando el envío sale bien se borra del almacenamiento. Esta es la única
+   * oportunidad de revisarlo.
+   */
+  openPreview(file: File): void {
+    this.closePreview();
+    const rawUrl = URL.createObjectURL(file);
+    this.preview.set({
+      name: file.name,
+      rawUrl,
+      url: this._sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
+    });
+  }
+
+  closePreview(): void {
+    const current = this.preview();
+    if (current) URL.revokeObjectURL(current.rawUrl);
+    this.preview.set(null);
   }
 
   submit(): void {
