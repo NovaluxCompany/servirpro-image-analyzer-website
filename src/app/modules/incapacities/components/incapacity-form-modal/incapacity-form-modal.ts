@@ -17,14 +17,16 @@ import { IncapacityHistoryComponent } from '../incapacity-history/incapacity-his
 const MAX_INCAPACITY_DAYS = 730;
 
 /**
- * Espejo de lo que valida el backend (ALLOWED_MIME_TYPES y
- * MAX_FILE_SIZE_BYTES en IncapacitiesService). Se repite acá a propósito:
+ * Espejo de lo que valida el backend (UPLOAD_LIMITS.incapacities en
+ * common/upload-limits.interceptor.ts). Se repite acá a propósito:
  * el `accept` del input solo filtra el explorador de archivos — no aplica a
  * un arrastrar-y-soltar — y sin esto un archivo de 40 MB se sube entero
  * para que el servidor lo rechace al final.
  */
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_FILES = 6;
+const MAX_TOTAL_BYTES = 30 * 1024 * 1024;
 
 interface DocumentSlot {
   type: IncapacityDocumentType;
@@ -449,6 +451,18 @@ export class IncapacityFormModalComponent {
     const chosen = this.files();
     const types = Object.keys(chosen) as IncapacityDocumentType[];
     const selectedFiles = types.map((type) => chosen[type]!);
+
+    if (selectedFiles.length > MAX_FILES) {
+      this._toast.showError(`Puedes adjuntar máximo ${MAX_FILES} soportes por incapacidad. Tienes ${selectedFiles.length}.`);
+      return;
+    }
+    const totalBytes = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+    if (totalBytes > MAX_TOTAL_BYTES) {
+      this._toast.showError(
+        `Los soportes suman ${this.formatSize(totalBytes)} y el máximo es ${this.formatSize(MAX_TOTAL_BYTES)}. Comprime alguno antes de guardar.`,
+      );
+      return;
+    }
 
     const raw = this.form.getRawValue();
     this.isSaving.set(true);

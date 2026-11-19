@@ -202,6 +202,13 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly isLoadingTransactions = signal(false);
   protected readonly transactionsError = signal<string | null>(null);
   protected readonly affiliateTransactions = signal<AffiliateTransactionRow[]>([]);
+  /**
+   * Solo los pagos que faltan por aprobar. Al aprobar uno sale de la lista,
+   * para que con 12 pagos y 5 aprobados se vean solo los 7 pendientes.
+   */
+  protected readonly pendingTransactions = computed(() =>
+    this.affiliateTransactions().filter((tx) => !tx.isApproved),
+  );
 
   protected readonly showResultsModal = signal(false);
   protected readonly deactivationResult = signal<DeactivateAffiliatesResponse | null>(null);
