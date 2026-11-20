@@ -92,7 +92,9 @@ export class AffiliatesListComponent implements OnInit {
   selectedAffiliate = signal<AffiliateMember | null>(null);
 
   // ── Siigo ─────────────────────────────────────────────────────────
-  syncingSiigoId = signal<number | null>(null);  sendingEmailId = signal<number | null>(null);
+  syncingSiigoId = signal<number | null>(null);
+  // "<affiliationId>-<certField>" mientras se guarda un certificado marcado a mano.
+  updatingCertKey = signal<string | null>(null);  sendingEmailId = signal<number | null>(null);
   // ── Dropdown acciones ─────────────────────────────────────────────
   openDropdownId = signal<string | null>(null);
   dropdownPos = signal<{ top: number | null; bottom: number | null; left: number; maxHeight: number }>({
@@ -590,6 +592,44 @@ export class AffiliatesListComponent implements OnInit {
 
   planHasPension(affiliate: AffiliateMember): boolean {
     return this.planIncludes(affiliate, 'AFP');
+  }
+
+  /**
+   * Clic en el punto de certificado: lo marca como enviado (verde) o no
+   * enviado (rojo), para envíos hechos por fuera del flujo de cargue.
+   */
+  toggleCertStatus(
+    affiliate: AffiliateMember,
+    field: 'certEps' | 'certArl' | 'certCcf' | 'certPension',
+    label: string,
+  ): void {
+    if (!this._permission.check('edit', undefined, 'Tu rol no tiene permiso para marcar certificados como enviados.')) {
+      return;
+    }
+    const affiliationId = Number(affiliate.id);
+    const key = `${affiliationId}-${field}`;
+    if (!affiliationId || this.updatingCertKey() !== null) return;
+
+    const sent = !affiliate[field];
+    const question = sent
+      ? `¿Marcar el certificado ${label} de ${affiliate.fullName} como ENVIADO por WhatsApp?`
+      : `¿Marcar el certificado ${label} de ${affiliate.fullName} como NO enviado?`;
+    if (!window.confirm(question)) return;
+
+    this.updatingCertKey.set(key);
+    this._service.updateCertStatus(affiliationId, field, sent).subscribe({
+      next: () => {
+        this.affiliates.update((list) =>
+          list.map((a) => (a.id === affiliate.id ? { ...a, [field]: sent } : a)),
+        );
+        this._toast.showSuccess(sent ? `Certificado ${label} marcado como enviado` : `Certificado ${label} marcado como no enviado`);
+        this.updatingCertKey.set(null);
+      },
+      error: (err) => {
+        this._toast.showError(err.message ?? 'No se pudo actualizar el certificado');
+        this.updatingCertKey.set(null);
+      },
+    });
   }
 
   goToDocumentUploads(): void {
