@@ -391,6 +391,18 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  /** Empresas del afiliado desde su última activación (la vigente viene con current: true). */
+  getDisaffiliationCompanies(
+    affiliationId: number,
+  ): Observable<Array<{ id: number; name: string; from: string; to: string | null; current: boolean }>> {
+    return this._http
+      .get<Array<{ id: number; name: string; from: string; to: string | null; current: boolean }>>(
+        `${environment.urlBD}/disaffiliations/companies/${affiliationId}`,
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError(this.handleError));
+  }
+
   createDisaffiliationRequest(
     affiliationId: number,
     companyId: number | undefined,
