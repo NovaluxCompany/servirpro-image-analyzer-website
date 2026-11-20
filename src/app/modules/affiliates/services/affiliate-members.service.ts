@@ -161,6 +161,21 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  // ── Marcar a mano un certificado como enviado por WhatsApp ──────────
+  updateCertStatus(
+    id: number,
+    field: 'certEps' | 'certArl' | 'certCcf' | 'certPension',
+    sent: boolean,
+  ): Observable<{ id: number; field: string; sent: boolean }> {
+    return this._http
+      .patch<{ id: number; field: string; sent: boolean }>(
+        `${this.baseUrl}/${id}/cert-status`,
+        { field, sent },
+        { headers: this.getHeaders() }
+      )
+      .pipe(catchError(this.handleError));
+  }
+
   // ── Enviar / sincronizar afiliado con Siigo ─────────────────────────
   syncToSiigo(id: number): Observable<{ siigoSyncStatus: string; siigoId: string | null; siigoSyncError: string | null }> {
     return this._http
