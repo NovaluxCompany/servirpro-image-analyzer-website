@@ -6,7 +6,7 @@ import { TokenService } from '../../../core/service/token.service';
 import { AffiliateMember,CreateAffiliateMemberDto,UpdateAffiliateMemberDto,} from '../interfaces/affiliate-member.interface';
 import { Plan, Company, Grouper, Advisor, Fidelizador, EpsItem, Pension, CompensationBox, Branch, Department, CityOption, } from '../interfaces/catalog.interface';
 import { PaginatedAffiliatesResponse } from '../interfaces/paginated-affiliates.interface';
-import { DisaffiliationHistoryRow } from '../../deactivate-affiliates/interfaces/disaffiliation.interface';
+import { DisaffiliationHistoryRow, DisaffiliationReason } from '../../deactivate-affiliates/interfaces/disaffiliation.interface';
 
 export interface AffiliateFilters {
   page?: number;
@@ -22,6 +22,7 @@ export interface AffiliateFilters {
   // que devuelven id + nombre.
   companyId?: number;
   epsId?: number;
+  grouperId?: number;
   isActive?: boolean;
   grupo?: string;
   entryDateFrom?: string;
@@ -53,6 +54,7 @@ export class AffiliateMembersService {
     if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
     if (filters.companyId) params = params.set('companyId', String(filters.companyId));
     if (filters.epsId) params = params.set('epsId', String(filters.epsId));
+    if (filters.grouperId) params = params.set('grouperId', String(filters.grouperId));
     if (filters.isActive !== undefined) params = params.set('isActive', String(filters.isActive));
     if (filters.grupo) params = params.set('grupo', filters.grupo);
     if (filters.entryDateFrom) params = params.set('entryDateFrom', filters.entryDateFrom);
@@ -159,6 +161,21 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
+  // ── Marcar a mano un certificado como enviado por WhatsApp ──────────
+  updateCertStatus(
+    id: number,
+    field: 'certEps' | 'certArl' | 'certCcf' | 'certPension',
+    sent: boolean,
+  ): Observable<{ id: number; field: string; sent: boolean }> {
+    return this._http
+      .patch<{ id: number; field: string; sent: boolean }>(
+        `${this.baseUrl}/${id}/cert-status`,
+        { field, sent },
+        { headers: this.getHeaders() }
+      )
+      .pipe(catchError(this.handleError));
+  }
+
   // ── Enviar / sincronizar afiliado con Siigo ─────────────────────────
   syncToSiigo(id: number): Observable<{ siigoSyncStatus: string; siigoId: string | null; siigoSyncError: string | null }> {
     return this._http
@@ -181,6 +198,7 @@ export class AffiliateMembersService {
     if (filters.affiliateType) params = params.set('affiliateType', filters.affiliateType);
     if (filters.companyId) params = params.set('companyId', String(filters.companyId));
     if (filters.epsId) params = params.set('epsId', String(filters.epsId));
+    if (filters.grouperId) params = params.set('grouperId', String(filters.grouperId));
     if (filters.isActive !== undefined) {
       params = params.set('isActive', String(filters.isActive));
     }
@@ -356,24 +374,46 @@ export class AffiliateMembersService {
   }
 
   // ── Desafiliación (paso 1: registrar la solicitud, "enviado a validar") ──
-  getDisaffiliationReasons(): Observable<{ id: number; code: string; label: string }[]> {
+  getDisaffiliationReasons(): Observable<DisaffiliationReason[]> {
     return this._http
-      .get<{ id: number; code: string; label: string }[]>(`${environment.urlBD}/disaffiliations/reasons/dropdown`, {
+      .get<DisaffiliationReason[]>(`${environment.urlBD}/disaffiliations/reasons/dropdown`, {
         headers: this.getHeaders(),
       })
       .pipe(catchError(() => of([])));
+  }
+
+  getDisaffiliationEligibility(affiliationId: number): Observable<{ canDisaffiliate: boolean; message: string | null }> {
+    return this._http
+      .get<{ canDisaffiliate: boolean; message: string | null }>(
+        `${environment.urlBD}/disaffiliations/eligibility/${affiliationId}`,
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError(this.handleError));
+  }
+
+  /** Empresas del afiliado desde su última activación (la vigente viene con current: true). */
+  getDisaffiliationCompanies(
+    affiliationId: number,
+  ): Observable<Array<{ id: number; name: string; from: string; to: string | null; current: boolean }>> {
+    return this._http
+      .get<Array<{ id: number; name: string; from: string; to: string | null; current: boolean }>>(
+        `${environment.urlBD}/disaffiliations/companies/${affiliationId}`,
+        { headers: this.getHeaders() },
+      )
+      .pipe(catchError(this.handleError));
   }
 
   createDisaffiliationRequest(
     affiliationId: number,
     companyId: number | undefined,
     reasonId: number,
+    subReasonId: number | undefined,
     observation?: string,
   ): Observable<any> {
     return this._http
       .post(
         `${environment.urlBD}/disaffiliations`,
-        { affiliationId, companyId, reasonId, observation },
+        { affiliationId, companyId, reasonId, subReasonId, observation },
         { headers: this.getHeaders() },
       )
       .pipe(catchError(this.handleError));

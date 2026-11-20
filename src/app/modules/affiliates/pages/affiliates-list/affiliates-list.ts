@@ -57,6 +57,7 @@ export class AffiliatesListComponent implements OnInit {
   filterAffiliateType = '';
   filterCompanyId = '';
   filterEpsId = '';
+  filterGrouperId = '';
   filterIsActive = '';
   filterGrupo = '';
   filterEntryDateFrom = '';
@@ -64,10 +65,11 @@ export class AffiliatesListComponent implements OnInit {
   filterPaymentStatus = '';
   advisorOptions = signal<SelectOption[]>([]);
   fidelizadorOptions = signal<SelectOption[]>([]);
-  // Empresa y EPS se eligen del catálogo y viajan por id, así que el `value` de
-  // cada opción es el id (no el nombre, como en Asesor o Fidelización).
+  // Empresa, EPS y Agrupadora se eligen del catálogo y viajan por id, así que el
+  // `value` de cada opción es el id (no el nombre, como en Asesor o Fidelización).
   companyOptions = signal<SelectOption[]>([]);
   epsOptions = signal<SelectOption[]>([]);
+  grouperOptions = signal<SelectOption[]>([]);
   // id numérico de cada fidelizador por nombre (el filtro viaja al backend
   // por nombre, igual que Asesor, pero la cascada necesita el id para pedir
   // GET /advisors/dropdown?fidelizadorId=).
@@ -90,7 +92,9 @@ export class AffiliatesListComponent implements OnInit {
   selectedAffiliate = signal<AffiliateMember | null>(null);
 
   // ── Siigo ─────────────────────────────────────────────────────────
-  syncingSiigoId = signal<number | null>(null);  sendingEmailId = signal<number | null>(null);
+  syncingSiigoId = signal<number | null>(null);
+  // "<affiliationId>-<certField>" mientras se guarda un certificado marcado a mano.
+  updatingCertKey = signal<string | null>(null);  sendingEmailId = signal<number | null>(null);
   // ── Dropdown acciones ─────────────────────────────────────────────
   openDropdownId = signal<string | null>(null);
   dropdownPos = signal<{ top: number | null; bottom: number | null; left: number; maxHeight: number }>({
@@ -171,6 +175,7 @@ export class AffiliatesListComponent implements OnInit {
       affiliateType: (this.filterAffiliateType === 'INDEPENDIENTE' || this.filterAffiliateType === 'DEPENDIENTE') ? this.filterAffiliateType : undefined,
       companyId: this.filterCompanyId ? Number(this.filterCompanyId) : undefined,
       epsId: this.filterEpsId ? Number(this.filterEpsId) : undefined,
+      grouperId: this.filterGrouperId ? Number(this.filterGrouperId) : undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,
@@ -216,6 +221,9 @@ export class AffiliatesListComponent implements OnInit {
     this._service.getEpsList().subscribe((list) => {
       this.epsOptions.set(list.map((e) => ({ value: String(e.id), label: e.name })));
     });
+    this._service.getGroupers().subscribe((list) => {
+      this.grouperOptions.set(list.map((g) => ({ value: String(g.id), label: g.name })));
+    });
     this._service.getDepartments().subscribe((list: Department[]) => {
       this.departmentNameByCode = new Map(list.map((d) => [d.code, d.name]));
     });
@@ -258,6 +266,7 @@ export class AffiliatesListComponent implements OnInit {
     this.filterAffiliateType = '';
     this.filterCompanyId = '';
     this.filterEpsId = '';
+    this.filterGrouperId = '';
     this.filterIsActive = '';
     this.filterGrupo = '';
     this.filterEntryDateFrom = '';
@@ -271,7 +280,7 @@ export class AffiliatesListComponent implements OnInit {
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterFidelizador || this.filterAffiliateType || this.filterCompanyId || this.filterEpsId || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
+    return !!(this.filterName || this.filterCedula || this.filterReference || this.filterAdvisor || this.filterFidelizador || this.filterAffiliateType || this.filterCompanyId || this.filterEpsId || this.filterGrouperId || this.filterIsActive || this.filterGrupo || this.filterEntryDateFrom || this.filterEntryDateTo || this.filterPaymentStatus);
   }
 
   // ── Paginación ────────────────────────────────────────────────────
@@ -407,8 +416,25 @@ export class AffiliatesListComponent implements OnInit {
 
   openDisaffiliationModal(affiliate: AffiliateMember): void {
     if (!this._permission.check('disaffiliate', undefined, 'Tu rol no tiene permiso para desafiliar afiliados.')) return;
-    this.selectedAffiliate.set(affiliate);
-    this.showDisaffiliationModal.set(true);
+
+    const show = () => {
+      this.selectedAffiliate.set(affiliate);
+      this.showDisaffiliationModal.set(true);
+    };
+
+    // Se valida antes de abrir el modal para no hacer llenar el formulario en
+    // vano. Si la consulta falla se abre igual: el backend vuelve a validar al
+    // registrar la solicitud.
+    this._service.getDisaffiliationEligibility(Number(affiliate.id)).subscribe({
+      next: ({ canDisaffiliate, message }) => {
+        if (canDisaffiliate) {
+          show();
+        } else {
+          this._toast.showWarning(message ?? 'Este afiliado no se puede desafiliar por ahora.', 10000);
+        }
+      },
+      error: () => show(),
+    });
   }
 
   /** El botón "Desafiliar afiliado" solo se muestra si el rol tiene el permiso dedicado. */
@@ -477,6 +503,7 @@ export class AffiliatesListComponent implements OnInit {
       affiliateType: (this.filterAffiliateType === 'INDEPENDIENTE' || this.filterAffiliateType === 'DEPENDIENTE') ? this.filterAffiliateType : undefined,
       companyId: this.filterCompanyId ? Number(this.filterCompanyId) : undefined,
       epsId: this.filterEpsId ? Number(this.filterEpsId) : undefined,
+      grouperId: this.filterGrouperId ? Number(this.filterGrouperId) : undefined,
       isActive: this.filterIsActive === '' ? undefined : this.filterIsActive === 'true',
       grupo: this.filterGrupo || undefined,
       entryDateFrom: this.filterEntryDateFrom || undefined,
@@ -565,6 +592,44 @@ export class AffiliatesListComponent implements OnInit {
 
   planHasPension(affiliate: AffiliateMember): boolean {
     return this.planIncludes(affiliate, 'AFP');
+  }
+
+  /**
+   * Clic en el punto de certificado: lo marca como enviado (verde) o no
+   * enviado (rojo), para envíos hechos por fuera del flujo de cargue.
+   */
+  toggleCertStatus(
+    affiliate: AffiliateMember,
+    field: 'certEps' | 'certArl' | 'certCcf' | 'certPension',
+    label: string,
+  ): void {
+    if (!this._permission.check('edit', undefined, 'Tu rol no tiene permiso para marcar certificados como enviados.')) {
+      return;
+    }
+    const affiliationId = Number(affiliate.id);
+    const key = `${affiliationId}-${field}`;
+    if (!affiliationId || this.updatingCertKey() !== null) return;
+
+    const sent = !affiliate[field];
+    const question = sent
+      ? `¿Marcar el certificado ${label} de ${affiliate.fullName} como ENVIADO por WhatsApp?`
+      : `¿Marcar el certificado ${label} de ${affiliate.fullName} como NO enviado?`;
+    if (!window.confirm(question)) return;
+
+    this.updatingCertKey.set(key);
+    this._service.updateCertStatus(affiliationId, field, sent).subscribe({
+      next: () => {
+        this.affiliates.update((list) =>
+          list.map((a) => (a.id === affiliate.id ? { ...a, [field]: sent } : a)),
+        );
+        this._toast.showSuccess(sent ? `Certificado ${label} marcado como enviado` : `Certificado ${label} marcado como no enviado`);
+        this.updatingCertKey.set(null);
+      },
+      error: (err) => {
+        this._toast.showError(err.message ?? 'No se pudo actualizar el certificado');
+        this.updatingCertKey.set(null);
+      },
+    });
   }
 
   goToDocumentUploads(): void {

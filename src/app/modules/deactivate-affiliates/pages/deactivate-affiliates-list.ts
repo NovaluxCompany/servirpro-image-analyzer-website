@@ -202,6 +202,12 @@ export class DeactivateAffiliatesList implements OnInit {
   protected readonly isLoadingTransactions = signal(false);
   protected readonly transactionsError = signal<string | null>(null);
   protected readonly affiliateTransactions = signal<AffiliateTransactionRow[]>([]);
+  // En la fila expandida solo se listan los pagos que faltan por aprobar: al
+  // aprobar uno, toggleTransactionApproved lo marca isApproved = true y sale
+  // de esta lista, así quedan a la vista únicamente los pendientes.
+  protected readonly pendingAffiliateTransactions = computed(() =>
+    this.affiliateTransactions().filter((tx) => !tx.isApproved),
+  );
 
   protected readonly showResultsModal = signal(false);
   protected readonly deactivationResult = signal<DeactivateAffiliatesResponse | null>(null);
@@ -545,7 +551,13 @@ export class DeactivateAffiliatesList implements OnInit {
         this.isDisaffiliatingAll.set(false);
         this._toastService.showSuccess(response.message || 'Afiliados desafiliados exitosamente.');
         if (response.failed?.length) {
-          this._toastService.showError(`${response.failed.length} solicitud(es) no pudieron procesarse.`);
+          // El motivo importa: una solicitud puede quedar frenada por el bloqueo
+          // del mes de creación tras el envío por WhatsApp, y hay que decir hasta cuándo.
+          const [first] = response.failed;
+          this._toastService.showError(
+            `${response.failed.length} solicitud(es) no pudieron procesarse. ${first.name}: ${first.reason}`,
+            10000,
+          );
         }
         this.loadPendingDisaffiliations();
       },

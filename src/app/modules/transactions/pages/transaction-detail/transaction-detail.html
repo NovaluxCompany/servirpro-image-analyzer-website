@@ -284,8 +284,23 @@
                   <img
                     [src]="image"
                     [alt]="'Comprobante ' + ($index + 1)"
+                    (load)="onImageLoaded(image)"
+                    (error)="onImageFailed(image)"
                     class="object-cover w-full h-32 group-hover:scale-110 transition-transform"
                   >
+                  @if (isImageLoading(image)) {
+                    <div class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-100" role="status" aria-label="Cargando comprobante">
+                      <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span class="mt-2 text-xs font-medium text-gray-600">Cargando...</span>
+                    </div>
+                  } @else if (failedImages().has(image)) {
+                    <div class="absolute inset-0 z-10 flex flex-col items-center justify-center px-2 bg-gray-100 text-center">
+                      <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                      </svg>
+                      <span class="mt-1 text-xs font-medium text-gray-600">No se pudo cargar</span>
+                    </div>
+                  }
                   <div class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors">
                     <svg class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -318,9 +333,22 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
+      @if (!modalImageLoaded() && !modalImageFailed()) {
+        <div class="flex flex-col items-center justify-center w-64 h-64" role="status" aria-label="Cargando comprobante">
+          <div class="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+          <p class="mt-4 text-sm font-medium text-white">Cargando comprobante...</p>
+        </div>
+      } @else if (modalImageFailed()) {
+        <div class="flex flex-col items-center justify-center w-64 h-64 text-center">
+          <p class="text-sm font-medium text-white">No se pudo cargar el comprobante.</p>
+        </div>
+      }
       <img
         [src]="selectedImageUrl()!"
         alt="Comprobante ampliado"
+        (load)="modalImageLoaded.set(true)"
+        (error)="modalImageFailed.set(true)"
+        [class.hidden]="!modalImageLoaded()"
         class="max-w-full max-h-[90vh] rounded-lg"
         (click)="$event.stopPropagation()"
       >

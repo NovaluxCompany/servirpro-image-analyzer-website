@@ -275,20 +275,14 @@ export class DeactivateAffiliatesService {
           map((payload): AffiliateTransactionRow[] => this.extractTransactionRows(payload).map((row) => this.normalizeTransactionRow(row))),
         );
 
-    const attempts: Array<{ key: string; value: string }> = [
-      { key: 'idNumber', value: rawDocument },
-      { key: 'document', value: rawDocument },
-      { key: 'document_number', value: rawDocument },
-      { key: 'id_number', value: rawDocument },
-    ];
+    // `idNumber` es el único filtro por documento que acepta GET /transactions:
+    // cualquier otro nombre de parámetro el backend lo rechaza con 400
+    // (ValidationPipe con forbidNonWhitelisted), y ese 400 se mostraba como
+    // error cuando el afiliado simplemente no tenía pagos.
+    const attempts: Array<{ key: string; value: string }> = [{ key: 'idNumber', value: rawDocument }];
 
     if (normalizedDocument && normalizedDocument !== rawDocument) {
-      attempts.push(
-        { key: 'idNumber', value: normalizedDocument },
-        { key: 'document', value: normalizedDocument },
-        { key: 'document_number', value: normalizedDocument },
-        { key: 'id_number', value: normalizedDocument },
-      );
+      attempts.push({ key: 'idNumber', value: normalizedDocument });
     }
 
     const uniqueAttempts = attempts.filter(

@@ -1,10 +1,17 @@
-import { Component, inject, input, output, signal, OnInit } from '@angular/core';
+import { Component, effect, inject, input, output, signal, untracked, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AffiliateMembersService } from '../../services/affiliate-members.service';
 import { ToastService } from '../../../../core/service/toast.service';
 import { AffiliateMember } from '../../interfaces/affiliate-member.interface';
-import { Company } from '../../interfaces/catalog.interface';
+interface CycleCompany {
+  id: number;
+  name: string;
+  from: string;
+  to: string | null;
+  current: boolean;
+}
+import { DisaffiliationReason } from '../../../deactivate-affiliates/interfaces/disaffiliation.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
 
 @Component({
@@ -27,22 +34,79 @@ export class AffiliateDisaffiliationModalComponent implements OnInit {
   observation = '';
   reasonId: number | null = null;
   showReasonError = false;
+  subReasonId: number | null = null;
+  showSubReasonError = false;
   companyId: string | null = null;
-  companies: Company[] = [];
+  /**
+   * Solo las empresas del afiliado desde su última activación, no todo el
+   * catálogo (GET /disaffiliations/companies/:id, mismo cálculo que la consulta
+   * por cédula de la aplicación externa). La vigente viene marcada `current`.
+   */
+  companies = signal<CycleCompany[]>([]);
+  isLoadingCompanies = signal(false);
 
-  // Viene de disaffiliation_reasons (Retiro x 1 días / Retiro x 30 días):
-  // agregar un motivo nuevo es un INSERT en esa tabla, no un deploy de este archivo.
-  reasonOptions: { value: number; label: string }[] = [];
+  // Viene de disaffiliation_reasons (Retiro x 1 días / Retiro x 30 días), cada
+  // motivo con sus submotivos (disaffiliation_sub_reasons): agregar uno es un
+  // INSERT en esas tablas, no un deploy de este archivo.
+  reasons: DisaffiliationReason[] = [];
+
+  constructor() {
+    // Se recarga cada vez que se abre para un afiliado: el modal es el mismo
+    // componente para todos y cada uno tiene su propio historial.
+    effect(() => {
+      const affiliationId = this.isVisible() ? Number(this.affiliate()?.id) : null;
+      untracked(() => (affiliationId ? this.loadCompanies(affiliationId) : this.companies.set([])));
+    });
+  }
 
   ngOnInit(): void {
-    this._service.getDisaffiliationReasons().subscribe((reasons) => {
-      this.reasonOptions = reasons.map((r) => ({ value: r.id, label: r.label }));
+    this._service.getDisaffiliationReasons().subscribe((reasons) => (this.reasons = reasons));
+  }
+
+  private loadCompanies(affiliationId: number): void {
+    this.isLoadingCompanies.set(true);
+    this.companies.set([]);
+    this.companyId = null;
+    this._service.getDisaffiliationCompanies(affiliationId).subscribe({
+      next: (companies) => {
+        this.companies.set(companies);
+        // Se preselecciona la empresa vigente; si cambió de empresa en el
+        // ciclo, la persona puede escoger otra de la lista.
+        const current = companies.find((c) => c.current) ?? (companies.length === 1 ? companies[0] : null);
+        this.companyId = current ? String(current.id) : null;
+        this.isLoadingCompanies.set(false);
+      },
+      error: (err) => {
+        this.isLoadingCompanies.set(false);
+        this._toast.showError(err.message ?? 'No se pudieron cargar las empresas del afiliado.');
+      },
     });
-    this._service.getCompanies().subscribe((companies) => (this.companies = companies));
+  }
+
+  /** Submotivos del motivo escogido; vacío mientras no haya motivo. */
+  get subReasonOptions(): { value: number; label: string }[] {
+    const reason = this.reasons.find((r) => r.id === Number(this.reasonId));
+    return (reason?.subReasons ?? []).map((s) => ({ value: s.id, label: s.label }));
+  }
+
+  onReasonChange(): void {
+    this.showReasonError = false;
+    // Cada motivo tiene su propia lista: el submotivo anterior ya no aplica.
+    this.subReasonId = null;
+    this.showSubReasonError = false;
   }
 
   get companyOptions(): SelectOption[] {
-    return this.companies.map((c) => ({ value: String(c.id), label: c.name }));
+    return this.companies().map((c) => ({
+      value: String(c.id),
+      label: `${c.name} (${c.current ? 'actual, ' : ''}desde ${this.formatDate(c.from)}${c.to ? ` hasta ${this.formatDate(c.to)}` : ''})`,
+    }));
+  }
+
+  /** "2026-10-13T08:00:00-05:00" → "13/10/2026". Viene ya en hora Colombia. */
+  private formatDate(value: string): string {
+    const [year, month, day] = (value ?? '').slice(0, 10).split('-');
+    return year && month && day ? `${day}/${month}/${year}` : value;
   }
 
   get confirmMessage(): string {
@@ -60,13 +124,19 @@ export class AffiliateDisaffiliationModalComponent implements OnInit {
       this._toast.showError('Selecciona el motivo de la desafiliación antes de continuar.');
       return;
     }
+    if (this.subReasonOptions.length > 0 && !this.subReasonId) {
+      this.showSubReasonError = true;
+      this._toast.showError('Selecciona el submotivo de la desafiliación antes de continuar.');
+      return;
+    }
 
     this.isLoading.set(true);
     this._service
       .createDisaffiliationRequest(
         Number(a.id),
         this.companyId ? Number(this.companyId) : undefined,
-        this.reasonId,
+        Number(this.reasonId),
+        this.subReasonId ? Number(this.subReasonId) : undefined,
         this.observation,
       )
       .subscribe({
@@ -91,7 +161,9 @@ export class AffiliateDisaffiliationModalComponent implements OnInit {
   private resetForm(): void {
     this.observation = '';
     this.reasonId = null;
+    this.subReasonId = null;
     this.companyId = null;
     this.showReasonError = false;
+    this.showSubReasonError = false;
   }
 }

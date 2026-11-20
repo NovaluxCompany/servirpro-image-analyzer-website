@@ -78,3 +78,12 @@ body {
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
   background-color: rgb(255 255 255 / 0.5);
 }
+
+/* Menú contraído: sin barra visible, pero el contenido sigue siendo scrolleable. */
+.sidebar-scroll--hidden {
+  scrollbar-width: none;
+}
+
+.sidebar-scroll--hidden::-webkit-scrollbar {
+  display: none;
+}

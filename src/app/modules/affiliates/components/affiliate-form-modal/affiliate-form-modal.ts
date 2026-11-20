@@ -195,7 +195,8 @@ export class AffiliateFormModalComponent implements OnInit {
     isActive: [true],
     discount: [<number | null>null],
     affiliateType: ['DEPENDIENTE', Validators.required],
-    isNew: [false],
+    // Oculto en el formulario: todo afiliado creado (incluido Reingreso) nace como nuevo.
+    isNew: [true],
     // Obligatorio solo VISUALMENTE (el label mantiene el "*" en el HTML):
     // forzarlo con Validators.required bloqueaba crear/editar afiliados a
     // los que no se les puede asignar un origen. La fecha de origen sigue
@@ -854,8 +855,11 @@ export class AffiliateFormModalComponent implements OnInit {
   }
 
   private static readonly ALLOWED_FILE_TYPES = ['application/pdf'];
+  // Espejo de UPLOAD_LIMITS.affiliateDocuments en el backend
+  // (common/upload-limits.interceptor.ts): cambiar los dos a la vez.
   private static readonly MAX_FILE_SIZE_MB = 10;
-  private static readonly MAX_FILES = 100;
+  private static readonly MAX_FILES = 10;
+  private static readonly MAX_TOTAL_SIZE_MB = 30;
 
   private updateDocumentFileControl(): void {
     const value = this.selectedFiles.length > 0 ? this.selectedFiles.map((f) => f.name).join(', ') : null;
@@ -885,6 +889,16 @@ export class AffiliateFormModalComponent implements OnInit {
         event.target.value = '';
         return;
       }
+    }
+
+    const totalBytes = [...this.selectedFiles, ...files].reduce((sum, file) => sum + file.size, 0);
+    if (totalBytes > AffiliateFormModalComponent.MAX_TOTAL_SIZE_MB * 1024 * 1024) {
+      const totalMb = (totalBytes / (1024 * 1024)).toFixed(1);
+      this.fileError.set(
+        `Los archivos suman ${totalMb} MB y el máximo por envío es ${AffiliateFormModalComponent.MAX_TOTAL_SIZE_MB} MB. Comprime alguno o súbelos en otro momento.`,
+      );
+      event.target.value = '';
+      return;
     }
 
     this.selectedFiles = [...this.selectedFiles, ...files];
@@ -1061,8 +1075,8 @@ export class AffiliateFormModalComponent implements OnInit {
         certPension: raw.certPension ?? false,
         certCcf: raw.certCcf ?? false,
       } : {
-        // isNew solo se captura al crear; en edición no se envía (el backend tampoco lo acepta)
-        isNew: raw.isNew ?? false,
+        // isNew solo se envía al crear (siempre true); en edición no se envía (el backend tampoco lo acepta)
+        isNew: true,
       }),
     };
 

@@ -1,7 +1,15 @@
+export interface DisaffiliationSubReason {
+  id: number;
+  code: string;
+  label: string;
+}
+
 export interface DisaffiliationReason {
   id: number;
   code: string;
   label: string;
+  /** Submotivos del segundo desplegable; si trae alguno, escoger uno es obligatorio. */
+  subReasons: DisaffiliationSubReason[];
 }
 
 export interface DisaffiliationFilters {
@@ -23,6 +31,8 @@ export interface PendingDisaffiliationRow {
   plan: string;
   affiliateType: 'INDEPENDIENTE' | 'DEPENDIENTE';
   reasonLabel: string;
+  /** null en las solicitudes anteriores a los submotivos. */
+  subReasonLabel: string | null;
   observation: string | null;
   requestedAt: string;
   requestedByName: string | null;
@@ -42,6 +52,7 @@ export interface DisaffiliationHistoryRow {
   status: 'PENDING' | 'CONFIRMED' | 'REJECTED';
   company: string;
   reasonLabel: string;
+  subReasonLabel: string | null;
   observation: string | null;
   requestedAt: string;
   requestedByName: string | null;

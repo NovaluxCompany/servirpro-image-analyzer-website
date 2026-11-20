@@ -2,11 +2,13 @@
   <div class="max-w-full mx-auto">
 
     <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-gray-900">Métricas</h1>
-      <p class="mt-1 text-sm text-gray-500">
-        Transacciones aprobadas. El filtro general aplica a todos los gráficos; haz clic en un gráfico para verlo en detalle con sus propios filtros.
-      </p>
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Métricas</h1>
+        <p class="mt-1 text-sm text-gray-500">
+          Transacciones aprobadas. El filtro general aplica a todos los gráficos; haz clic en un gráfico para verlo en detalle con sus propios filtros.
+        </p>
+      </div>
     </div>
 
     @if (options() && filters()) {
@@ -24,7 +26,7 @@
     <!-- Gráficos -->
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
       @for (chart of charts; track chart.key) {
-      <section class="flex flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <section #card [attr.data-chart-key]="chart.key" class="flex flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
         <header class="border-b border-gray-100 px-5 py-4">
           <button type="button" (click)="openDetail(chart)" class="group flex w-full items-start gap-3 text-left">
             <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-sm font-bold text-blue-800">{{ chart.number }}</span>
@@ -44,18 +46,23 @@
           </p>
         </header>
 
-        <div class="flex-1 cursor-pointer px-5 py-4 transition-opacity" [class.opacity-50]="state(chart.key)?.loading && state(chart.key)?.data"
-          (click)="openDetail(chart)" title="Ver detalle">
+        <div class="relative flex-1 px-5 py-4" [class.cursor-pointer]="!isBlocked(chart)" (click)="openDetail(chart)"
+          [attr.title]="isBlocked(chart) ? null : 'Ver detalle'">
           @if (state(chart.key); as s) {
-          @if (s.error) {
+          @if (s.error && !s.loading) {
           <p class="py-10 text-center text-sm text-red-600">{{ s.error }}</p>
           } @else if (s.data) {
-          <app-metric-chart-view [chartKey]="chart.key" [data]="s.data" [originCatalogIds]="originCatalogIds()" />
-          } @else {
-          <div class="h-60 animate-pulse rounded-lg bg-gray-100"></div>
+          <div class="transition-opacity" [class.opacity-40]="s.loading || s.pending">
+            <app-metric-chart-view [chartKey]="chart.key" [data]="s.data" [originCatalogIds]="originCatalogIds()" />
+          </div>
+          @if (s.loading || s.pending) {
+          <app-metrics-loading-spinner [overlay]="true" label="Actualizando gráfico..." />
           }
           } @else {
-          <div class="h-60 animate-pulse rounded-lg bg-gray-100"></div>
+          <app-metrics-loading-spinner />
+          }
+          } @else {
+          <app-metrics-loading-spinner />
           }
         </div>
 
@@ -66,18 +73,6 @@
         }
       </section>
 
-      @if (chart.number === '4B') {
-      <!-- Gráfico 5: pendiente de definición (a pedido del cliente no se construye aún) -->
-      <section class="flex flex-col rounded-2xl border border-dashed border-gray-300 bg-white/60 px-5 py-4">
-        <div class="flex items-start gap-3">
-          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-bold text-gray-500">5</span>
-          <div>
-            <p class="text-base font-semibold text-gray-500">Mensualidad / Reingreso / Retiro por fidelizador</p>
-            <p class="mt-0.5 text-xs text-gray-500">Pendiente: este gráfico queda para una siguiente fase.</p>
-          </div>
-        </div>
-      </section>
-      }
       }
     </div>
   </div>
