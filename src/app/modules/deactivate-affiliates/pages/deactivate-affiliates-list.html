@@ -487,10 +487,10 @@
                       <tr><td colspan="11" class="px-4 py-10 text-center text-gray-500">Cargando transacciones...</td></tr>
                       } @else if (affiliateTransactions().length === 0) {
                       <tr><td colspan="11" class="px-4 py-10 text-center text-gray-500">No hay transacciones activas para este afiliado.</td></tr>
-                      } @else if (pendingAffiliateTransactions().length === 0) {
-                      <tr><td colspan="11" class="px-4 py-10 text-center text-green-700">Todos los pagos de este afiliado ya están aprobados.</td></tr>
+                      } @else if (pendingTransactions().length === 0) {
+                      <tr><td colspan="11" class="px-4 py-10 text-center text-gray-500">Todos los pagos de este afiliado ya están aprobados.</td></tr>
                       } @else {
-                      @for (tx of pendingAffiliateTransactions(); track trackByTransactionId($index, tx)) {
+                      @for (tx of pendingTransactions(); track trackByTransactionId($index, tx)) {
                       <tr>
                         <!-- Botón aprobar transacción -->
                         <td class="px-4 py-3 whitespace-nowrap text-center">

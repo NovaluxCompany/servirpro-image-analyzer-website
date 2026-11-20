@@ -54,9 +54,18 @@
 
         <div class="mt-3">
           <label class="block mb-1 text-xs font-medium text-gray-600">Empresa</label>
-          <app-searchable-select [options]="companyOptions" [(ngModel)]="companyId"
-            placeholder="Seleccionar empresa...">
-          </app-searchable-select>
+          @if (isLoadingCompanies()) {
+            <p class="px-3 py-2 text-sm text-gray-400 border border-gray-200 rounded-lg">Cargando empresas del afiliado...</p>
+          } @else if (companyOptions.length === 0) {
+            <p class="px-3 py-2 text-sm text-gray-500 border border-gray-200 rounded-lg">
+              El afiliado no tiene empresas registradas desde su última activación.
+            </p>
+          } @else {
+            <app-searchable-select [options]="companyOptions" [(ngModel)]="companyId"
+              placeholder="Seleccionar empresa...">
+            </app-searchable-select>
+            <p class="mt-1 text-xs text-gray-400">Empresas que ha tenido el afiliado desde su última activación.</p>
+          }
         </div>
 
         <div class="mt-3">

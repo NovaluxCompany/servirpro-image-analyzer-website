@@ -221,6 +221,15 @@ export class UpdateCompanyList implements OnInit {
       this._toast.showError('Formato de archivo inválido. Solo se admiten archivos .xlsx');
       return;
     }
+    // Mismo tope que el backend (UPLOAD_LIMITS.updateCompanyExcel). El de
+    // 1.000 filas lo valida el backend al leer el archivo y llega como error
+    // de pre-validación.
+    if (file.size > 1024 * 1024) {
+      this._toast.showError(
+        `El archivo pesa ${(file.size / (1024 * 1024)).toFixed(1)} MB y el máximo es 1 MB. Divídelo en archivos de hasta 1.000 filas.`,
+      );
+      return;
+    }
 
     this.selectedFile.set(file);
     this.validationResult.set(null);
