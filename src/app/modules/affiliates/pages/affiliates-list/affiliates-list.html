@@ -547,10 +547,8 @@
               <td class="px-4 py-3 whitespace-nowrap">
   @if (planHasEps(affiliate) && affiliate.epsName && affiliate.epsName !== 'N/A') {
     <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
-      <button type="button" class="w-2.5 h-2.5 rounded-full cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 disabled:opacity-50 disabled:cursor-wait" [class.bg-green-500]="affiliate.certEps" [class.bg-red-400]="!affiliate.certEps"
-        [disabled]="updatingCertKey() !== null"
-        (click)="$event.stopPropagation(); toggleCertStatus(affiliate, 'certEps', 'EPS')"
-        [title]="(affiliate.certEps ? 'Certificado EPS enviado por WhatsApp' : 'Certificado EPS no enviado por WhatsApp') + ' — clic para cambiar'"></button>
+      <span class="w-2.5 h-2.5 rounded-full" [class.bg-green-500]="affiliate.certEps" [class.bg-red-400]="!affiliate.certEps"
+        [title]="(affiliate.certEps ? 'Certificado EPS enviado por WhatsApp' : 'Certificado EPS no enviado por WhatsApp')"></span>
       {{ affiliate.epsName }}
     </span>
   } @else {
@@ -567,10 +565,8 @@
               <td class="px-4 py-3 whitespace-nowrap">
                 @if (planHasArl(affiliate)) {
                   <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
-                    <button type="button" class="w-2.5 h-2.5 rounded-full cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 disabled:opacity-50 disabled:cursor-wait" [class.bg-green-500]="affiliate.certArl" [class.bg-red-400]="!affiliate.certArl"
-                      [disabled]="updatingCertKey() !== null"
-                      (click)="$event.stopPropagation(); toggleCertStatus(affiliate, 'certArl', 'ARL')"
-                      [title]="(affiliate.certArl ? 'Certificado ARL enviado por WhatsApp' : 'Certificado ARL no enviado por WhatsApp') + ' — clic para cambiar'"></button>
+                    <span class="w-2.5 h-2.5 rounded-full" [class.bg-green-500]="affiliate.certArl" [class.bg-red-400]="!affiliate.certArl"
+        [title]="(affiliate.certArl ? 'Certificado ARL enviado por WhatsApp' : 'Certificado ARL no enviado por WhatsApp')"></span>
                     ARL {{ affiliate.arl }}
                   </span>
                 } @else {
@@ -582,10 +578,8 @@
               <td class="px-4 py-3 whitespace-nowrap">
                 @if (planHasCcf(affiliate) && affiliate.compensationBoxName && affiliate.compensationBoxName !== '-' && affiliate.compensationBoxName !== 'N/A') {
                   <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
-                    <button type="button" class="w-2.5 h-2.5 rounded-full cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 disabled:opacity-50 disabled:cursor-wait" [class.bg-green-500]="affiliate.certCcf" [class.bg-red-400]="!affiliate.certCcf"
-                      [disabled]="updatingCertKey() !== null"
-                      (click)="$event.stopPropagation(); toggleCertStatus(affiliate, 'certCcf', 'CCF')"
-                      [title]="(affiliate.certCcf ? 'Certificado CCF enviado por WhatsApp' : 'Certificado CCF no enviado por WhatsApp') + ' — clic para cambiar'"></button>
+                    <span class="w-2.5 h-2.5 rounded-full" [class.bg-green-500]="affiliate.certCcf" [class.bg-red-400]="!affiliate.certCcf"
+        [title]="(affiliate.certCcf ? 'Certificado CCF enviado por WhatsApp' : 'Certificado CCF no enviado por WhatsApp')"></span>
                     {{ affiliate.compensationBoxName }}
                   </span>
                 } @else {
@@ -597,10 +591,8 @@
               <td class="px-4 py-3 whitespace-nowrap">
                 @if (planHasPension(affiliate) && affiliate.pensionName && affiliate.pensionName !== '-' && affiliate.pensionName !== 'N/A') {
                   <span class="inline-flex items-center gap-1 text-gray-700 whitespace-nowrap">
-                    <button type="button" class="w-2.5 h-2.5 rounded-full cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 disabled:opacity-50 disabled:cursor-wait" [class.bg-green-500]="affiliate.certPension" [class.bg-red-400]="!affiliate.certPension"
-                      [disabled]="updatingCertKey() !== null"
-                      (click)="$event.stopPropagation(); toggleCertStatus(affiliate, 'certPension', 'Pensión')"
-                      [title]="(affiliate.certPension ? 'Certificado Pensión enviado por WhatsApp' : 'Certificado Pensión no enviado por WhatsApp') + ' — clic para cambiar'"></button>
+                    <span class="w-2.5 h-2.5 rounded-full" [class.bg-green-500]="affiliate.certPension" [class.bg-red-400]="!affiliate.certPension"
+        [title]="(affiliate.certPension ? 'Certificado Pensión enviado por WhatsApp' : 'Certificado Pensión no enviado por WhatsApp')"></span>
                     {{ affiliate.pensionName }}
                   </span>
                 } @else {

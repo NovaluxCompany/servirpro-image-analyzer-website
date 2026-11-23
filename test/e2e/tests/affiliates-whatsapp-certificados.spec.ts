@@ -26,19 +26,19 @@ test.use({ storageState: authStateFile('Administrador') });
 
 /** Referencias tal como las escribe el negocio -> número que debe quedar. */
 const REFERENCIAS: Array<{ referencia: string; esperado: string; porQue: string }> = [
-  { referencia: 'MARIA GOMEZ 3001234567', esperado: '573001234567', porQue: 'nombre + celular' },
-  { referencia: '573001234567 - JUAN', esperado: '573001234567', porQue: 'ya trae indicativo' },
-  { referencia: '+57 300 123 4567', esperado: '573001234567', porQue: 'partido por espacios y +' },
+  { referencia: 'MARIA GOMEZ 3001234567', esperado: '3001234567', porQue: 'nombre + celular' },
+  { referencia: '573001234567 - JUAN', esperado: '3001234567', porQue: 'ya trae indicativo' },
+  { referencia: '+57 300 123 4567', esperado: '3001234567', porQue: 'partido por espacios y +' },
   {
     referencia: 'GRUPO 2023 - 3001234567',
-    esperado: '573001234567',
+    esperado: '3001234567',
     porQue: 'otro número en la referencia no se mezcla con el celular',
   },
   { referencia: 'SIN NUMERO', esperado: '', porQue: 'sin celular no se inventa nada' },
 ];
 
 test.describe('Afiliados — WhatsApp de certificados sale de la referencia', () => {
-  test('la referencia deja en el campo solo el número, con indicativo', async ({ page }) => {
+  test('la referencia deja en el campo solo el número local (el indicativo va en el desplegable)', async ({ page }) => {
     const affiliatesPage = new AffiliatesPage(page);
     await affiliatesPage.goto();
     await affiliatesPage.openCreateModal();
@@ -62,13 +62,13 @@ test.describe('Afiliados — WhatsApp de certificados sale de la referencia', ()
     await affiliatesPage.openCreateModal();
 
     await affiliatesPage.fillReference('MARIA GOMEZ 3001234567');
-    await expect(affiliatesPage.whatsappNumberInput).toHaveValue('573001234567');
+    await expect(affiliatesPage.whatsappNumberInput).toHaveValue('3001234567');
 
     // Corrección manual: de acá en adelante el campo es del usuario.
-    await affiliatesPage.whatsappNumberInput.fill('573009998877');
+    await affiliatesPage.whatsappNumberInput.fill('3009998877');
     await affiliatesPage.fillReference('PEDRO PEREZ 3105554433');
 
-    await expect(affiliatesPage.whatsappNumberInput).toHaveValue('573009998877');
+    await expect(affiliatesPage.whatsappNumberInput).toHaveValue('3009998877');
 
     await page.getByRole('button', { name: 'Cancelar' }).click();
   });
@@ -89,7 +89,7 @@ test.describe('Afiliados — WhatsApp de certificados sale de la referencia', ()
       email: randomEmail(firstName),
       reference: 'PRUEBA E2E 3001234567',
     });
-    await expect(affiliatesPage.whatsappNumberInput).toHaveValue('573001234567');
+    await expect(affiliatesPage.whatsappNumberInput).toHaveValue('3001234567');
 
     await affiliatesPage.openSectionAfiliacion();
     await affiliatesPage.fillAffiliationData();
@@ -100,13 +100,28 @@ test.describe('Afiliados — WhatsApp de certificados sale de la referencia', ()
     await expect(affiliatesPage.rowByName(fullName)).toBeVisible({ timeout: 15_000 });
     await affiliatesPage.openEditForRow(fullName);
 
-    // Viene del backend ya normalizado (solo dígitos, con indicativo).
-    await expect(affiliatesPage.whatsappNumberInput).toHaveValue('573001234567', { timeout: 30_000 });
+    // En BD queda 573001234567; el campo muestra el número local y el 57 va en el desplegable.
+    await expect(affiliatesPage.whatsappNumberInput).toHaveValue('3001234567', { timeout: 30_000 });
 
     // Un número ya guardado cuenta como puesto a mano: cambiar la referencia
     // en edición no lo reemplaza (decisión "solo si está vacío").
     await affiliatesPage.fillReference('OTRA REFERENCIA 3105554433');
-    await expect(affiliatesPage.whatsappNumberInput).toHaveValue('573001234567');
+    await expect(affiliatesPage.whatsappNumberInput).toHaveValue('3001234567');
+
+    await page.getByRole('button', { name: 'Cancelar' }).click();
+  });
+});
+
+test.describe('Afiliados — indicativo del WhatsApp de certificados', () => {
+  test('el desplegable arranca en +57 y permite elegir +58', async ({ page }) => {
+    const affiliatesPage = new AffiliatesPage(page);
+    await affiliatesPage.goto();
+    await affiliatesPage.openCreateModal();
+
+    const indicativo = page.locator('form').locator('select[formcontrolname="whatsappCountryCode"]');
+    await expect(indicativo).toHaveValue('57');
+    await indicativo.selectOption('58');
+    await expect(indicativo).toHaveValue('58');
 
     await page.getByRole('button', { name: 'Cancelar' }).click();
   });
