@@ -31,10 +31,10 @@ export class AffiliatesFormComponent {
   /**
    * Bloqueo global de transacciones (param TRANSACCIONES_BLOQUEADAS, lo prende
    * el Administrador para el cierre de mes). Con el bloqueo encendido solo se
-   * puede pagar a los afiliados INDEPENDIENTE: los demás no se dejan
-   * seleccionar, así el usuario no llena el comprobante entero para que el
-   * backend se lo rechace al final (TransactionsService.create valida lo mismo
-   * contra `affiliations.affiliate_type`, que es la palabra final).
+   * puede pagar a los afiliados INDEPENDIENTE: los demás sí se pueden
+   * seleccionar, pero al quedar seleccionados se muestra el error y el botón
+   * de crear se bloquea (TransactionsService.create valida lo mismo contra
+   * `affiliations.affiliate_type`, que es la palabra final).
    */
   transactionsLocked = input<boolean>(false);
 
@@ -45,15 +45,10 @@ export class AffiliatesFormComponent {
     return this.transactionsLocked() && (affiliate.affiliateType ?? '').toUpperCase() !== 'INDEPENDIENTE';
   }
 
-  private isBlockedIdNumber(idNumber: string): boolean {
-    const affiliate = this.affiliates().find((a) => a.idNumber === idNumber);
-    return !!affiliate && this.isBlockedByLock(affiliate);
-  }
-
   /**
-   * Afiliados ya seleccionados que el bloqueo no permite pagar. Normalmente
-   * está vacío porque no se dejan seleccionar; cubre el caso de que el estado
-   * del bloqueo llegue (es una consulta aparte) después de haber seleccionado.
+   * Afiliados seleccionados que el bloqueo no permite pagar. Si hay alguno se
+   * muestra el error bajo la tabla y la página deja el botón de crear
+   * inhabilitado (ver TransactionCreate.isSubmitBlocked).
    */
   lockedSelectionNames(): string[] {
     return this.getSelectedAffiliates()
@@ -144,8 +139,6 @@ export class AffiliatesFormComponent {
       selected.delete(idNumber);
       this.clearDuplicateWarning(idNumber);
     } else {
-      // Deseleccionar siempre se puede; seleccionar no, si el bloqueo lo veda.
-      if (this.isBlockedIdNumber(idNumber)) return;
       selected.add(idNumber);
       this.checkDuplicateForAffiliate(idNumber);
     }
@@ -183,11 +176,10 @@ export class AffiliatesFormComponent {
   }
 
   selectAll(): void {
-    // "Todos" son todos los que se pueden pagar: con el bloqueo encendido, los
-    // que no son independientes quedan afuera en vez de entrar y romper el envío.
-    const allIds = this.filteredAffiliates()
-      .filter((a) => !this.isBlockedByLock(a))
-      .map((a) => a.idNumber);
+    // Con el bloqueo encendido también entran los que no son independientes:
+    // así aparece el error y el botón de crear se bloquea, igual que al
+    // marcarlos uno por uno.
+    const allIds = this.filteredAffiliates().map((a) => a.idNumber);
     this.selectedAffiliates.set(new Set(allIds));
     allIds.forEach((idNumber) => this.checkDuplicateForAffiliate(idNumber));
     this.affiliatesChanged.emit(this.getSelectedAffiliates());
@@ -223,9 +215,9 @@ export class AffiliatesFormComponent {
     return this.selectedAffiliates().size > 0;
   }
 
-  /** Cuántos de los resultados a la vista puede pagar el bloqueo. */
+  /** Cuántos resultados hay a la vista para seleccionar. */
   selectableCount(): number {
-    return this.filteredAffiliates().filter((a) => !this.isBlockedByLock(a)).length;
+    return this.filteredAffiliates().length;
   }
 
   markAllAsTouched(): void {
