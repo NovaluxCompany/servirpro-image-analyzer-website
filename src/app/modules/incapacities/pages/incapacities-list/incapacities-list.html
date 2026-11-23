@@ -309,9 +309,9 @@
                   </span>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <!-- Pagada si Servirpro la marcó PAGADO o si el tercero ya pagó
-                       (código APROBADO del tercero, que se muestra como "Pagada"). -->
-                  @if (incapacity.servirproStatus.code === 'PAGADO' || incapacity.thirdPartyStatus.code === 'APROBADO') {
+                  <!-- Pagada si Servirpro la marcó PAGADO o si el estado CYA / Gestión
+                       es de pago (código APROBADO, etiqueta "Pagada"; ver isThirdPartyPaid). -->
+                  @if (isPaid(incapacity)) {
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
                       Pagada
                     </span>
@@ -327,7 +327,7 @@
                   }
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="statusClass(incapacity.thirdPartyStatus.code)">
+                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="thirdPartyStatusClass(incapacity)">
                     {{ incapacity.thirdPartyStatus.label }}
                   </span>
                 </td>
