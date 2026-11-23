@@ -528,6 +528,35 @@ export class IncapacitiesListComponent implements OnInit {
     }
   }
 
+  /**
+   * El tercero (CYA / Gestión) ya pagó. El catálogo guarda ese estado con el
+   * código APROBADO y la etiqueta "Pagada" (migración 19), pero si la etiqueta
+   * o el código cambian en BD ("Pago", "PAGADO"...) se sigue reconociendo:
+   * se mira el código y también la etiqueta.
+   */
+  isThirdPartyPaid(incapacity: Incapacity): boolean {
+    const status = incapacity.thirdPartyStatus;
+    const code = (status?.code ?? '').trim().toUpperCase();
+    const label = (status?.label ?? '')
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '');
+    return ['APROBADO', 'PAGADO', 'PAGADA', 'PAGO'].includes(code) || label.startsWith('PAG');
+  }
+
+  /** Pagada por Servirpro (estado interno PAGADO) o por el tercero. */
+  isPaid(incapacity: Incapacity): boolean {
+    return incapacity.servirproStatus?.code === 'PAGADO' || this.isThirdPartyPaid(incapacity);
+  }
+
+  /** Color de la columna "Estado CYA / Gestión": verde cuando el tercero pagó. */
+  thirdPartyStatusClass(incapacity: Incapacity): string {
+    return this.isThirdPartyPaid(incapacity)
+      ? 'bg-emerald-100 text-emerald-700'
+      : this.statusClass(incapacity.thirdPartyStatus?.code);
+  }
+
   affiliateName(incapacity: Incapacity): string {
     return incapacity.affiliation?.client?.fullName?.trim() || '—';
   }

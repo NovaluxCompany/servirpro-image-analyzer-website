@@ -60,6 +60,26 @@ export class AffiliatesFormComponent {
     return this.lockedSelectionNames().length > 0;
   }
 
+  /**
+   * Con el bloqueo encendido, avisa desde la búsqueda que lo encontrado es
+   * dependiente (en vez de dejar que el usuario lo descubra al seleccionarlo).
+   * null si no hay bloqueo o si todos los resultados son independientes.
+   */
+  private dependentSearchMessage(data: Affiliate[]): string | null {
+    const blocked = data.filter((a) => this.isBlockedByLock(a));
+    if (blocked.length === 0) return null;
+
+    const lockReason =
+      'las transacciones están bloqueadas y solo se pueden cargar pagos de afiliados independientes.';
+    if (blocked.length === 1 && data.length === 1) {
+      return `${blocked[0].fullName} es un afiliado dependiente: ${lockReason}`;
+    }
+    const names = blocked.map((a) => a.fullName).join(', ');
+    return blocked.length === data.length
+      ? `Los afiliados encontrados son dependientes (${names}): ${lockReason}`
+      : `Estos afiliados son dependientes y no se pueden cargar (${names}): ${lockReason}`;
+  }
+
   onSearch(): void {
     const { reference, fullName } = this.searchForm.value;
     const searchValue = reference || fullName;
@@ -85,6 +105,8 @@ export class AffiliatesFormComponent {
 
         if (data.length === 0) {
           this.errorMessage.set('No se encontraron afiliados con los criterios de búsqueda');
+        } else {
+          this.errorMessage.set(this.dependentSearchMessage(data));
         }
       },
       error: (error) => {
