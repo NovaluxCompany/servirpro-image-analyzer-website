@@ -7,7 +7,16 @@ import { PermissionService } from '../../../../core/service/permission.service';
 import { AffiliateMember, CreateAffiliateMemberDto } from '../../interfaces/affiliate-member.interface';
 import { Plan, Company, Grouper, Advisor, Fidelizador, EpsItem, Pension, CompensationBox, Branch, Department, CityOption } from '../../interfaces/catalog.interface';
 import { SearchableSelectComponent, SelectOption } from '../../../../shared/components/searchable-select/searchable-select';
-import { extractWhatsappNumber } from '../../utils/whatsapp-number.util';
+import {
+  composeWhatsappNumber,
+  DEFAULT_WHATSAPP_COUNTRY_CODE,
+  extractWhatsappNumber,
+  splitWhatsappNumber,
+  toWhatsappCountryOption,
+  WHATSAPP_COUNTRY_OPTIONS,
+  WhatsappCountryCode,
+  WhatsappCountryOption,
+} from '../../utils/whatsapp-number.util';
 import { forkJoin, of, switchMap } from 'rxjs';
 
 @Component({
@@ -181,6 +190,8 @@ export class AffiliateFormModalComponent implements OnInit {
     whatsappNumber: ['', [Validators.maxLength(20), Validators.pattern(/^[0-9+()\s.-]*$/)]],
     profession: ['', Validators.maxLength(255)],
     //Fecha whatsapp
+    // Indicativo del WhatsApp (desplegable al lado del número): +57 / +58.
+    whatsappCountryCode: [<WhatsappCountryCode>DEFAULT_WHATSAPP_COUNTRY_CODE],
     companyEntryDate: [{ value: '', disabled: false }, Validators.required],
     // Datos de afiliación
     planId: ['', Validators.required],
@@ -209,11 +220,6 @@ export class AffiliateFormModalComponent implements OnInit {
     documentFile: [<File | string | null>null],
     // Seguridad social (sin ADRES, sin price/deposit/charge)
     arl: [<number | null>null],
-    // Certificados de documentación (solo en edición)
-    certArl: [{ value: false, disabled: true }],
-    certEps: [{ value: false, disabled: true }],
-    certPension: [{ value: false, disabled: true }],
-    certCcf: [{ value: false, disabled: true }],
   });
 
   constructor() {
@@ -236,6 +242,7 @@ export class AffiliateFormModalComponent implements OnInit {
           this.form.patchValue({
             documentType: 'CC',
             isActive: true,
+            whatsappCountryCode: DEFAULT_WHATSAPP_COUNTRY_CODE,
           });
           this.form.get('entryDate')?.setValue(this.todayDate());
           this.form.get('companyEntryDate')?.setValue(this.todayDate());
@@ -547,13 +554,24 @@ export class AffiliateFormModalComponent implements OnInit {
     // mientras nadie haya tocado el campo a mano (whatsappNumberEditedByUser).
     this.form.get('reference')?.valueChanges.subscribe((reference: string | null) => {
       if (this.whatsappNumberEditedByUser) return;
-      this.form.get('whatsappNumber')?.setValue(extractWhatsappNumber(reference) ?? '', { emitEvent: false });
+      // La referencia solo trae celulares colombianos: se llena el número
+      // local (sin el 57) y el desplegable queda en +57.
+      const { countryCode, localNumber } = splitWhatsappNumber(extractWhatsappNumber(reference), null, this.whatsappKnownCodes);
+      this.form.patchValue({ whatsappNumber: localNumber, whatsappCountryCode: countryCode }, { emitEvent: false });
     });
   }
 
   /** El campo se editó a mano: de acá en adelante la referencia ya no lo pisa. */
   onWhatsappNumberInput(): void {
     this.whatsappNumberEditedByUser = true;
+  }
+
+  // Indicativos del catálogo whatsapp_country_codes (ver loadCatalogs$):
+  // agregar un país es un INSERT en esa tabla. Mientras carga, la lista fija.
+  readonly whatsappCountryOptions = signal<WhatsappCountryOption[]>(WHATSAPP_COUNTRY_OPTIONS);
+
+  private get whatsappKnownCodes(): string[] {
+    return this.whatsappCountryOptions().map((o) => o.value);
   }
 
   private loadCitiesForDepartment(departmentCode: string): void {
@@ -574,44 +592,6 @@ export class AffiliateFormModalComponent implements OnInit {
     this.validateCcf(this.form.get('compensationBoxId'));
     this.validateEps(this.form.get('epsId'));
 
-    this.updateCertControls();
-  }
-
-  private updateCertControls(): void {
-    const label = this.selectedPlanLabel;
-
-    const certArl = this.form.get('certArl');
-    const certEps = this.form.get('certEps');
-    const certPension = this.form.get('certPension');
-    const certCcf = this.form.get('certCcf');
-
-    if (label.includes('ARL')) {
-      certArl?.enable({ emitEvent: false });
-    } else {
-      certArl?.setValue(false, { emitEvent: false });
-      certArl?.disable({ emitEvent: false });
-    }
-
-    if (label.includes('EPS')) {
-      certEps?.enable({ emitEvent: false });
-    } else {
-      certEps?.setValue(false, { emitEvent: false });
-      certEps?.disable({ emitEvent: false });
-    }
-
-    if (label.includes('AFP')) {
-      certPension?.enable({ emitEvent: false });
-    } else {
-      certPension?.setValue(false, { emitEvent: false });
-      certPension?.disable({ emitEvent: false });
-    }
-
-    if (label.includes('CCF')) {
-      certCcf?.enable({ emitEvent: false });
-    } else {
-      certCcf?.setValue(false, { emitEvent: false });
-      certCcf?.disable({ emitEvent: false });
-    }
   }
 
   get isEdit(): boolean {
@@ -652,8 +632,9 @@ export class AffiliateFormModalComponent implements OnInit {
       departments: this._service.getDepartments(),
       branches: this._service.getBranchesDropdown(),
       origins: this._service.getOrigins(),
+      whatsappCountryCodes: this._service.getWhatsappCountryCodes(),
     }).pipe(
-      switchMap(({ plans, companies, groupers, fidelizadores, epsList, references, pensions, compensationBoxes, departments, branches, origins }) => {
+      switchMap(({ plans, companies, groupers, fidelizadores, epsList, references, pensions, compensationBoxes, departments, branches, origins, whatsappCountryCodes }) => {
         this.plans.set(plans);
         this.companies.set(companies);
         this.groupers.set(groupers);
@@ -665,6 +646,9 @@ export class AffiliateFormModalComponent implements OnInit {
         this.departments.set(departments);
         this.branches.set(branches);
         this.origins.set(origins);
+        if (whatsappCountryCodes.length) {
+          this.whatsappCountryOptions.set(whatsappCountryCodes.map(toWhatsappCountryOption));
+        }
         this.catalogsLoading.set(false);
         return of(null);
       }),
@@ -760,6 +744,7 @@ export class AffiliateFormModalComponent implements OnInit {
     if (this.fileInputRef?.nativeElement) {
       this.fileInputRef.nativeElement.value = '';
     }
+    const whatsapp = splitWhatsappNumber(a.whatsappNumber, a.whatsappCountryCode, this.whatsappKnownCodes);
     this.form.patchValue({
       documentType: a.documentType,
       documentNumber: a.documentNumber,
@@ -775,7 +760,8 @@ export class AffiliateFormModalComponent implements OnInit {
       departmentCode: a.departmentCode ?? '',
       cityCode: a.cityCode ?? '',
       reference: a.reference ?? '',
-      whatsappNumber: a.whatsappNumber ?? '',
+      whatsappNumber: whatsapp.localNumber,
+      whatsappCountryCode: whatsapp.countryCode,
       profession: a.profession ?? '',
 
       companyId: a.companyId ? String(a.companyId) : '',
@@ -796,10 +782,6 @@ export class AffiliateFormModalComponent implements OnInit {
       compensationBoxId: a.compensationBoxId ? String(a.compensationBoxId) : '',
       branchId: a.branchId ? String(a.branchId) : '',
       observation: a.observation ?? '',
-      certArl: a.certArl ?? false,
-      certEps: a.certEps ?? false,
-      certPension: a.certPension ?? false,
-      certCcf: a.certCcf ?? false,
     }, { emitEvent: false });
 
     // In edit mode: entryDate solo se habilita para roles con permiso 'edit_entry_date';
@@ -1042,7 +1024,12 @@ export class AffiliateFormModalComponent implements OnInit {
       reference: raw.reference!,
       // null (no undefined) cuando queda vacío: así el backend sí limpia el
       // número guardado si lo borraron a propósito en la edición.
-      whatsappNumber: raw.whatsappNumber?.trim() || null,
+      // Se envía con el indicativo elegido adelante (ej. 58 + número local).
+      whatsappNumber: composeWhatsappNumber(
+        raw.whatsappCountryCode || DEFAULT_WHATSAPP_COUNTRY_CODE,
+        raw.whatsappNumber,
+      ),
+      whatsappCountryCode: raw.whatsappCountryCode || DEFAULT_WHATSAPP_COUNTRY_CODE,
       profession: raw.profession || undefined,
       gender: raw.gender || undefined,
       whatsappEntryDate: this.todayDate(),
@@ -1069,15 +1056,10 @@ export class AffiliateFormModalComponent implements OnInit {
         : (raw.entryDate || this.toLocalDateStr(this.todayDate())),
       arl: raw.arl ?? undefined,
       observation: raw.observation?.trim() || undefined,
-      ...(this.isEdit ? {
-        certArl: raw.certArl ?? false,
-        certEps: raw.certEps ?? false,
-        certPension: raw.certPension ?? false,
-        certCcf: raw.certCcf ?? false,
-      } : {
-        // isNew solo se envía al crear (siempre true); en edición no se envía (el backend tampoco lo acepta)
-        isNew: true,
-      }),
+      // Los certificados (certEps/certArl/...) ya no viajan desde este
+      // formulario: se marcan desde el flujo de cargue o desde la lista.
+      // isNew solo se envía al crear (siempre true); en edición no se envía (el backend tampoco lo acepta)
+      ...(this.isEdit ? {} : { isNew: true }),
     };
 
     const obs =

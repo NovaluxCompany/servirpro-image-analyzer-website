@@ -161,21 +161,6 @@ export class AffiliateMembersService {
       .pipe(catchError(this.handleError));
   }
 
-  // ── Marcar a mano un certificado como enviado por WhatsApp ──────────
-  updateCertStatus(
-    id: number,
-    field: 'certEps' | 'certArl' | 'certCcf' | 'certPension',
-    sent: boolean,
-  ): Observable<{ id: number; field: string; sent: boolean }> {
-    return this._http
-      .patch<{ id: number; field: string; sent: boolean }>(
-        `${this.baseUrl}/${id}/cert-status`,
-        { field, sent },
-        { headers: this.getHeaders() }
-      )
-      .pipe(catchError(this.handleError));
-  }
-
   // ── Enviar / sincronizar afiliado con Siigo ─────────────────────────
   syncToSiigo(id: number): Observable<{ siigoSyncStatus: string; siigoId: string | null; siigoSyncError: string | null }> {
     return this._http
@@ -360,6 +345,16 @@ export class AffiliateMembersService {
   getOrigins(): Observable<{ id: number; code: string; label: string }[]> {
     return this._http
       .get<{ id: number; code: string; label: string }[]>(`${environment.urlBD}/affiliate-origins/dropdown`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError(() => of([])));
+  }
+
+  // Indicativos del WhatsApp de certificados (tabla whatsapp_country_codes).
+  // Si falla se devuelve vacío y el formulario se queda con la lista fija.
+  getWhatsappCountryCodes(): Observable<{ code: string; country: string }[]> {
+    return this._http
+      .get<{ code: string; country: string }[]>(`${environment.urlBD}/whatsapp-country-codes/dropdown`, {
         headers: this.getHeaders(),
       })
       .pipe(catchError(() => of([])));

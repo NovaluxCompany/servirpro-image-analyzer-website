@@ -31,18 +31,18 @@ export class AffiliatesFormComponent {
   /**
    * Bloqueo global de transacciones (param TRANSACCIONES_BLOQUEADAS, lo prende
    * el Administrador para el cierre de mes). Con el bloqueo encendido solo se
-   * puede pagar a los afiliados nuevos: los demás no se dejan seleccionar, así
-   * el usuario no llena el comprobante entero para que el backend se lo
-   * rechace al final (TransactionsService.create valida lo mismo contra
-   * `affiliations.is_new`, que es la palabra final).
+   * puede pagar a los afiliados INDEPENDIENTE: los demás no se dejan
+   * seleccionar, así el usuario no llena el comprobante entero para que el
+   * backend se lo rechace al final (TransactionsService.create valida lo mismo
+   * contra `affiliations.affiliate_type`, que es la palabra final).
    */
   transactionsLocked = input<boolean>(false);
 
   affiliatesChanged = output<Affiliate[]>();
 
-  /** Con el bloqueo encendido, este afiliado no puede pagarse por no ser nuevo. */
+  /** Con el bloqueo encendido, este afiliado no puede pagarse por no ser independiente. */
   isBlockedByLock(affiliate: Affiliate): boolean {
-    return this.transactionsLocked() && !affiliate.isNew;
+    return this.transactionsLocked() && (affiliate.affiliateType ?? '').toUpperCase() !== 'INDEPENDIENTE';
   }
 
   private isBlockedIdNumber(idNumber: string): boolean {
@@ -184,7 +184,7 @@ export class AffiliatesFormComponent {
 
   selectAll(): void {
     // "Todos" son todos los que se pueden pagar: con el bloqueo encendido, los
-    // que no son nuevos quedan afuera en vez de entrar y romper el envío.
+    // que no son independientes quedan afuera en vez de entrar y romper el envío.
     const allIds = this.filteredAffiliates()
       .filter((a) => !this.isBlockedByLock(a))
       .map((a) => a.idNumber);
