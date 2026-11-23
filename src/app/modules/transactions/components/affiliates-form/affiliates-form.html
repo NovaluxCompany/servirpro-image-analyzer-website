@@ -152,23 +152,25 @@
               @for (affiliate of filteredAffiliates(); track affiliate._id || affiliate.idNumber) {
                 <tr 
                   class="bg-white border-b"
-                  [class]="isBlockedByLock(affiliate) ? 'opacity-60' : 'hover:bg-gray-50 cursor-pointer'"
+                  [class]="'hover:bg-gray-50 cursor-pointer'"
                   (click)="toggleAffiliate(affiliate.idNumber)"
-                  [class.bg-blue-50]="isSelected(affiliate.idNumber)"
+                  [class.bg-blue-50]="isSelected(affiliate.idNumber) && !isBlockedByLock(affiliate)"
+                  [class.bg-red-50]="isSelected(affiliate.idNumber) && isBlockedByLock(affiliate)"
                 >
                   <td class="px-4 py-3" (click)="$event.stopPropagation()">
                     <input 
                       type="checkbox"
                       [checked]="isSelected(affiliate.idNumber)"
-                      [disabled]="isBlockedByLock(affiliate)"
                       (change)="toggleAffiliate(affiliate.idNumber)"
-                      class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 disabled:cursor-not-allowed"
+                      class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                     >
                   </td>
                   <td class="px-4 py-3 font-medium text-gray-900">
                     {{ affiliate.fullName }}
                     @if (isBlockedByLock(affiliate)) {
-                      <div class="flex items-center gap-1 mt-1 text-xs font-normal text-gray-500">
+                      <div class="flex items-center gap-1 mt-1 text-xs font-normal"
+                        [class.text-red-700]="isSelected(affiliate.idNumber)"
+                        [class.text-gray-500]="!isSelected(affiliate.idNumber)">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -211,7 +213,21 @@
         </table>
       </div>
 
-      @if (getSelectedCount() > 0) {
+      @if (hasLockedSelection()) {
+        <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg" role="alert">
+          <div class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <p class="text-sm text-red-800">
+              <span class="font-medium">No se puede realizar el pago:</span>
+              las transacciones están bloqueadas y solo se permiten afiliados independientes.
+              Quita de la selección a {{ lockedSelectionNames().join(', ') }}.
+            </p>
+          </div>
+        </div>
+      } @else if (getSelectedCount() > 0) {
         <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
           <div class="flex items-center gap-2">
             <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

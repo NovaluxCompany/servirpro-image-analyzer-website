@@ -131,10 +131,9 @@ export class TransactionCreateComponent {
   }
 
   /**
-   * Con el bloqueo encendido y nadie seleccionado no hay pago posible: los que
-   * no son independientes no se dejan marcar, así que la selección vacía significa que
-   * en esta búsqueda no hay a quién cobrarle. El botón queda inhabilitado en
-   * vez de dejar mandar algo que el backend va a rechazar.
+   * Con el bloqueo encendido y nadie seleccionado el botón queda inhabilitado
+   * en vez de dejar mandar algo que el backend va a rechazar. Si se selecciona
+   * alguien que no es independiente, lo bloquea hasLockedSelection.
    *
    * Sin bloqueo el botón sigue habilitado con la selección vacía, como
    * siempre: al tocarlo aparece el aviso de "debes seleccionar al menos un
