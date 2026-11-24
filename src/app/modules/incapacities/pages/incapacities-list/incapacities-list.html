@@ -309,15 +309,17 @@
                   </span>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <!-- Pagada si Servirpro la marcó PAGADO o si el estado CYA / Gestión
-                       es de pago (código APROBADO, etiqueta "Pagada"; ver isThirdPartyPaid). -->
+                  <!-- La regla de "pagada" la calcula la API (incapacity.payment);
+                       ver isPaid / paidBy. -->
                   @if (isPaid(incapacity)) {
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
-                      Pagada
+                      Pagado
                     </span>
-                    @if (incapacity.servirproStatus.code === 'PAGADO' && incapacity.paymentType) {
-                      <span class="block mt-1 text-xs text-gray-500">{{ incapacity.paymentType === 'INTERNO' ? 'Interno' : 'Externo' }}</span>
-                    } @else if (incapacity.servirproStatus.code !== 'PAGADO') {
+                    @if (paidBy(incapacity) === 'SERVIRPRO') {
+                      @if (incapacity.paymentType) {
+                        <span class="block mt-1 text-xs text-gray-500">{{ incapacity.paymentType === 'INTERNO' ? 'Interno' : 'Externo' }}</span>
+                      }
+                    } @else {
                       <span class="block mt-1 text-xs text-gray-500">Por el tercero</span>
                     }
                   } @else {

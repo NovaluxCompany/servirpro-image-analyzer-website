@@ -94,6 +94,12 @@ export interface Incapacity {
   thirdPartyStatus: CatalogItem;
   thirdPartyObservation: string | null;
   /**
+   * Calculado por la API (incapacity-payment.util.ts): pagada si el estado
+   * interno es PAGADO o si el tercero ya pagó. Es lo que pinta la columna
+   * "Pago". Opcional solo mientras haya APIs desplegadas sin este campo.
+   */
+  payment?: { paid: boolean; paidBy: 'SERVIRPRO' | 'TERCERO' | null };
+  /**
    * Gestión que ya se le aplicó al trámite, o null si todavía no se enrutó
    * (o si su agrupadora no tiene gestión configurada — hoy, ORDINARIAS).
    */

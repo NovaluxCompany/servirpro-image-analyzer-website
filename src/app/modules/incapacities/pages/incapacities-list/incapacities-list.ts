@@ -545,9 +545,21 @@ export class IncapacitiesListComponent implements OnInit {
     return ['APROBADO', 'PAGADO', 'PAGADA', 'PAGO'].includes(code) || label.startsWith('PAG');
   }
 
-  /** Pagada por Servirpro (estado interno PAGADO) o por el tercero. */
+  /**
+   * Pagada por Servirpro (estado interno PAGADO) o por el tercero. Manda lo
+   * que calcula la API (`payment`); la regla local es solo respaldo para una
+   * API que todavía no devuelva ese campo.
+   */
   isPaid(incapacity: Incapacity): boolean {
+    if (incapacity.payment) return incapacity.payment.paid;
     return incapacity.servirproStatus?.code === 'PAGADO' || this.isThirdPartyPaid(incapacity);
+  }
+
+  /** Quién pagó, con el mismo criterio que isPaid. */
+  paidBy(incapacity: Incapacity): 'SERVIRPRO' | 'TERCERO' | null {
+    if (incapacity.payment) return incapacity.payment.paidBy;
+    if (incapacity.servirproStatus?.code === 'PAGADO') return 'SERVIRPRO';
+    return this.isThirdPartyPaid(incapacity) ? 'TERCERO' : null;
   }
 
   /** Color de la columna "Estado CYA / Gestión": verde cuando el tercero pagó. */
