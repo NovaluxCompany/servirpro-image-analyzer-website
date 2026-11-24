@@ -55,9 +55,40 @@ export class AffiliatesFormComponent {
     return this.lockCheckedOnSelect() ?? this.transactionsLocked();
   }
 
+  private isIndependent(affiliate: Affiliate): boolean {
+    return (affiliate.affiliateType ?? '').toUpperCase() === 'INDEPENDIENTE';
+  }
+
   /** Con el bloqueo encendido, este afiliado no puede pagarse por no ser independiente. */
   isBlockedByLock(affiliate: Affiliate): boolean {
-    return this.isLockActive() && (affiliate.affiliateType ?? '').toUpperCase() !== 'INDEPENDIENTE';
+    return this.isLockActive() && !this.isIndependent(affiliate);
+  }
+
+  private showResults(data: Affiliate[]): void {
+    this.affiliates.set(data);
+    this.applyTableFilter();
+    this.isLoading.set(false);
+  }
+
+  /**
+   * Con el bloqueo encendido, los dependientes no llegan a la tabla: no se
+   * pueden seleccionar y el único aviso es el de la búsqueda (una sola vez).
+   * Si en el mismo resultado hay independientes, esos sí se muestran.
+   */
+  private showResultsWithLock(data: Affiliate[]): void {
+    if (!this.isLockActive()) {
+      this.showResults(data);
+      return;
+    }
+    const allowed = data.filter((a) => this.isIndependent(a));
+    const dependents = data.filter((a) => !this.isIndependent(a)).map((a) => a.fullName);
+    this.showResults(allowed);
+    const reason = 'las transacciones están bloqueadas y solo se pueden crear para afiliados independientes';
+    this.errorMessage.set(
+      dependents.length === 1
+        ? `${dependents[0]} es un afiliado dependiente: ${reason}, así que no se le puede crear una transacción.`
+        : `${dependents.join(', ')} son afiliados dependientes: ${reason}, así que no se les puede crear una transacción.`,
+    );
   }
 
   /** Igual que isBlockedByLock, pero solo para los ya seleccionados (el aviso sale al seleccionar). */
@@ -90,7 +121,9 @@ export class AffiliatesFormComponent {
 
   onSearch(): void {
     const { reference, fullName } = this.searchForm.value;
-    const searchValue = reference || fullName;
+    // Sin espacios: la API compara la cédula exacta y un espacio pegado al
+    // copiarla daba "No se encontraron afiliados".
+    const searchValue = (reference || fullName || '').trim();
 
     if (!searchValue) {
       this.errorMessage.set('Ingresa una referencia o cédula para buscar');
@@ -107,13 +140,21 @@ export class AffiliatesFormComponent {
 
     this._affiliatesService.searchAffiliates(searchValue).subscribe({
       next: (data) => {
-        this.affiliates.set(data);
-        this.applyTableFilter();
-        this.isLoading.set(false);
-
         if (data.length === 0) {
+          this.showResults([]);
           this.errorMessage.set('No se encontraron afiliados con los criterios de búsqueda');
+          return;
         }
+        if (data.every((a) => this.isIndependent(a))) {
+          this.showResults(data);
+          return;
+        }
+        // Hay dependientes: antes de mostrar nada se consulta el bloqueo en
+        // este momento (si la consulta falla, vale el de la página).
+        this._transactionsService.getLockStatus().subscribe({
+          next: (res) => { this.lockCheckedOnSelect.set(res.locked); this.showResultsWithLock(data); },
+          error: () => this.showResultsWithLock(data),
+        });
       },
       error: (error) => {
         console.error('Error al buscar afiliados:', error);

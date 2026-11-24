@@ -144,8 +144,13 @@
               }
             </div>
 
+            <!-- Referencia + WhatsApp comparten las mismas dos columnas del
+                 grid, pero repartidas 2/5 y 3/5: Referencia queda más angosta
+                 para que el número de WhatsApp no se vea comprimido. -->
+            <div class="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-5">
+
             <!-- Referencia (obligatorio, desplegable buscable) -->
-            <div>
+            <div class="min-w-0 sm:col-span-2">
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">
                 Referencia <span class="text-red-500">*</span>
               </label>
@@ -160,20 +165,22 @@
 
             <!-- WhatsApp al que se envían los certificados: indicativo del
                  desplegable + número local escrito a mano. -->
-            <div>
+            <div class="min-w-0 sm:col-span-3">
               <label class="block mb-1.5 text-xs font-semibold text-gray-700">WhatsApp certificados</label>
               <div class="flex gap-2">
-                <!-- Indicativo: sale del catálogo whatsapp_country_codes -->
+                <!-- Indicativo: sale del catálogo whatsapp_country_codes. El
+                     elegido se ve solo como "+57" para dejarle el ancho al
+                     número; los demás muestran el país para poder elegir. -->
                 <select formControlName="whatsappCountryCode"
                   aria-label="Indicativo del WhatsApp"
-                  class="shrink-0 w-36 px-2 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  class="shrink-0 w-20 px-2 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                   @for (opt of whatsappCountryOptions(); track opt.value) {
-                  <option [value]="opt.value">{{ opt.label }}</option>
+                  <option [value]="opt.value" [title]="opt.label">{{ opt.value === form.get('whatsappCountryCode')?.value ? '+' + opt.value : opt.label }}</option>
                   }
                 </select>
                 <input type="text" formControlName="whatsappNumber" maxlength="15" inputmode="numeric" placeholder="Número sin indicativo"
                   (input)="onWhatsappNumberInput()"
-                  class="w-full min-w-0 px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="flex-1 w-full min-w-0 px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   [class.border-red-400]="isFieldInvalid('whatsappNumber')"
                   [class.border-gray-300]="!isFieldInvalid('whatsappNumber')">
               </div>
@@ -182,6 +189,8 @@
               } @else {
               <p class="mt-1 text-xs text-gray-500">Elige el indicativo y escribe el número. Aquí llegan los certificados.</p>
               }
+            </div>
+
             </div>
 
             <!-- Fecha nacimiento -->

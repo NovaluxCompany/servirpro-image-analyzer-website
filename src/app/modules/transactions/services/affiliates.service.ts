@@ -48,8 +48,9 @@ export class AffiliatesService {
 
     if (error.status === 401) {
       errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
-    } else if (error.status === 404) {
-      errorMessage = 'No se encontraron afiliados';
+    } else if (error.status === 404 || error.status === 400) {
+      // La API distingue "no existe" de "existe pero está inactivo".
+      errorMessage = error?.error?.message || 'No se encontraron afiliados';
     } else if (error.status >= 500) {
       errorMessage = 'Error del servidor. Por favor, intenta más tarde.';
     }
