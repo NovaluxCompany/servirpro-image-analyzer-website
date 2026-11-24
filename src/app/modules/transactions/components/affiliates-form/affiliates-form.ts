@@ -2,6 +2,7 @@ import { Component, inject, input, signal, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { AffiliatesService } from '../../services/affiliates.service';
+import { TransactionsService } from '../../services/transactions.service';
 import { Affiliate } from '../../interfaces/affiliate.interface';
 
 @Component({
@@ -13,6 +14,7 @@ import { Affiliate } from '../../interfaces/affiliate.interface';
 export class AffiliatesFormComponent {
   private _fb = inject(FormBuilder);
   private _affiliatesService = inject(AffiliatesService);
+  private _transactionsService = inject(TransactionsService);
 
   searchForm = this._fb.group({
     reference: [''],
@@ -40,9 +42,35 @@ export class AffiliatesFormComponent {
 
   affiliatesChanged = output<Affiliate[]>();
 
+  /**
+   * Estado del bloqueo consultado a la API en el momento de seleccionar (null
+   * mientras no se haya consultado). Así la validación no depende solo de lo
+   * que se leyó al abrir la página: si el Administrador bloquea mientras
+   * alguien está llenando el formulario, al seleccionar ya se entera.
+   */
+  private lockCheckedOnSelect = signal<boolean | null>(null);
+
+  /** Bloqueo vigente: el consultado al seleccionar manda sobre el de la página. */
+  private isLockActive(): boolean {
+    return this.lockCheckedOnSelect() ?? this.transactionsLocked();
+  }
+
   /** Con el bloqueo encendido, este afiliado no puede pagarse por no ser independiente. */
   isBlockedByLock(affiliate: Affiliate): boolean {
-    return this.transactionsLocked() && (affiliate.affiliateType ?? '').toUpperCase() !== 'INDEPENDIENTE';
+    return this.isLockActive() && (affiliate.affiliateType ?? '').toUpperCase() !== 'INDEPENDIENTE';
+  }
+
+  /** Igual que isBlockedByLock, pero solo para los ya seleccionados (el aviso sale al seleccionar). */
+  isSelectedAndBlocked(affiliate: Affiliate): boolean {
+    return this.isSelected(affiliate.idNumber) && this.isBlockedByLock(affiliate);
+  }
+
+  /** Consulta el bloqueo en la API; si falla se queda con el de la página (el backend valida igual al crear). */
+  private refreshLockStatus(): void {
+    this._transactionsService.getLockStatus().subscribe({
+      next: (res) => this.lockCheckedOnSelect.set(res.locked),
+      error: () => {},
+    });
   }
 
   /**
@@ -58,26 +86,6 @@ export class AffiliatesFormComponent {
 
   hasLockedSelection(): boolean {
     return this.lockedSelectionNames().length > 0;
-  }
-
-  /**
-   * Con el bloqueo encendido, avisa desde la búsqueda que lo encontrado es
-   * dependiente (en vez de dejar que el usuario lo descubra al seleccionarlo).
-   * null si no hay bloqueo o si todos los resultados son independientes.
-   */
-  private dependentSearchMessage(data: Affiliate[]): string | null {
-    const blocked = data.filter((a) => this.isBlockedByLock(a));
-    if (blocked.length === 0) return null;
-
-    const lockReason =
-      'las transacciones están bloqueadas y solo se pueden cargar pagos de afiliados independientes.';
-    if (blocked.length === 1 && data.length === 1) {
-      return `${blocked[0].fullName} es un afiliado dependiente: ${lockReason}`;
-    }
-    const names = blocked.map((a) => a.fullName).join(', ');
-    return blocked.length === data.length
-      ? `Los afiliados encontrados son dependientes (${names}): ${lockReason}`
-      : `Estos afiliados son dependientes y no se pueden cargar (${names}): ${lockReason}`;
   }
 
   onSearch(): void {
@@ -105,8 +113,6 @@ export class AffiliatesFormComponent {
 
         if (data.length === 0) {
           this.errorMessage.set('No se encontraron afiliados con los criterios de búsqueda');
-        } else {
-          this.errorMessage.set(this.dependentSearchMessage(data));
         }
       },
       error: (error) => {
@@ -163,6 +169,7 @@ export class AffiliatesFormComponent {
     } else {
       selected.add(idNumber);
       this.checkDuplicateForAffiliate(idNumber);
+      this.refreshLockStatus();
     }
 
     this.selectedAffiliates.set(selected);
@@ -204,6 +211,7 @@ export class AffiliatesFormComponent {
     const allIds = this.filteredAffiliates().map((a) => a.idNumber);
     this.selectedAffiliates.set(new Set(allIds));
     allIds.forEach((idNumber) => this.checkDuplicateForAffiliate(idNumber));
+    if (allIds.length > 0) this.refreshLockStatus();
     this.affiliatesChanged.emit(this.getSelectedAffiliates());
   }
 
