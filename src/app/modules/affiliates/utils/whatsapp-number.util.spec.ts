@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractWhatsappNumber } from './whatsapp-number.util';
+import { composeWhatsappNumber, extractWhatsappNumber, splitWhatsappNumber } from './whatsapp-number.util';
 
 describe('extractWhatsappNumber', () => {
   it('saca el celular aunque la referencia traiga nombres', () => {
@@ -30,5 +30,29 @@ describe('extractWhatsappNumber', () => {
     expect(extractWhatsappNumber('')).toBeNull();
     expect(extractWhatsappNumber(null)).toBeNull();
     expect(extractWhatsappNumber(undefined)).toBeNull();
+  });
+});
+
+describe('splitWhatsappNumber / composeWhatsappNumber', () => {
+  it('separa indicativo y número local', () => {
+    expect(splitWhatsappNumber('573001234567')).toEqual({ countryCode: '57', localNumber: '3001234567' });
+    expect(splitWhatsappNumber('584121234567')).toEqual({ countryCode: '58', localNumber: '4121234567' });
+    expect(splitWhatsappNumber('584121234567', '58')).toEqual({ countryCode: '58', localNumber: '4121234567' });
+    expect(splitWhatsappNumber(null)).toEqual({ countryCode: '57', localNumber: '' });
+  });
+
+  it('usa los indicativos del catálogo, probando primero el más largo', () => {
+    expect(splitWhatsappNumber('593991234567', null, ['57', '59', '593'])).toEqual({
+      countryCode: '593',
+      localNumber: '991234567',
+    });
+    expect(splitWhatsappNumber('593991234567', '593', ['57'])).toEqual({ countryCode: '593', localNumber: '991234567' });
+  });
+
+  it('arma el número con el indicativo elegido sin duplicarlo', () => {
+    expect(composeWhatsappNumber('58', '4121234567')).toBe('584121234567');
+    expect(composeWhatsappNumber('58', '584121234567')).toBe('584121234567');
+    expect(composeWhatsappNumber('57', '300 123 4567')).toBe('573001234567');
+    expect(composeWhatsappNumber('57', '')).toBeNull();
   });
 });

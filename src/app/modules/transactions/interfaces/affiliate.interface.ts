@@ -12,9 +12,11 @@ export interface Affiliate {
   discount?: number | null;
   eps: string;
   reference: string;
-  // Afiliado nuevo (`affiliations.is_new`): es el único que puede pagar
-  // mientras el bloqueo de transacciones esté encendido.
+  // Afiliado nuevo (`affiliations.is_new`).
   isNew?: boolean;
+  // Tipo de afiliado: solo los INDEPENDIENTE pueden pagar mientras el
+  // bloqueo de transacciones esté encendido.
+  affiliateType?: 'INDEPENDIENTE' | 'DEPENDIENTE';
   deposit?: string;
   charge?: string;
   profession?: string;

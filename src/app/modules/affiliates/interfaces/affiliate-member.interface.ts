@@ -30,6 +30,8 @@ export interface AffiliateMember {
   // referencia (que es texto libre: número + nombres) pero se guarda aparte,
   // porque una misma referencia puede tener varios afiliados. Editable a mano.
   whatsappNumber?: string | null;
+  // Indicativo del número anterior (catálogo whatsapp_country_codes); null si no hay número.
+  whatsappCountryCode?: string | null;
   // Fecha whatsapp
   whatsappEntryDate?: string;
   companyEntryDate?: string;
@@ -118,6 +120,8 @@ export interface CreateAffiliateMemberDto {
   reference: string;        // required
   // null = limpiar el número guardado; undefined = no tocarlo (edición parcial)
   whatsappNumber?: string | null;
+  // Indicativo elegido en el desplegable junto al WhatsApp (catálogo whatsapp_country_codes).
+  whatsappCountryCode?: string;
   profession?: string;
   gender?: string;
   whatsappEntryDate?: string;

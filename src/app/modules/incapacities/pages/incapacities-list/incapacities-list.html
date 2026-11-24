@@ -309,12 +309,18 @@
                   </span>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                  @if (incapacity.servirproStatus.code === 'PAGADO') {
+                  <!-- La regla de "pagada" la calcula la API (incapacity.payment);
+                       ver isPaid / paidBy. -->
+                  @if (isPaid(incapacity)) {
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
-                      Pagada
+                      Pagado
                     </span>
-                    @if (incapacity.paymentType) {
-                      <span class="block mt-1 text-xs text-gray-500">{{ incapacity.paymentType === 'INTERNO' ? 'Interno' : 'Externo' }}</span>
+                    @if (paidBy(incapacity) === 'SERVIRPRO') {
+                      @if (incapacity.paymentType) {
+                        <span class="block mt-1 text-xs text-gray-500">{{ incapacity.paymentType === 'INTERNO' ? 'Interno' : 'Externo' }}</span>
+                      }
+                    } @else {
+                      <span class="block mt-1 text-xs text-gray-500">Por el tercero</span>
                     }
                   } @else {
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">
@@ -323,7 +329,7 @@
                   }
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="statusClass(incapacity.thirdPartyStatus.code)">
+                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold" [class]="thirdPartyStatusClass(incapacity)">
                     {{ incapacity.thirdPartyStatus.label }}
                   </span>
                 </td>
