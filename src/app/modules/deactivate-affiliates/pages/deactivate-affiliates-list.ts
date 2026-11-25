@@ -1006,8 +1006,12 @@ export class DeactivateAffiliatesList implements OnInit {
 
     this._deactivateAffiliatesService.approveTransaction(tx.transactionId, newValue).subscribe({
       next: () => {
+        // El detalle solo muestra pagos pendientes (el backend ya no devuelve
+        // los aprobados): el que se aprueba sale de la lista de una vez.
         this.affiliateTransactions.update((rows) =>
-          rows.map((r) => r.transactionId === tx.transactionId ? { ...r, isApproved: newValue } : r),
+          newValue
+            ? rows.filter((r) => r.transactionId !== tx.transactionId)
+            : rows.map((r) => (r.transactionId === tx.transactionId ? { ...r, isApproved: newValue } : r)),
         );
         this.approvingTransactionId.set(null);
         this._toast.showSuccess(newValue ? 'Transacción aprobada' : 'Aprobación revertida');
