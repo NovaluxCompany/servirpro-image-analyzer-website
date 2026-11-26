@@ -11,8 +11,8 @@
     @if (transactionsLocked()) {
     <div class="p-4 mb-6 text-sm text-amber-900 bg-amber-100 border border-amber-200 rounded-lg" role="alert">
       <span class="font-medium">Transacciones bloqueadas:</span>
-      solo se pueden registrar pagos de afiliados independientes. Si seleccionas un afiliado que no es
-      independiente se mostrará el error y no se podrá crear la transacción hasta que el administrador desbloquee el módulo.
+      solo se pueden registrar pagos de afiliados independientes o nuevos. Si seleccionas la mensualidad de un
+      afiliado dependiente se mostrará el error y no se podrá crear la transacción hasta que el administrador desbloquee el módulo.
     </div>
     }
 
@@ -159,7 +159,7 @@
       <div class="flex items-center gap-4">
         <button type="submit" [disabled]="isSubmitBlocked()"
           [title]="affiliatesForm?.hasLockedSelection() || lockedWithoutSelection()
-            ? 'Con el bloqueo activo solo se pueden pagar afiliados independientes'
+            ? 'Con el bloqueo activo solo se pueden pagar afiliados independientes o nuevos'
             : (affiliatesForm?.hasDuplicates() ? 'Quita de la selección los afiliados que ya tienen una transacción este mes' : '')"
           class="flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50 disabled:cursor-not-allowed">
           @if (isLoading()) {
@@ -173,7 +173,7 @@
             Validando comprobantes...
           </span>
           } @else if (affiliatesForm?.hasLockedSelection() || lockedWithoutSelection()) {
-          Solo se pueden pagar afiliados independientes
+          Solo se pueden pagar afiliados independientes o nuevos
           } @else if (affiliatesForm?.hasDuplicates()) {
           Quita los afiliados duplicados para continuar
           } @else {

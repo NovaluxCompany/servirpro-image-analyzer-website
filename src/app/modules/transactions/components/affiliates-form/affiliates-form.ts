@@ -33,10 +33,11 @@ export class AffiliatesFormComponent {
   /**
    * Bloqueo global de transacciones (param TRANSACCIONES_BLOQUEADAS, lo prende
    * el Administrador para el cierre de mes). Con el bloqueo encendido solo se
-   * puede pagar a los afiliados INDEPENDIENTE: los demás sí se pueden
-   * seleccionar, pero al quedar seleccionados se muestra el error y el botón
-   * de crear se bloquea (TransactionsService.create valida lo mismo contra
-   * `affiliations.affiliate_type`, que es la palabra final).
+   * puede pagar a los afiliados INDEPENDIENTE y a los NUEVOS: los demás
+   * (mensualidades de dependientes) sí se pueden seleccionar, pero al quedar
+   * seleccionados se muestra el error y el botón de crear se bloquea
+   * (TransactionsService.create valida lo mismo contra
+   * `affiliations.affiliate_type` e `is_new`, que son la palabra final).
    */
   transactionsLocked = input<boolean>(false);
 
@@ -55,13 +56,14 @@ export class AffiliatesFormComponent {
     return this.lockCheckedOnSelect() ?? this.transactionsLocked();
   }
 
-  private isIndependent(affiliate: Affiliate): boolean {
-    return (affiliate.affiliateType ?? '').toUpperCase() === 'INDEPENDIENTE';
+  /** Misma regla que TransactionsService.isAllowedWhileLocked en el backend. */
+  private isAllowedWhileLocked(affiliate: Affiliate): boolean {
+    return !!affiliate.isNew || (affiliate.affiliateType ?? '').toUpperCase() === 'INDEPENDIENTE';
   }
 
-  /** Con el bloqueo encendido, este afiliado no puede pagarse por no ser independiente. */
+  /** Con el bloqueo encendido, este afiliado no puede pagarse por ser mensualidad de un dependiente. */
   isBlockedByLock(affiliate: Affiliate): boolean {
-    return this.isLockActive() && !this.isIndependent(affiliate);
+    return this.isLockActive() && !this.isAllowedWhileLocked(affiliate);
   }
 
   private showResults(data: Affiliate[]): void {
@@ -71,23 +73,24 @@ export class AffiliatesFormComponent {
   }
 
   /**
-   * Con el bloqueo encendido, los dependientes no llegan a la tabla: no se
-   * pueden seleccionar y el único aviso es el de la búsqueda (una sola vez).
-   * Si en el mismo resultado hay independientes, esos sí se muestran.
+   * Con el bloqueo encendido, las mensualidades de dependientes no llegan a
+   * la tabla: no se pueden seleccionar y el único aviso es el de la búsqueda
+   * (una sola vez). Si en el mismo resultado hay independientes o nuevos,
+   * esos sí se muestran.
    */
   private showResultsWithLock(data: Affiliate[]): void {
     if (!this.isLockActive()) {
       this.showResults(data);
       return;
     }
-    const allowed = data.filter((a) => this.isIndependent(a));
-    const dependents = data.filter((a) => !this.isIndependent(a)).map((a) => a.fullName);
+    const allowed = data.filter((a) => this.isAllowedWhileLocked(a));
+    const blocked = data.filter((a) => !this.isAllowedWhileLocked(a)).map((a) => a.fullName);
     this.showResults(allowed);
-    const reason = 'las transacciones están bloqueadas y solo se pueden crear para afiliados independientes';
+    const reason = 'las transacciones están bloqueadas y solo se pueden crear para afiliados independientes o nuevos';
     this.errorMessage.set(
-      dependents.length === 1
-        ? `${dependents[0]} es un afiliado dependiente: ${reason}, así que no se le puede crear una transacción.`
-        : `${dependents.join(', ')} son afiliados dependientes: ${reason}, así que no se les puede crear una transacción.`,
+      blocked.length === 1
+        ? `${blocked[0]} es un afiliado dependiente en mensualidad: ${reason}, así que no se le puede crear una transacción.`
+        : `${blocked.join(', ')} son afiliados dependientes en mensualidad: ${reason}, así que no se les puede crear una transacción.`,
     );
   }
 
@@ -145,11 +148,11 @@ export class AffiliatesFormComponent {
           this.errorMessage.set('No se encontraron afiliados con los criterios de búsqueda');
           return;
         }
-        if (data.every((a) => this.isIndependent(a))) {
+        if (data.every((a) => this.isAllowedWhileLocked(a))) {
           this.showResults(data);
           return;
         }
-        // Hay dependientes: antes de mostrar nada se consulta el bloqueo en
+        // Hay mensualidades de dependientes: antes de mostrar nada se consulta el bloqueo en
         // este momento (si la consulta falla, vale el de la página).
         this._transactionsService.getLockStatus().subscribe({
           next: (res) => { this.lockCheckedOnSelect.set(res.locked); this.showResultsWithLock(data); },
@@ -246,7 +249,7 @@ export class AffiliatesFormComponent {
   }
 
   selectAll(): void {
-    // Con el bloqueo encendido también entran los que no son independientes:
+    // Con el bloqueo encendido también entran los que no son independientes ni nuevos:
     // así aparece el error y el botón de crear se bloquea, igual que al
     // marcarlos uno por uno.
     const allIds = this.filteredAffiliates().map((a) => a.idNumber);

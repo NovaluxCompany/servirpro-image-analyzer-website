@@ -94,7 +94,7 @@ export class TransactionsListComponent {
         this.isTogglingLock.set(false);
         this._toastService.showSuccess(
           res.locked
-            ? 'Transacciones bloqueadas: solo se podrán registrar pagos de afiliados independientes hasta que las desbloquees.'
+            ? 'Transacciones bloqueadas: solo se podrán registrar pagos de afiliados independientes o nuevos hasta que las desbloquees.'
             : 'Transacciones desbloqueadas.',
         );
       },
@@ -168,11 +168,11 @@ export class TransactionsListComponent {
 
   onCreateTransaction(): void {
     if (!this._permission.check('create', '/transacciones', 'Tu rol no tiene permiso para crear transacciones.')) return;
-    // Con el bloqueo activo se sigue entrando a crear: los independientes sí
-    // pueden registrar su pago. Quién no aplica lo decide el backend
-    // contra `affiliations.affiliate_type` al enviar, no esta pantalla.
+    // Con el bloqueo activo se sigue entrando a crear: los independientes y
+    // los nuevos sí pueden registrar su pago. Quién no aplica lo decide el
+    // backend contra `affiliations.affiliate_type` e `is_new` al enviar, no esta pantalla.
     if (this.transactionsLocked()) {
-      this._toastService.showInfo('Transacciones bloqueadas: solo se registrarán pagos de afiliados independientes.');
+      this._toastService.showInfo('Transacciones bloqueadas: solo se registrarán pagos de afiliados independientes o nuevos.');
     }
     this._router.navigate(['/transacciones/crear']);
   }

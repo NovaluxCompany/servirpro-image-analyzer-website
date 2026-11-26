@@ -42,8 +42,8 @@ export class TransactionCreateComponent {
   /**
    * Bloqueo global de transacciones. Con el bloqueo encendido se puede entrar
    * a esta pantalla, pero solo para registrar pagos de afiliados
-   * INDEPENDIENTE. Quién es independiente lo decide
-   * `affiliations.affiliate_type` en el
+   * INDEPENDIENTE o NUEVOS. Quién aplica lo deciden
+   * `affiliations.affiliate_type` e `is_new` en el
    * backend; acá se usa para no dejar armar un pago que se va a rechazar.
    */
   transactionsLocked = signal(false);
@@ -166,7 +166,7 @@ export class TransactionCreateComponent {
     // esté el resto del formulario.
     if (this.affiliatesForm.hasLockedSelection()) {
       this.errorMessage.set(
-        'Transacciones bloqueadas: solo se pueden registrar pagos de afiliados independientes. ' +
+        'Transacciones bloqueadas: solo se pueden registrar pagos de afiliados independientes o nuevos. ' +
           `Quita de la selección a ${this.affiliatesForm.lockedSelectionNames().join(', ')}.`,
       );
       window.scrollTo({ top: 0, behavior: 'smooth' });
